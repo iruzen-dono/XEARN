@@ -7,7 +7,7 @@ import { useToast } from '@/lib/toast';
 import { walletApi, tasksApi, referralsApi } from '@/lib/api';
 
 export default function DashboardPage() {
-  const { user, token } = useAuth();
+  const { user, token, refreshUser } = useAuth();
   const toast = useToast();
   const [wallet, setWallet] = useState<any>(null);
   const [taskCount, setTaskCount] = useState(0);
@@ -46,10 +46,10 @@ export default function DashboardPage() {
     setActivating(true);
     try {
       await walletApi.activate(token);
-      // Refresh data
+      await refreshUser();
+      // Refresh wallet data
       const w = await walletApi.get(token) as any;
       setWallet(w);
-      window.location.reload();
     } catch (err: any) {
       toast.error(err.message || 'Erreur lors de l\'activation');
     } finally {

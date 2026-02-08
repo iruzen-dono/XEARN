@@ -8,7 +8,7 @@ import { useToast } from '@/lib/toast';
 
 export default function ReferralsPage() {
   const { user, token } = useAuth();
-  const { showToast } = useToast();
+  const toast = useToast();
   const [level1, setLevel1] = useState<any[]>([]);
   const [level2, setLevel2] = useState<any[]>([]);
   const [commissions, setCommissions] = useState<any[]>([]);
@@ -48,7 +48,7 @@ export default function ReferralsPage() {
   const copyLink = () => {
     navigator.clipboard.writeText(referralLink);
     setCopied(true);
-    showToast('Lien copié dans le presse-papier !', 'success');
+    toast.success('Lien copié dans le presse-papier !');
     setTimeout(() => setCopied(false), 2000);
   };
 

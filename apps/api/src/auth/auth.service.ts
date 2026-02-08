@@ -134,7 +134,25 @@ export class AuthService {
 
       if (!user) throw new UnauthorizedException('Utilisateur introuvable');
 
-      return this.generateTokens(user.id, user.role);
+      if (user.status === 'SUSPENDED' || user.status === 'BANNED') {
+        throw new UnauthorizedException('Compte suspendu ou banni');
+      }
+
+      const tokens = await this.generateTokens(user.id, user.role);
+
+      return {
+        user: {
+          id: user.id,
+          email: user.email,
+          phone: user.phone,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role,
+          status: user.status,
+          referralCode: user.referralCode,
+        },
+        ...tokens,
+      };
     } catch {
       throw new UnauthorizedException('Token invalide');
     }

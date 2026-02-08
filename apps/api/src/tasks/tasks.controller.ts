@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { TasksService } from './tasks.service';
 import { JwtAuthGuard, RolesGuard, Roles } from '../auth/guards';
@@ -46,5 +46,19 @@ export class TasksController {
   @Post('admin/create')
   async create(@Body() dto: CreateTaskDto) {
     return this.tasksService.create(dto);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @Patch('admin/:id/toggle')
+  async toggleTask(@Param('id') id: string) {
+    return this.tasksService.toggleTask(id);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @Delete('admin/:id')
+  async deleteTask(@Param('id') id: string) {
+    return this.tasksService.deleteTask(id);
   }
 }

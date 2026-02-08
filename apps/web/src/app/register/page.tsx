@@ -1,12 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Zap, Mail, Lock, User, Phone, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 
 export default function RegisterPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="text-dark-400">Chargement...</div></div>}>
+      <RegisterForm />
+    </Suspense>
+  );
+}
+
+function RegisterForm() {
   const { register, isLoading: authLoading } = useAuth();
   const searchParams = useSearchParams();
   const refCode = searchParams.get('ref') || '';
@@ -143,18 +151,17 @@ export default function RegisterPage() {
             </div>
           </div>
 
-          {refCode && (
-            <div>
-              <label className="text-sm text-dark-300 mb-1 block">Code de parrainage</label>
-              <input
-                type="text"
-                className="input-field"
-                value={form.referralCode}
-                onChange={(e) => setForm({ ...form, referralCode: e.target.value })}
-                readOnly
-              />
-            </div>
-          )}
+          <div>
+            <label className="text-sm text-dark-300 mb-1 block">Code de parrainage (optionnel)</label>
+            <input
+              type="text"
+              className="input-field"
+              placeholder="Entrez un code de parrainage"
+              value={form.referralCode}
+              onChange={(e) => setForm({ ...form, referralCode: e.target.value })}
+              readOnly={!!refCode}
+            />
+          </div>
 
           <button type="submit" disabled={loading} className="btn-primary w-full disabled:opacity-50">
             {loading ? 'Inscription...' : 'Créer mon compte'}

@@ -9,19 +9,36 @@ export class UsersService {
     return this.prisma.user.findUnique({
       where: { id },
       include: { wallet: true },
+      omit: { password: true },
     });
   }
 
-  async findAll(page = 1, limit = 20) {
+  async findAll(page = 1, limit = 20, search?: string, status?: string) {
     const skip = (page - 1) * limit;
+
+    const where: any = {};
+    if (status && status !== 'ALL') {
+      where.status = status;
+    }
+    if (search) {
+      where.OR = [
+        { firstName: { contains: search, mode: 'insensitive' } },
+        { lastName: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+        { phone: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
     const [users, total] = await Promise.all([
       this.prisma.user.findMany({
+        where,
         skip,
         take: limit,
         include: { wallet: true },
+        omit: { password: true },
         orderBy: { createdAt: 'desc' },
       }),
-      this.prisma.user.count(),
+      this.prisma.user.count({ where }),
     ]);
 
     return { users, total, page, limit };
@@ -36,11 +53,12 @@ export class UsersService {
           select: { id: true, firstName: true, lastName: true, createdAt: true, status: true },
         },
       },
+      omit: { password: true },
     });
     return user;
   }
 
-  async activateAccount(userId: string) {
+  async reactivateUser(userId: string) {
     return this.prisma.user.update({
       where: { id: userId },
       data: { status: 'ACTIVATED' },
@@ -62,12 +80,81 @@ export class UsersService {
   }
 
   async getStats() {
-    const [totalUsers, activeUsers, totalActivated] = await Promise.all([
+    const [totalUsers, activeUsers, totalActivated, suspendedUsers, bannedUsers] = await Promise.all([
       this.prisma.user.count(),
       this.prisma.user.count({ where: { status: 'ACTIVATED' } }),
       this.prisma.user.count({ where: { status: { not: 'FREE' } } }),
+      this.prisma.user.count({ where: { status: 'SUSPENDED' } }),
+      this.prisma.user.count({ where: { status: 'BANNED' } }),
     ]);
 
-    return { totalUsers, activeUsers, totalActivated };
+    return { totalUsers, activeUsers, totalActivated, suspendedUsers, bannedUsers };
+  }
+
+  async getAnalytics() {
+    // Inscriptions des 30 derniers jours, groupées par jour
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const registrations = await this.prisma.$queryRaw<{ date: string; count: bigint }[]>`
+      SELECT DATE("createdAt") as date, COUNT(*) as count
+      FROM users
+      WHERE "createdAt" >= ${thirtyDaysAgo}
+      GROUP BY DATE("createdAt")
+      ORDER BY date ASC
+    `;
+
+    // Top 10 parrains par nombre de filleuls
+    const topReferrers = await this.prisma.user.findMany({
+      where: {
+        referrals: { some: {} },
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        _count: { select: { referrals: true } },
+      },
+      orderBy: {
+        referrals: { _count: 'desc' },
+      },
+      take: 10,
+    });
+
+    // Revenus des 30 derniers jours (activations)
+    const revenue = await this.prisma.$queryRaw<{ date: string; total: any }[]>`
+      SELECT DATE("createdAt") as date, SUM(amount) as total
+      FROM transactions
+      WHERE type = 'ACTIVATION' AND status = 'COMPLETED' AND "createdAt" >= ${thirtyDaysAgo}
+      GROUP BY DATE("createdAt")
+      ORDER BY date ASC
+    `;
+
+    // Répartition des tâches par type
+    const tasksByType = await this.prisma.task.groupBy({
+      by: ['type'],
+      _count: true,
+    });
+
+    // Top tâches les plus complétées
+    const topTasks = await this.prisma.task.findMany({
+      orderBy: { completionCount: 'desc' },
+      take: 5,
+      select: { id: true, title: true, type: true, completionCount: true, reward: true },
+    });
+
+    return {
+      registrations: registrations.map((r) => ({ date: r.date, count: Number(r.count) })),
+      topReferrers: topReferrers.map((r) => ({
+        id: r.id,
+        name: `${r.firstName} ${r.lastName}`,
+        email: r.email,
+        referrals: r._count.referrals,
+      })),
+      revenue: revenue.map((r) => ({ date: r.date, total: Number(r.total) })),
+      tasksByType: tasksByType.map((t) => ({ type: t.type, count: (t._count as any)?._all ?? t._count })),
+      topTasks,
+    };
   }
 }

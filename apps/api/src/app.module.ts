@@ -8,6 +8,7 @@ import { UsersModule } from './users/users.module';
 import { TasksModule } from './tasks/tasks.module';
 import { ReferralsModule } from './referrals/referrals.module';
 import { WalletModule } from './wallet/wallet.module';
+import { PaymentModule } from './payment/payment.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { WalletModule } from './wallet/wallet.module';
     TasksModule,
     ReferralsModule,
     WalletModule,
+    PaymentModule,
   ],
   providers: [
     {

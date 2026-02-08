@@ -1,62 +1,93 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Wallet, ArrowDownCircle, ArrowUpCircle, Clock, Loader2, Send } from 'lucide-react';
+import { Wallet, ArrowDownCircle, ArrowUpCircle, Clock, Loader2, Send, CreditCard, Smartphone, Zap } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { useToast } from '@/lib/toast';
 import { walletApi } from '@/lib/api';
 
+const PAYMENT_METHODS = [
+  { value: 'MTN_MOMO', label: 'MTN Mobile Money', icon: '🟡' },
+  { value: 'FLOOZ', label: 'Moov Money (Flooz)', icon: '🔵' },
+  { value: 'TMONEY', label: 'TMoney', icon: '🟢' },
+  { value: 'ORANGE_MONEY', label: 'Orange Money', icon: '🟠' },
+];
+
 export default function WalletPage() {
-  const { user, token } = useAuth();
+  const { user, token, refreshUser } = useAuth();
   const toast = useToast();
   const [wallet, setWallet] = useState<any>(null);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activating, setActivating] = useState(false);
   const [showWithdraw, setShowWithdraw] = useState(false);
   const [withdrawing, setWithdrawing] = useState(false);
-  const [withdrawForm, setWithdrawForm] = useState({ amount: '', method: 'MOBILE_MONEY', accountInfo: '' });
+  const [withdrawForm, setWithdrawForm] = useState({ amount: '', method: 'MTN_MOMO', accountInfo: '' });
 
-  useEffect(() => {
+  const fetchData = async () => {
     if (!token) return;
-
-    const fetchData = async () => {
-      try {
-        const [w, txs] = await Promise.all([
-          walletApi.get(token) as any,
-          walletApi.getTransactions(token, 1) as any,
-        ]);
-        setWallet(w);
-        setTransactions(txs?.transactions || []);
-      } catch (err) {
-        console.error('Erreur chargement portefeuille:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [token]);
-
-  const handleWithdraw = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!token) return;
-    setWithdrawing(true);
     try {
-      await walletApi.withdraw(token, {
-        amount: Number(withdrawForm.amount),
-        method: withdrawForm.method,
-        accountInfo: withdrawForm.accountInfo,
-      });
-      toast.success('Demande de retrait envoyée avec succès !');
-      setShowWithdraw(false);
-      setWithdrawForm({ amount: '', method: 'MOBILE_MONEY', accountInfo: '' });
-      // Refresh
       const [w, txs] = await Promise.all([
         walletApi.get(token) as any,
         walletApi.getTransactions(token, 1) as any,
       ]);
       setWallet(w);
       setTransactions(txs?.transactions || []);
+    } catch (err) {
+      console.error('Erreur chargement portefeuille:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [token]);
+
+  const handleActivate = async () => {
+    if (!token) return;
+    setActivating(true);
+    try {
+      const result = await walletApi.activate(token);
+
+      if (result.status === 'pending' && result.paymentUrl) {
+        // Paiement réel — rediriger vers la page de paiement
+        toast.info('Redirection vers la page de paiement...');
+        window.open(result.paymentUrl, '_blank');
+        toast.success('Finalisez le paiement dans la fenêtre ouverte. Votre compte sera activé automatiquement.');
+      } else {
+        // Mock — activation immédiate
+        toast.success('Compte activé avec succès !');
+        await refreshUser();
+        await fetchData();
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Erreur lors de l\'activation');
+    } finally {
+      setActivating(false);
+    }
+  };
+
+  const handleWithdraw = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token) return;
+    setWithdrawing(true);
+    try {
+      const result: any = await walletApi.withdraw(token, {
+        amount: Number(withdrawForm.amount),
+        method: withdrawForm.method,
+        accountInfo: withdrawForm.accountInfo,
+      });
+
+      if (result.paymentStatus === 'completed') {
+        toast.success('Retrait effectué avec succès !');
+      } else {
+        toast.success('Demande de retrait envoyée ! En cours de traitement.');
+      }
+
+      setShowWithdraw(false);
+      setWithdrawForm({ amount: '', method: 'MTN_MOMO', accountInfo: '' });
+      await fetchData();
     } catch (err: any) {
       toast.error(err.message || 'Erreur lors du retrait');
     } finally {
@@ -65,6 +96,17 @@ export default function WalletPage() {
   };
 
   const fmt = (n: any) => Number(n || 0).toLocaleString('fr-FR');
+
+  const txTypeLabel = (type: string) => {
+    const map: Record<string, string> = {
+      TASK_EARNING: '💰 Gain tâche',
+      REFERRAL_L1: '👥 Commission L1',
+      REFERRAL_L2: '👥 Commission L2',
+      ACTIVATION: '⚡ Activation',
+      WITHDRAWAL: '📤 Retrait',
+    };
+    return map[type] || type;
+  };
 
   if (loading) {
     return (
@@ -77,7 +119,7 @@ export default function WalletPage() {
   return (
     <div>
       <h1 className="text-3xl font-bold mb-2">Portefeuille</h1>
-      <p className="text-dark-400 mb-8">Gérez votre solde et vos retraits</p>
+      <p className="text-dark-400 mb-8">Gérez votre solde et vos paiements</p>
 
       {/* Balance card */}
       <div className="card bg-gradient-to-br from-primary-500/10 to-accent-500/10 border-primary-500/20 mb-8">
@@ -88,19 +130,37 @@ export default function WalletPage() {
           </div>
           <Wallet className="w-12 h-12 text-primary-400" />
         </div>
-        {user?.status === 'ACTIVATED' ? (
-          <button onClick={() => setShowWithdraw(!showWithdraw)} className="btn-primary flex items-center gap-2">
-            <Send className="w-4 h-4" /> Retirer mes gains
-          </button>
-        ) : (
-          <p className="text-dark-400 text-sm">Activez votre compte pour pouvoir retirer vos gains.</p>
+
+        <div className="flex flex-wrap gap-3">
+          {user?.status === 'ACTIVATED' ? (
+            <button onClick={() => setShowWithdraw(!showWithdraw)} className="btn-primary flex items-center gap-2">
+              <Send className="w-4 h-4" /> Retirer mes gains
+            </button>
+          ) : (
+            <button onClick={handleActivate} disabled={activating} className="btn-primary flex items-center gap-2 disabled:opacity-50">
+              {activating ? (
+                <><Loader2 className="w-4 h-4 animate-spin" /> Activation en cours...</>
+              ) : (
+                <><Zap className="w-4 h-4" /> Activer mon compte (4 000 FCFA)</>
+              )}
+            </button>
+          )}
+        </div>
+
+        {user?.status !== 'ACTIVATED' && (
+          <p className="text-dark-400 text-sm mt-3">
+            <Smartphone className="w-4 h-4 inline mr-1" />
+            Paiement par Mobile Money (MTN, Moov, TMoney, Orange)
+          </p>
         )}
       </div>
 
       {/* Withdraw form */}
       {showWithdraw && (
         <div className="card mb-8">
-          <h2 className="text-xl font-semibold mb-4">Demande de retrait</h2>
+          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+            <CreditCard className="w-5 h-5 text-primary-400" /> Demande de retrait
+          </h2>
           <form onSubmit={handleWithdraw} className="space-y-4">
             <div>
               <label className="text-sm text-dark-300 mb-1 block">Montant (FCFA)</label>
@@ -115,18 +175,27 @@ export default function WalletPage() {
               />
             </div>
             <div>
-              <label className="text-sm text-dark-300 mb-1 block">Méthode</label>
-              <select
-                className="input-field"
-                value={withdrawForm.method}
-                onChange={(e) => setWithdrawForm({ ...withdrawForm, method: e.target.value })}
-              >
-                <option value="MOBILE_MONEY">Mobile Money</option>
-                <option value="BANK_TRANSFER">Virement bancaire</option>
-              </select>
+              <label className="text-sm text-dark-300 mb-2 block">Méthode de retrait</label>
+              <div className="grid grid-cols-2 gap-2">
+                {PAYMENT_METHODS.map((m) => (
+                  <button
+                    key={m.value}
+                    type="button"
+                    onClick={() => setWithdrawForm({ ...withdrawForm, method: m.value })}
+                    className={`p-3 rounded-lg border text-left transition-all ${
+                      withdrawForm.method === m.value
+                        ? 'border-primary-500 bg-primary-500/10 text-white'
+                        : 'border-dark-700 bg-dark-800 text-dark-300 hover:border-dark-500'
+                    }`}
+                  >
+                    <span className="text-lg mr-2">{m.icon}</span>
+                    <span className="text-sm font-medium">{m.label}</span>
+                  </button>
+                ))}
+              </div>
             </div>
             <div>
-              <label className="text-sm text-dark-300 mb-1 block">Numéro / Compte</label>
+              <label className="text-sm text-dark-300 mb-1 block">Numéro de téléphone</label>
               <input
                 type="text"
                 className="input-field"
@@ -137,8 +206,12 @@ export default function WalletPage() {
               />
             </div>
             <div className="flex gap-3">
-              <button type="submit" disabled={withdrawing} className="btn-primary disabled:opacity-50">
-                {withdrawing ? 'Envoi...' : 'Confirmer le retrait'}
+              <button type="submit" disabled={withdrawing} className="btn-primary disabled:opacity-50 flex items-center gap-2">
+                {withdrawing ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /> Envoi...</>
+                ) : (
+                  <><Send className="w-4 h-4" /> Confirmer le retrait</>
+                )}
               </button>
               <button type="button" onClick={() => setShowWithdraw(false)} className="btn-secondary">
                 Annuler
@@ -185,14 +258,23 @@ export default function WalletPage() {
             {transactions.map((tx: any) => (
               <div key={tx.id} className="flex items-center justify-between py-3 border-b border-dark-800 last:border-0">
                 <div>
-                  <div className="font-medium">{tx.description || tx.type}</div>
-                  <div className="text-dark-500 text-sm">{new Date(tx.createdAt).toLocaleDateString('fr-FR')}</div>
+                  <div className="font-medium">{txTypeLabel(tx.type)}</div>
+                  <div className="text-dark-500 text-xs">{tx.description}</div>
+                  <div className="text-dark-500 text-xs">{new Date(tx.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
                 </div>
                 <div className="text-right">
                   <span className={tx.type === 'WITHDRAWAL' ? 'text-red-400 font-semibold' : 'text-green-400 font-semibold'}>
                     {tx.type === 'WITHDRAWAL' ? '-' : '+'}{fmt(tx.amount)} FCFA
                   </span>
-                  <div className="text-dark-500 text-xs">{tx.status}</div>
+                  <div className={`text-xs mt-1 ${
+                    tx.status === 'COMPLETED' ? 'text-green-500' :
+                    tx.status === 'PENDING' ? 'text-yellow-500' :
+                    'text-red-500'
+                  }`}>
+                    {tx.status === 'COMPLETED' ? '✓ Confirmé' :
+                     tx.status === 'PENDING' ? '⏳ En attente' :
+                     '✗ Échoué'}
+                  </div>
                 </div>
               </div>
             ))}

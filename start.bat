@@ -203,21 +203,44 @@ echo.
 echo   Arret de XEARN...
 echo.
 
-REM Arreter tous les processus Node
-taskkill /IM node.exe /F >nul 2>&1
-if %errorlevel%==0 (
-    echo    OK: Processus Node arretes
+REM Arreter l'API (port 4000)
+set "KILLED_API=0"
+for /f "tokens=5" %%a in ('netstat -aon ^| findstr ":4000.*LISTENING" 2^>nul') do (
+    taskkill /PID %%a /F >nul 2>&1
+    set "KILLED_API=1"
+)
+if "!KILLED_API!"=="1" (
+    echo    OK: API arretee [port 4000]
 ) else (
-    echo    OK: Aucun processus Node en cours
+    echo    -  API deja arretee
+)
+
+REM Arreter le Frontend (port 3000)
+set "KILLED_WEB=0"
+for /f "tokens=5" %%a in ('netstat -aon ^| findstr ":3000.*LISTENING" 2^>nul') do (
+    taskkill /PID %%a /F >nul 2>&1
+    set "KILLED_WEB=1"
+)
+if "!KILLED_WEB!"=="1" (
+    echo    OK: Frontend arrete [port 3000]
+) else (
+    echo    -  Frontend deja arrete
+)
+
+REM Nettoyage : tuer tout processus node restant
+taskkill /IM node.exe /F >nul 2>&1
+if !errorlevel!==0 (
+    echo    OK: Processus Node restants arretes
 )
 
 REM Arreter PostgreSQL
+set "PG_UP="
 for /f %%i in ('docker ps -q --filter "name=xearn-postgres" 2^>nul') do set "PG_UP=%%i"
 if defined PG_UP (
     docker stop xearn-postgres >nul 2>&1
     echo    OK: PostgreSQL arrete
 ) else (
-    echo    OK: PostgreSQL deja arrete
+    echo    -  PostgreSQL deja arrete
 )
 
 echo.

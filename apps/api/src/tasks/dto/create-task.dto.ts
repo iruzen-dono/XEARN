@@ -1,4 +1,4 @@
-import { IsString, IsNumber, IsOptional, IsUrl, IsEnum, Min, Max, MaxLength } from 'class-validator';
+import { IsString, IsNumber, IsOptional, IsUrl, IsEnum, Min, Max, MinLength, MaxLength } from 'class-validator';
 import { Transform } from 'class-transformer';
 
 const sanitize = (v: any) => (typeof v === 'string' ? v.trim().replace(/<[^>]*>/g, '') : v);
@@ -7,12 +7,12 @@ export enum TaskType {
   VIDEO_AD = 'VIDEO_AD',
   CLICK_AD = 'CLICK_AD',
   SURVEY = 'SURVEY',
-  APP_INSTALL = 'APP_INSTALL',
-  SOCIAL_SHARE = 'SOCIAL_SHARE',
+  SPONSORED = 'SPONSORED',
 }
 
 export class CreateTaskDto {
   @IsString()
+  @MinLength(1, { message: 'Le titre ne peut pas être vide' })
   @MaxLength(200, { message: 'Le titre ne peut pas dépasser 200 caractères' })
   @Transform(({ value }) => sanitize(value))
   title: string;
@@ -23,7 +23,7 @@ export class CreateTaskDto {
   @Transform(({ value }) => sanitize(value))
   description?: string;
 
-  @IsEnum(TaskType, { message: 'Type de tâche invalide' })
+  @IsEnum(TaskType, { message: 'Type de tâche invalide (VIDEO_AD, CLICK_AD, SURVEY, SPONSORED)' })
   type: TaskType;
 
   @IsNumber({}, { message: 'La récompense doit être un nombre' })
@@ -32,8 +32,12 @@ export class CreateTaskDto {
   reward: number;
 
   @IsOptional()
-  @IsUrl({}, { message: 'URL invalide' })
-  url?: string;
+  @IsUrl({}, { message: 'URL média invalide' })
+  mediaUrl?: string;
+
+  @IsOptional()
+  @IsUrl({}, { message: 'URL externe invalide' })
+  externalUrl?: string;
 
   @IsOptional()
   @IsNumber()

@@ -4,10 +4,9 @@ interface FetchOptions extends RequestInit {
   token?: string;
 }
 
-export async function api<T>(endpoint: string, options: FetchOptions = {}): Promise<T> {
+async function rawFetch(endpoint: string, options: FetchOptions = {}): Promise<Response> {
   const { token, headers, ...rest } = options;
-
-  const res = await fetch(`${API_URL}/api${endpoint}`, {
+  return fetch(`${API_URL}/api${endpoint}`, {
     ...rest,
     headers: {
       'Content-Type': 'application/json',
@@ -15,6 +14,62 @@ export async function api<T>(endpoint: string, options: FetchOptions = {}): Prom
       ...headers,
     },
   });
+}
+
+// --- Refresh token deduplication ---
+// Si plusieurs requêtes 401 arrivent en parallèle, une seule refresh se lance
+let refreshPromise: Promise<any> | null = null;
+
+async function doRefresh(): Promise<any> {
+  if (refreshPromise) return refreshPromise;
+
+  refreshPromise = (async () => {
+    const rt = localStorage.getItem('refreshToken');
+    if (!rt) throw new Error('No refresh token');
+
+    const res = await rawFetch('/auth/refresh', {
+      method: 'POST',
+      body: JSON.stringify({ refreshToken: rt }),
+    });
+
+    if (!res.ok) throw new Error('Refresh failed');
+
+    const data = await res.json();
+    localStorage.setItem('accessToken', data.accessToken);
+    localStorage.setItem('refreshToken', data.refreshToken);
+    if (data.user) {
+      localStorage.setItem('user', JSON.stringify(data.user));
+    }
+    // Notifier AuthContext du changement
+    window.dispatchEvent(new CustomEvent('auth-refresh', { detail: data }));
+    return data;
+  })();
+
+  try {
+    return await refreshPromise;
+  } finally {
+    refreshPromise = null;
+  }
+}
+
+export async function api<T>(endpoint: string, options: FetchOptions = {}): Promise<T> {
+  let res = await rawFetch(endpoint, options);
+
+  // Si 401 et qu'on avait un token, tenter un refresh automatique
+  if (res.status === 401 && options.token && typeof window !== 'undefined') {
+    try {
+      const data = await doRefresh();
+      // Re-tenter la requête originale avec le nouveau token
+      res = await rawFetch(endpoint, { ...options, token: data.accessToken });
+    } catch {
+      // Refresh échoué — session expirée, rediriger vers login
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('user');
+      window.location.href = '/login';
+      throw new Error('Session expirée, veuillez vous reconnecter');
+    }
+  }
 
   if (!res.ok) {
     const error = await res.json().catch(() => ({ message: 'Erreur réseau' }));
@@ -49,7 +104,7 @@ export const tasksApi = {
 export const walletApi = {
   get: (token: string) => api('/wallet', { token }),
   getTransactions: (token: string, page = 1) => api(`/wallet/transactions?page=${page}`, { token }),
-  activate: (token: string) => api('/wallet/activate', { method: 'POST', token }),
+  activate: (token: string) => api<any>('/wallet/activate', { method: 'POST', token }),
   withdraw: (token: string, data: any) =>
     api('/wallet/withdraw', { method: 'POST', token, body: JSON.stringify(data) }),
 };
@@ -63,12 +118,29 @@ export const referralsApi = {
 
 // Admin
 export const adminApi = {
-  getUsers: (token: string, page = 1) => api(`/users?page=${page}`, { token }),
+  getUsers: (token: string, page = 1, search?: string, status?: string) => {
+    let url = `/users?page=${page}`;
+    if (search) url += `&search=${encodeURIComponent(search)}`;
+    if (status && status !== 'ALL') url += `&status=${status}`;
+    return api(url, { token });
+  },
   getUserStats: (token: string) => api('/users/stats', { token }),
+  getAnalytics: (token: string) => api<any>('/users/analytics', { token }),
+  reactivateUser: (token: string, id: string) => api(`/users/${id}/activate`, { method: 'PATCH', token }),
   suspendUser: (token: string, id: string) => api(`/users/${id}/suspend`, { method: 'PATCH', token }),
   banUser: (token: string, id: string) => api(`/users/${id}/ban`, { method: 'PATCH', token }),
-  getAllTasks: (token: string) => api('/tasks/admin/all', { token }),
+  getAllTasks: (token: string, page = 1) => api(`/tasks/admin/all?page=${page}`, { token }),
   createTask: (token: string, data: any) =>
     api('/tasks/admin/create', { method: 'POST', token, body: JSON.stringify(data) }),
+  toggleTask: (token: string, id: string) =>
+    api(`/tasks/admin/${id}/toggle`, { method: 'PATCH', token }),
+  deleteTask: (token: string, id: string) =>
+    api(`/tasks/admin/${id}`, { method: 'DELETE', token }),
   getWalletStats: (token: string) => api('/wallet/admin/stats', { token }),
+  getPendingWithdrawals: (token: string, page = 1) =>
+    api<any>(`/wallet/admin/withdrawals?page=${page}`, { token }),
+  approveWithdrawal: (token: string, id: string) =>
+    api(`/wallet/admin/withdrawals/${id}/approve`, { method: 'PATCH', token }),
+  rejectWithdrawal: (token: string, id: string) =>
+    api(`/wallet/admin/withdrawals/${id}/reject`, { method: 'PATCH', token }),
 };

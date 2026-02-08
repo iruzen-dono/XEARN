@@ -4,8 +4,13 @@ import { Transform } from 'class-transformer';
 const sanitize = (v: any) => (typeof v === 'string' ? v.trim().replace(/<[^>]*>/g, '') : v);
 
 export enum WithdrawMethod {
-  MOBILE_MONEY = 'MOBILE_MONEY',
-  BANK_TRANSFER = 'BANK_TRANSFER',
+  MTN_MOMO = 'MTN_MOMO',
+  FLOOZ = 'FLOOZ',
+  TMONEY = 'TMONEY',
+  ORANGE_MONEY = 'ORANGE_MONEY',
+  VISA = 'VISA',
+  MASTERCARD = 'MASTERCARD',
+  PAYPAL = 'PAYPAL',
 }
 
 export class WithdrawDto {
@@ -14,7 +19,7 @@ export class WithdrawDto {
   @Max(5000000, { message: 'Le montant maximum de retrait est 5 000 000 FCFA' })
   amount: number;
 
-  @IsEnum(WithdrawMethod, { message: 'Méthode de retrait invalide (MOBILE_MONEY ou BANK_TRANSFER)' })
+  @IsEnum(WithdrawMethod, { message: 'Méthode de retrait invalide (MTN_MOMO, FLOOZ, TMONEY, ORANGE_MONEY, VISA, MASTERCARD, PAYPAL)' })
   method: WithdrawMethod;
 
   @IsString()

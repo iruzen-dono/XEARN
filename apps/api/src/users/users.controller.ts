@@ -15,10 +15,17 @@ export class UsersController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
   @Get()
-  async findAll(@Query('page') page?: string, @Query('limit') limit?: string) {
+  async findAll(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('search') search?: string,
+    @Query('status') status?: string,
+  ) {
     return this.usersService.findAll(
       page ? parseInt(page) : 1,
       limit ? parseInt(limit) : 20,
+      search,
+      status,
     );
   }
 
@@ -27,6 +34,20 @@ export class UsersController {
   @Get('stats')
   async getStats() {
     return this.usersService.getStats();
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @Get('analytics')
+  async getAnalytics() {
+    return this.usersService.getAnalytics();
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @Patch(':id/activate')
+  async reactivateUser(@Param('id') id: string) {
+    return this.usersService.reactivateUser(id);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

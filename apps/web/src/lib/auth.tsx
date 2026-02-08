@@ -12,7 +12,7 @@ export interface User {
   firstName: string;
   lastName: string;
   role: 'USER' | 'ADMIN';
-  status: 'PENDING' | 'ACTIVATED' | 'SUSPENDED' | 'BANNED';
+  status: 'FREE' | 'ACTIVATED' | 'SUSPENDED' | 'BANNED';
   referralCode: string;
 }
 
@@ -89,6 +89,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(storedUser);
     }
     setIsLoading(false);
+  }, []);
+
+  // Écouter les refresh automatiques de api.ts pour synchroniser le state React
+  useEffect(() => {
+    const handleAuthRefresh = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.accessToken) {
+        setToken(detail.accessToken);
+      }
+      if (detail?.user) {
+        setUser(detail.user);
+      }
+    };
+    window.addEventListener('auth-refresh', handleAuthRefresh);
+    return () => window.removeEventListener('auth-refresh', handleAuthRefresh);
   }, []);
 
   // Redirect unauthenticated users away from protected routes

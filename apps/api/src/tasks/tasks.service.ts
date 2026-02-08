@@ -36,19 +36,25 @@ export class TasksService {
   async create(data: {
     title: string;
     description?: string;
-    type: any;
+    type: 'VIDEO_AD' | 'CLICK_AD' | 'SURVEY' | 'SPONSORED';
     reward: number;
     mediaUrl?: string;
     externalUrl?: string;
     maxCompletions?: number;
   }) {
-    return this.prisma.task.create({ data: { ...data, reward: data.reward } });
+    return this.prisma.task.create({ data });
   }
 
   async completeTask(userId: string, taskId: string) {
     const task = await this.prisma.task.findUnique({ where: { id: taskId } });
     if (!task) throw new NotFoundException('Tâche introuvable');
     if (task.status !== 'ACTIVE') throw new BadRequestException('Tâche non disponible');
+
+    // Vérifier que l'utilisateur est activé
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || user.status !== 'ACTIVATED') {
+      throw new BadRequestException('Compte non activé — activez votre compte pour gagner des récompenses');
+    }
 
     // Vérifier si déjà complétée
     const existing = await this.prisma.taskCompletion.findUnique({
@@ -116,5 +122,21 @@ export class TasksService {
       include: { task: true },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  async toggleTask(taskId: string) {
+    const task = await this.prisma.task.findUnique({ where: { id: taskId } });
+    if (!task) throw new NotFoundException('Tâche introuvable');
+    const newStatus = task.status === 'ACTIVE' ? 'PAUSED' : 'ACTIVE';
+    return this.prisma.task.update({
+      where: { id: taskId },
+      data: { status: newStatus },
+    });
+  }
+
+  async deleteTask(taskId: string) {
+    const task = await this.prisma.task.findUnique({ where: { id: taskId } });
+    if (!task) throw new NotFoundException('Tâche introuvable');
+    return this.prisma.task.delete({ where: { id: taskId } });
   }
 }

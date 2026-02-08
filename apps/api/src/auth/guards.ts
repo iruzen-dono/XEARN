@@ -3,6 +3,7 @@ import { Reflector } from '@nestjs/core';
 import { AuthGuard } from '@nestjs/passport';
 
 // JWT Guard
+@Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {}
 
 // Roles decorator
@@ -25,6 +26,7 @@ export class RolesGuard implements CanActivate {
     }
 
     const { user } = context.switchToHttp().getRequest();
+    if (!user) return false;
     return requiredRoles.includes(user.role);
   }
 }
