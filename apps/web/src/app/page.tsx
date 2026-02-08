@@ -1,29 +1,12 @@
 import Link from 'next/link';
 import { ArrowRight, Zap, Users, Wallet, Shield, TrendingUp, Smartphone } from 'lucide-react';
+import Navbar from '@/components/Navbar';
 
 export default function HomePage() {
   return (
     <div className="min-h-screen">
       {/* Navbar */}
-      <nav className="fixed top-0 w-full z-50 bg-dark-950/80 backdrop-blur-xl border-b border-dark-800/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-2">
-              <Zap className="w-8 h-8 text-primary-400" />
-              <span className="text-2xl font-bold gradient-text">XEARN</span>
-            </div>
-            <div className="hidden md:flex items-center gap-8">
-              <a href="#features" className="text-dark-300 hover:text-white transition-colors">Fonctionnalités</a>
-              <a href="#how-it-works" className="text-dark-300 hover:text-white transition-colors">Comment ça marche</a>
-              <a href="#pricing" className="text-dark-300 hover:text-white transition-colors">Tarifs</a>
-            </div>
-            <div className="flex items-center gap-3">
-              <Link href="/login" className="btn-secondary text-sm py-2 px-4">Connexion</Link>
-              <Link href="/register" className="btn-primary text-sm py-2 px-4">S&apos;inscrire</Link>
-            </div>
-          </div>
-        </div>
-      </nav>
+      <Navbar />
 
       {/* Hero Section */}
       <section className="pt-32 pb-20 px-4 relative overflow-hidden">

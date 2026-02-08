@@ -1,9 +1,14 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { ReferralsService } from '../referrals/referrals.service';
+import { Decimal } from '@prisma/client/runtime/library';
 
 @Injectable()
 export class TasksService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private referralsService: ReferralsService,
+  ) {}
 
   async findAll(page = 1, limit = 20) {
     const skip = (page - 1) * limit;
@@ -91,6 +96,16 @@ export class TasksService {
 
       return completion;
     });
+
+    // Distribuer les commissions de parrainage (hors transaction pour ne pas bloquer)
+    try {
+      await this.referralsService.distributeCommissions(
+        userId,
+        new Decimal(task.reward.toString()),
+      );
+    } catch (err) {
+      console.error('Erreur distribution commissions parrainage:', err);
+    }
 
     return result;
   }

@@ -40,15 +40,30 @@ export class ReferralsService {
     return { level1, level2 };
   }
 
-  async getCommissions(userId: string) {
-    return this.prisma.commission.findMany({
-      where: { beneficiaryId: userId },
-      orderBy: { createdAt: 'desc' },
-    });
+  async getCommissions(userId: string, page = 1, limit = 20) {
+    const skip = (page - 1) * limit;
+    const [commissions, total] = await Promise.all([
+      this.prisma.commission.findMany({
+        where: { beneficiaryId: userId },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+        include: {
+          sourceUser: {
+            select: { firstName: true, lastName: true },
+          },
+        },
+      }),
+      this.prisma.commission.count({ where: { beneficiaryId: userId } }),
+    ]);
+    return { commissions, total, page, limit };
   }
 
   async getStats(userId: string) {
-    const [totalLevel1, totalLevel2, totalCommissions] = await Promise.all([
+    const l1Percent = this.configService.get<number>('REFERRAL_LEVEL1_PERCENT') || 40;
+    const l2Percent = this.configService.get<number>('REFERRAL_LEVEL2_PERCENT') || 10;
+
+    const [totalLevel1, totalLevel2, totalCommissions, commissionsL1, commissionsL2] = await Promise.all([
       this.prisma.user.count({ where: { referredById: userId } }),
       this.prisma.user.count({
         where: {
@@ -59,12 +74,24 @@ export class ReferralsService {
         where: { beneficiaryId: userId },
         _sum: { amount: true },
       }),
+      this.prisma.commission.aggregate({
+        where: { beneficiaryId: userId, level: 1 },
+        _sum: { amount: true },
+      }),
+      this.prisma.commission.aggregate({
+        where: { beneficiaryId: userId, level: 2 },
+        _sum: { amount: true },
+      }),
     ]);
 
     return {
       totalLevel1,
       totalLevel2,
       totalCommissions: totalCommissions._sum.amount || new Decimal(0),
+      commissionsL1: commissionsL1._sum.amount || new Decimal(0),
+      commissionsL2: commissionsL2._sum.amount || new Decimal(0),
+      l1Percent,
+      l2Percent,
     };
   }
 

@@ -1,6 +1,8 @@
 import { Controller, Get, Post, Body, Query, UseGuards, Request } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { WalletService } from './wallet.service';
 import { JwtAuthGuard, RolesGuard, Roles } from '../auth/guards';
+import { WithdrawDto } from './dto/withdraw.dto';
 
 @Controller('wallet')
 export class WalletController {
@@ -27,22 +29,24 @@ export class WalletController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { ttl: 60000, limit: 3 } })
   @Post('activate')
   async activateAccount(@Request() req: any) {
     return this.walletService.activateAccount(req.user.id);
   }
 
   @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
   @Post('withdraw')
   async requestWithdrawal(
     @Request() req: any,
-    @Body() body: { amount: number; method: string; accountInfo: string },
+    @Body() dto: WithdrawDto,
   ) {
     return this.walletService.requestWithdrawal(
       req.user.id,
-      body.amount,
-      body.method,
-      body.accountInfo,
+      dto.amount,
+      dto.method,
+      dto.accountInfo,
     );
   }
 

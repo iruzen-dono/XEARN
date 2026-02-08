@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards, Request } from '@nestjs/common';
 import { ReferralsService } from './referrals.service';
 import { JwtAuthGuard } from '../auth/guards';
 
@@ -14,8 +14,16 @@ export class ReferralsController {
 
   @UseGuards(JwtAuthGuard)
   @Get('commissions')
-  async getCommissions(@Request() req: any) {
-    return this.referralsService.getCommissions(req.user.id);
+  async getCommissions(
+    @Request() req: any,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.referralsService.getCommissions(
+      req.user.id,
+      page ? parseInt(page) : 1,
+      limit ? parseInt(limit) : 20,
+    );
   }
 
   @UseGuards(JwtAuthGuard)

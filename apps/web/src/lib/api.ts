@@ -60,3 +60,15 @@ export const referralsApi = {
   getCommissions: (token: string) => api('/referrals/commissions', { token }),
   getStats: (token: string) => api('/referrals/stats', { token }),
 };
+
+// Admin
+export const adminApi = {
+  getUsers: (token: string, page = 1) => api(`/users?page=${page}`, { token }),
+  getUserStats: (token: string) => api('/users/stats', { token }),
+  suspendUser: (token: string, id: string) => api(`/users/${id}/suspend`, { method: 'PATCH', token }),
+  banUser: (token: string, id: string) => api(`/users/${id}/ban`, { method: 'PATCH', token }),
+  getAllTasks: (token: string) => api('/tasks/admin/all', { token }),
+  createTask: (token: string, data: any) =>
+    api('/tasks/admin/create', { method: 'POST', token, body: JSON.stringify(data) }),
+  getWalletStats: (token: string) => api('/wallet/admin/stats', { token }),
+};

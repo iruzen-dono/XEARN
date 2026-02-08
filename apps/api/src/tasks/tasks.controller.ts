@@ -1,6 +1,8 @@
 import { Controller, Get, Post, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { TasksService } from './tasks.service';
 import { JwtAuthGuard, RolesGuard, Roles } from '../auth/guards';
+import { CreateTaskDto } from './dto/create-task.dto';
 
 @Controller('tasks')
 export class TasksController {
@@ -22,6 +24,7 @@ export class TasksController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Throttle({ default: { ttl: 60000, limit: 20 } })
   @Post(':id/complete')
   async completeTask(@Request() req: any, @Param('id') taskId: string) {
     return this.tasksService.completeTask(req.user.id, taskId);
@@ -41,7 +44,7 @@ export class TasksController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
   @Post('admin/create')
-  async create(@Body() body: any) {
-    return this.tasksService.create(body);
+  async create(@Body() dto: CreateTaskDto) {
+    return this.tasksService.create(dto);
   }
 }
