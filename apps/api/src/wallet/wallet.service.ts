@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { Decimal } from '@prisma/client/runtime/library';
 import { PaymentService } from '../payment/payment.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class WalletService {
@@ -10,10 +11,30 @@ export class WalletService {
     private prisma: PrismaService,
     private configService: ConfigService,
     private paymentService: PaymentService,
+    private notificationsService: NotificationsService,
   ) {}
 
   async getWallet(userId: string) {
-    return this.prisma.wallet.findUnique({ where: { userId } });
+    const wallet = await this.prisma.wallet.findUnique({ where: { userId } });
+    if (!wallet) return null;
+
+    // Compute withdrawal stats for the frontend
+    const [completedWithdrawals, pendingWithdrawals] = await Promise.all([
+      this.prisma.withdrawal.aggregate({
+        where: { userId, status: 'COMPLETED' },
+        _sum: { amount: true },
+      }),
+      this.prisma.withdrawal.aggregate({
+        where: { userId, status: 'PENDING' },
+        _sum: { amount: true },
+      }),
+    ]);
+
+    return {
+      ...wallet,
+      totalWithdrawn: completedWithdrawals._sum?.amount || 0,
+      pendingWithdrawal: pendingWithdrawals._sum?.amount || 0,
+    };
   }
 
   async getTransactions(userId: string, page = 1, limit = 20) {
@@ -71,6 +92,10 @@ export class WalletService {
           },
         }),
       ]);
+      // Notification d'activation
+      try {
+        await this.notificationsService.notifyAccountActivated(userId);
+      } catch (err) { /* ignore */ }
       return { success: true, message: 'Compte activé avec succès', status: 'completed' };
     }
 
@@ -250,7 +275,7 @@ export class WalletService {
     if (!withdrawal) throw new BadRequestException('Retrait introuvable');
     if (withdrawal.status !== 'PENDING') throw new BadRequestException('Retrait déjà traité');
 
-    return this.prisma.$transaction([
+    const result = await this.prisma.$transaction([
       this.prisma.withdrawal.update({
         where: { id: withdrawalId },
         data: { status: 'COMPLETED', processedAt: new Date() },
@@ -260,6 +285,13 @@ export class WalletService {
         data: { status: 'COMPLETED' },
       }),
     ]);
+
+    // Notification
+    try {
+      await this.notificationsService.notifyWithdrawalApproved(withdrawal.userId, Number(withdrawal.amount));
+    } catch (err) { /* ignore */ }
+
+    return result;
   }
 
   // Admin: rejeter un retrait (rembourser)
@@ -268,7 +300,7 @@ export class WalletService {
     if (!withdrawal) throw new BadRequestException('Retrait introuvable');
     if (withdrawal.status !== 'PENDING') throw new BadRequestException('Retrait déjà traité');
 
-    return this.prisma.$transaction([
+    const result = await this.prisma.$transaction([
       this.prisma.withdrawal.update({
         where: { id: withdrawalId },
         data: { status: 'FAILED' },
@@ -282,5 +314,12 @@ export class WalletService {
         data: { status: 'FAILED' },
       }),
     ]);
+
+    // Notification
+    try {
+      await this.notificationsService.notifyWithdrawalRejected(withdrawal.userId, Number(withdrawal.amount));
+    } catch (err) { /* ignore */ }
+
+    return result;
   }
 }

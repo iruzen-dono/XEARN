@@ -243,8 +243,7 @@ if (-not $ApiOnly) {
 
 Write-Host ""
 Write-Host "  Comptes de test :" -ForegroundColor Gray
-Write-Host "    Admin  : admin@xearn.com / admin123" -ForegroundColor Gray
-Write-Host "    User   : test@xearn.com / test123" -ForegroundColor Gray
+Write-Host "    Admin  : juleszhou00@gmail.com / admin123" -ForegroundColor Gray
 Write-Host ""
 Write-Host "  Pour arreter : .\start.ps1 -Stop" -ForegroundColor Gray
 Write-Host ""

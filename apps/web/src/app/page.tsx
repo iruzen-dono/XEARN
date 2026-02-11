@@ -148,12 +148,21 @@ export default function HomePage() {
 
       {/* Footer */}
       <footer className="py-12 px-4 border-t border-dark-800">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <Zap className="w-6 h-6 text-primary-400" />
-            <span className="text-xl font-bold gradient-text">XEARN</span>
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex items-center gap-2">
+              <Zap className="w-6 h-6 text-primary-400" />
+              <span className="text-xl font-bold gradient-text">XEARN</span>
+            </div>
+            <div className="flex gap-6 text-sm text-dark-400">
+              <Link href="/legal/mentions-legales" className="hover:text-white transition-colors">Mentions légales</Link>
+              <Link href="/legal/cgu" className="hover:text-white transition-colors">CGU</Link>
+              <Link href="/legal/confidentialite" className="hover:text-white transition-colors">Confidentialité</Link>
+            </div>
           </div>
-          <p className="text-dark-400 text-sm">© 2026 XEARN. Tous droits réservés.</p>
+          <div className="mt-6 text-center md:text-left">
+            <p className="text-dark-500 text-sm">© 2026 XEARN. Tous droits réservés.</p>
+          </div>
         </div>
       </footer>
     </div>

@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class UsersService {
@@ -156,5 +157,52 @@ export class UsersService {
       tasksByType: tasksByType.map((t) => ({ type: t.type, count: (t._count as any)?._all ?? t._count })),
       topTasks,
     };
+  }
+
+  async updateProfile(userId: string, data: { firstName?: string; lastName?: string; phone?: string }) {
+    // Si un phone est fourni, vérifier qu'il n'est pas déjà pris
+    if (data.phone) {
+      const existing = await this.prisma.user.findUnique({ where: { phone: data.phone } });
+      if (existing && existing.id !== userId) {
+        throw new BadRequestException('Ce numéro de téléphone est déjà utilisé');
+      }
+    }
+
+    const updateData: any = {};
+    if (data.firstName) updateData.firstName = data.firstName;
+    if (data.lastName) updateData.lastName = data.lastName;
+    if (data.phone !== undefined) updateData.phone = data.phone || null;
+
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+      include: { wallet: true },
+      omit: { password: true },
+    });
+
+    return user;
+  }
+
+  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new BadRequestException('Utilisateur introuvable');
+
+    if (!user.password) {
+      throw new BadRequestException('Votre compte utilise Google. Impossible de changer le mot de passe.');
+    }
+
+    const isValid = await bcrypt.compare(currentPassword, user.password);
+    if (!isValid) {
+      throw new BadRequestException('Mot de passe actuel incorrect');
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { password: hashedPassword },
+    });
+
+    return { message: 'Mot de passe modifié avec succès' };
   }
 }

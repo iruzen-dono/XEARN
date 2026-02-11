@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Wallet, ArrowDownCircle, ArrowUpCircle, Clock, Loader2, Send, CreditCard, Smartphone, Zap } from 'lucide-react';
+import { Wallet, ArrowDownCircle, ArrowUpCircle, Clock, Loader2, Send, CreditCard, Smartphone, Zap, ChevronDown } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { useToast } from '@/lib/toast';
 import { walletApi } from '@/lib/api';
@@ -18,6 +18,9 @@ export default function WalletPage() {
   const toast = useToast();
   const [wallet, setWallet] = useState<any>(null);
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [txPage, setTxPage] = useState(1);
+  const [txTotal, setTxTotal] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [activating, setActivating] = useState(false);
   const [showWithdraw, setShowWithdraw] = useState(false);
@@ -33,6 +36,8 @@ export default function WalletPage() {
       ]);
       setWallet(w);
       setTransactions(txs?.transactions || []);
+      setTxTotal(txs?.total || 0);
+      setTxPage(1);
     } catch (err) {
       console.error('Erreur chargement portefeuille:', err);
     } finally {
@@ -43,6 +48,22 @@ export default function WalletPage() {
   useEffect(() => {
     fetchData();
   }, [token]);
+
+  const loadMoreTransactions = async () => {
+    if (!token) return;
+    setLoadingMore(true);
+    try {
+      const nextPage = txPage + 1;
+      const txs = await walletApi.getTransactions(token, nextPage) as any;
+      setTransactions((prev) => [...prev, ...(txs?.transactions || [])]);
+      setTxPage(nextPage);
+      setTxTotal(txs?.total || 0);
+    } catch (err) {
+      console.error('Erreur chargement transactions:', err);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   const handleActivate = async () => {
     if (!token) return;
@@ -110,8 +131,46 @@ export default function WalletPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-8 h-8 animate-spin text-primary-400" />
+      <div className="space-y-6">
+        <div>
+          <div className="h-8 w-40 bg-dark-800 rounded animate-pulse mb-2" />
+          <div className="h-4 w-64 bg-dark-800 rounded animate-pulse mb-8" />
+        </div>
+        <div className="card bg-gradient-to-br from-primary-500/10 to-accent-500/10 border-primary-500/20">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <div className="h-4 w-28 bg-dark-800 rounded animate-pulse mb-2" />
+              <div className="h-10 w-48 bg-dark-800 rounded animate-pulse" />
+            </div>
+            <div className="h-12 w-12 bg-dark-800 rounded animate-pulse" />
+          </div>
+          <div className="h-10 w-40 bg-dark-800 rounded-lg animate-pulse" />
+        </div>
+        <div className="grid md:grid-cols-3 gap-6">
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="card flex items-center gap-4">
+              <div className="w-10 h-10 bg-dark-800 rounded-full animate-pulse" />
+              <div>
+                <div className="h-3 w-20 bg-dark-800 rounded animate-pulse mb-2" />
+                <div className="h-6 w-28 bg-dark-800 rounded animate-pulse" />
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="card">
+          <div className="h-6 w-52 bg-dark-800 rounded animate-pulse mb-4" />
+          <div className="space-y-4">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="flex items-center justify-between py-3">
+                <div>
+                  <div className="h-4 w-32 bg-dark-800 rounded animate-pulse mb-2" />
+                  <div className="h-3 w-24 bg-dark-800 rounded animate-pulse" />
+                </div>
+                <div className="h-5 w-24 bg-dark-800 rounded animate-pulse" />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -197,13 +256,15 @@ export default function WalletPage() {
             <div>
               <label className="text-sm text-dark-300 mb-1 block">Numéro de téléphone</label>
               <input
-                type="text"
+                type="tel"
                 className="input-field"
                 placeholder="Ex: +228 90 00 00 00"
+                pattern="^\+?(228|229|225|233|234|237|221|223|226|227|235|241|242|243)\s?\d{7,9}$"
                 value={withdrawForm.accountInfo}
                 onChange={(e) => setWithdrawForm({ ...withdrawForm, accountInfo: e.target.value })}
                 required
               />
+              <p className="text-dark-500 text-xs mt-1">Format : indicatif pays + numéro (ex: +22890000000)</p>
             </div>
             <div className="flex gap-3">
               <button type="submit" disabled={withdrawing} className="btn-primary disabled:opacity-50 flex items-center gap-2">
@@ -250,10 +311,15 @@ export default function WalletPage() {
       <div className="card">
         <h2 className="text-xl font-semibold mb-4">Historique des transactions</h2>
         {transactions.length === 0 ? (
-          <div className="text-dark-400 text-center py-8">
-            Aucune transaction pour le moment.
+          <div className="text-center py-12">
+            <div className="w-16 h-16 mx-auto mb-4 bg-dark-800 rounded-full flex items-center justify-center">
+              <Clock className="w-8 h-8 text-dark-500" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">Aucune transaction</h3>
+            <p className="text-dark-400 text-sm max-w-xs mx-auto">Vos transactions apparaîtront ici après avoir complété des tâches ou effectué des retraits.</p>
           </div>
         ) : (
+          <>
           <div className="space-y-3">
             {transactions.map((tx: any) => (
               <div key={tx.id} className="flex items-center justify-between py-3 border-b border-dark-800 last:border-0">
@@ -279,6 +345,19 @@ export default function WalletPage() {
               </div>
             ))}
           </div>
+          {transactions.length < txTotal && (
+            <div className="text-center mt-4">
+              <button onClick={loadMoreTransactions} disabled={loadingMore}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-dark-800 text-dark-300 hover:text-white hover:bg-dark-700 transition-colors disabled:opacity-50 text-sm">
+                {loadingMore ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /> Chargement...</>
+                ) : (
+                  <><ChevronDown className="w-4 h-4" /> Voir plus ({txTotal - transactions.length} restantes)</>
+                )}
+              </button>
+            </div>
+          )}
+          </>
         )}
       </div>
     </div>

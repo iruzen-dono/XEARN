@@ -11,12 +11,14 @@ Un système de parrainage à 2 niveaux récompense les parrains à chaque tâche
 
 | Module | Description |
 |--------|-------------|
-| **Authentification** | Inscription / connexion par email, JWT (access + refresh), rate limiting anti brute-force |
+| **Authentification** | Email + Google OAuth (NextAuth v4), vérification email, JWT (access + refresh), rate limiting anti brute-force |
 | **Tâches** | Création admin, liste paginée, complétion utilisateur, crédit automatique au wallet |
 | **Portefeuille** | Solde en temps réel, historique de transactions, activation de compte (4 000 FCFA), retraits |
 | **Parrainage** | 2 niveaux (Niveau 1 : 40 %, Niveau 2 : 10 %), commissions automatiques, arbre de filleuls |
+| **Paiements** | Multi-provider (Flutterwave recommandé, FedaPay legacy, Mock dev), webhooks, Mobile Money |
 | **Administration** | Dashboard admin, gestion utilisateurs (suspension/ban), statistiques globales |
-| **Sécurité** | Helmet, rate limiting (@nestjs/throttler), validation DTOs, sanitisation des entrées |
+| **Sécurité** | Helmet (CSP, HSTS), rate limiting 3 paliers, CORS dynamique, validation DTOs |
+| **Pages légales** | CGU, Politique de confidentialité, Mentions légales |
 | **UX Mobile** | Interface responsive, sidebars adaptatives, toasts, navigation mobile |
 
 ---
@@ -25,10 +27,11 @@ Un système de parrainage à 2 niveaux récompense les parrains à chaque tâche
 
 | Couche | Technologie |
 |--------|-------------|
-| Frontend | Next.js 15 · React 19 · TypeScript · TailwindCSS 3.4 · Lucide React |
-| Backend | NestJS 10 · TypeScript · Prisma 6.19 |
+| Frontend | Next.js 15 · React 19 · TypeScript · TailwindCSS 3.4 · Lucide React · NextAuth v4 |
+| Backend | NestJS 10 · TypeScript · Prisma 6.19 · Nodemailer |
 | Base de données | PostgreSQL 16 (Docker) |
-| Auth | JWT (access 15 min + refresh 7 jours) · bcrypt |
+| Auth | JWT (access 15 min + refresh 7 jours) · bcrypt · Google OAuth |
+| Paiements | Flutterwave (production) · FedaPay (legacy) · Mock (dev) |
 | Monorepo | npm workspaces |
 | Runtime | Node.js 22+ |
 
@@ -44,19 +47,23 @@ XEARN/
 │   │   │   ├── schema.prisma   # Schéma de la BDD
 │   │   │   └── seed.ts         # Données de test
 │   │   └── src/
-│   │       ├── auth/           # Authentification (JWT, register, login)
+│   │       ├── auth/           # Auth (JWT, Google OAuth, email verification)
 │   │       ├── users/          # Gestion des utilisateurs
 │   │       ├── tasks/          # Tâches & complétions
 │   │       ├── wallet/         # Portefeuille & transactions
 │   │       ├── referrals/      # Parrainage & commissions
+│   │       ├── payment/        # Paiements (Flutterwave, FedaPay, Mock)
 │   │       ├── prisma/         # Service Prisma
 │   │       ├── app.module.ts
 │   │       └── main.ts
 │   └── web/                    # Frontend Next.js
 │       └── src/
 │           └── app/
+│               ├── api/auth/   # NextAuth (Google OAuth)
 │               ├── login/      # Page de connexion
 │               ├── register/   # Page d'inscription
+│               ├── verify-email/ # Vérification email
+│               ├── legal/      # CGU, Confidentialité, Mentions légales
 │               ├── dashboard/  # Dashboard utilisateur
 │               │   ├── referrals/  # Page parrainage (3 onglets)
 │               │   └── ...
@@ -118,11 +125,11 @@ Ou avec PowerShell :
 | API | http://localhost:4000 |
 | Prisma Studio | `npx prisma studio` (dans `apps/api`) |
 
-### Comptes de test
+### Comptes de test (seed)
 
 | Rôle | Email | Mot de passe |
 |------|-------|-------------|
-| Admin | admin@xearn.com | admin123 |
+| Admin | juleszhou00@gmail.com | admin123 |
 | Utilisateur | test@xearn.com | test123 |
 
 ---
@@ -163,17 +170,27 @@ cd apps/api && npx ts-node prisma/seed.ts
 
 | Variable | Valeur par défaut | Description |
 |----------|-------------------|-------------|
-| `DATABASE_URL` | `postgresql://xearn:xearn_password@localhost:5432/xearn_db` | Connexion PostgreSQL |
-| `JWT_SECRET` | `dev-jwt-secret-xearn-2026` | Clé secrète JWT |
-| `JWT_REFRESH_SECRET` | `dev-jwt-refresh-secret-xearn-2026` | Clé secrète refresh token |
+| `DATABASE_URL` | `postgresql://xearn:...@localhost:5432/xearn_db` | Connexion PostgreSQL |
+| `JWT_SECRET` | — | Clé secrète JWT |
+| `JWT_REFRESH_SECRET` | — | Clé secrète refresh token |
 | `JWT_EXPIRATION` | `15m` | Durée du token d'accès |
 | `JWT_REFRESH_EXPIRATION` | `7d` | Durée du refresh token |
 | `API_PORT` | `4000` | Port de l'API |
-| `PAYMENT_MODE` | `mock` | Mode de paiement (`mock` / `live`) |
+| `CORS_ORIGINS` | `http://localhost:3000` | Origines CORS autorisées |
+| `GOOGLE_CLIENT_ID` | — | ID client Google OAuth |
+| `GOOGLE_CLIENT_SECRET` | — | Secret client Google OAuth |
+| `NEXTAUTH_URL` | `http://localhost:3000` | URL NextAuth |
+| `NEXTAUTH_SECRET` | — | Secret NextAuth |
+| `SMTP_HOST` | `smtp.gmail.com` | Serveur SMTP |
+| `SMTP_USER` / `SMTP_PASS` | — | Identifiants SMTP (Gmail app password) |
+| `PAYMENT_MODE` | `mock` | Mode de paiement (`mock` / `flutterwave` / `fedapay`) |
+| `FLW_SECRET_KEY` | — | Clé secrète Flutterwave |
 | `ACTIVATION_PRICE_FCFA` | `4000` | Prix d'activation du compte |
 | `WITHDRAWAL_MIN_FCFA` | `2000` | Montant minimum de retrait |
 | `REFERRAL_LEVEL1_PERCENT` | `40` | Commission parrainage niveau 1 |
 | `REFERRAL_LEVEL2_PERCENT` | `10` | Commission parrainage niveau 2 |
+
+> Voir [.env.example](.env.example) pour la liste complète des variables.
 
 ---
 
@@ -196,17 +213,19 @@ Lorsqu'un filleul complète une tâche :
 ## Roadmap
 
 - [x] Monorepo + Infrastructure
-- [x] Authentification JWT
+- [x] Authentification JWT + Google OAuth
+- [x] Vérification email (Nodemailer + Gmail SMTP)
 - [x] Système de tâches
 - [x] Portefeuille & transactions
 - [x] Parrainage 2 niveaux
 - [x] Dashboard admin
-- [x] Sécurité (Helmet, rate limiting, validation)
+- [x] Sécurité (Helmet CSP/HSTS, rate limiting 3 paliers, CORS dynamique)
 - [x] UX Mobile + Toasts
-- [ ] Paiements réels (MTN MoMo, Orange Money, Flooz)
+- [x] Pages légales (CGU, Confidentialité, Mentions légales)
+- [x] Paiements Flutterwave (30+ pays africains, Mobile Money)
 - [ ] Analytics avancés
 - [ ] Tests automatisés (Jest, Playwright)
-- [ ] Déploiement production
+- [ ] Déploiement production (Vercel + Railway)
 - [ ] Application mobile
 
 ---

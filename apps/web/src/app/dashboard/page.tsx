@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Wallet, Users, ListTodo, TrendingUp, Loader2 } from 'lucide-react';
+import { Wallet, Users, ListTodo, TrendingUp, Clock } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { useToast } from '@/lib/toast';
 import { walletApi, tasksApi, referralsApi } from '@/lib/api';
@@ -61,8 +61,38 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-8 h-8 animate-spin text-primary-400" />
+      <div className="space-y-6">
+        <div>
+          <div className="h-8 w-52 bg-dark-800 rounded animate-pulse mb-2" />
+          <div className="h-4 w-40 bg-dark-800 rounded animate-pulse mb-8" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="card">
+              <div className="flex items-center justify-between mb-4">
+                <div className="h-4 w-16 bg-dark-800 rounded animate-pulse" />
+                <div className="h-5 w-5 bg-dark-800 rounded animate-pulse" />
+              </div>
+              <div className="h-7 w-32 bg-dark-800 rounded animate-pulse mb-1" />
+              <div className="h-4 w-28 bg-dark-800 rounded animate-pulse" />
+            </div>
+          ))}
+        </div>
+        <div className="card h-28 animate-pulse bg-dark-800/50" />
+        <div className="card">
+          <div className="h-6 w-40 bg-dark-800 rounded animate-pulse mb-4" />
+          <div className="space-y-4">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="flex items-center justify-between py-3">
+                <div>
+                  <div className="h-4 w-40 bg-dark-800 rounded animate-pulse mb-2" />
+                  <div className="h-3 w-24 bg-dark-800 rounded animate-pulse" />
+                </div>
+                <div className="h-5 w-20 bg-dark-800 rounded animate-pulse" />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -140,8 +170,12 @@ export default function DashboardPage() {
       <div className="card">
         <h2 className="text-xl font-semibold mb-4">Activité récente</h2>
         {transactions.length === 0 ? (
-          <div className="text-dark-400 text-center py-8">
-            Aucune activité pour le moment. Commencez par compléter des tâches !
+          <div className="text-center py-12">
+            <div className="w-16 h-16 mx-auto mb-4 bg-dark-800 rounded-full flex items-center justify-center">
+              <Clock className="w-8 h-8 text-dark-500" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">Aucune activité récente</h3>
+            <p className="text-dark-400 text-sm max-w-xs mx-auto">Complétez des tâches pour voir votre activité ici !</p>
           </div>
         ) : (
           <div className="space-y-3">

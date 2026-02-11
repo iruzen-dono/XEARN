@@ -1,16 +1,35 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { Zap, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { signIn } from 'next-auth/react';
 import { useAuth } from '@/lib/auth';
 
-export default function LoginPage() {
+function LoginContent() {
   const { login, isLoading: authLoading } = useAuth();
+  const searchParams = useSearchParams();
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState('');
   const [form, setForm] = useState({ email: '', password: '' });
+
+  // Capture NextAuth error from URL (e.g. ?error=OAuthCallback)
+  useEffect(() => {
+    const authError = searchParams.get('error');
+    if (authError) {
+      const errorMessages: Record<string, string> = {
+        OAuthCallback: 'Erreur lors de la connexion Google. Veuillez réessayer.',
+        OAuthSignin: 'Impossible de lancer la connexion Google.',
+        OAuthAccountNotLinked: 'Ce compte est déjà lié à une autre méthode de connexion.',
+        Callback: 'Erreur de connexion. Veuillez réessayer.',
+        Default: 'Erreur de connexion. Veuillez réessayer.',
+      };
+      setError(errorMessages[authError] || errorMessages.Default);
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,7 +74,26 @@ export default function LoginPage() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <button
+          type="button"
+          disabled={googleLoading}
+          onClick={async () => {
+            setGoogleLoading(true);
+            setError('');
+            sessionStorage.setItem('googleAuthPending', 'true');
+            try {
+              await signIn('google', { callbackUrl: '/dashboard' });
+            } catch {
+              setError('Erreur lors de la connexion Google');
+              setGoogleLoading(false);
+            }
+          }}
+          className="w-full border border-dark-600 rounded-xl py-3 text-sm font-medium hover:border-primary-400 transition-colors disabled:opacity-50"
+        >
+          {googleLoading ? 'Redirection vers Google...' : 'Continuer avec Google'}
+        </button>
+
+        <form onSubmit={handleSubmit} className="space-y-4 mt-4">
           <div>
             <label className="text-sm text-dark-300 mb-1 block">Email</label>
             <div className="relative">
@@ -94,11 +132,29 @@ export default function LoginPage() {
           </button>
         </form>
 
+        <div className="text-center mt-4">
+          <Link href="/forgot-password" className="text-sm text-dark-400 hover:text-primary-400 transition-colors">
+            Mot de passe oublié ?
+          </Link>
+        </div>
+
         <p className="text-center text-dark-400 mt-6">
           Pas encore de compte ?{' '}
           <Link href="/register" className="text-primary-400 hover:text-primary-300">S&apos;inscrire</Link>
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-2 border-primary-400 border-t-transparent rounded-full" />
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
   );
 }

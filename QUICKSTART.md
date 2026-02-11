@@ -57,7 +57,37 @@ Tu devrais voir `xearn-postgres` avec le statut `Up`.
 
 ---
 
-## 5. Initialiser la base de données
+## 5. Configurer l'environnement
+
+Copie le fichier d'exemple et remplis les variables :
+
+```bash
+copy .env.example .env
+```
+
+Ouvre `.env` et remplis au minimum :
+
+```env
+# Déjà pré-rempli pour le développement local
+DATABASE_URL="postgresql://xearn:xearn_password@localhost:5432/xearn_db?schema=public"
+JWT_SECRET="dev-secret-change-me"
+
+# Optionnel : Google OAuth (nécessaire pour "Se connecter avec Google")
+GOOGLE_CLIENT_ID="..."
+GOOGLE_CLIENT_SECRET="..."
+NEXTAUTH_SECRET="..."
+
+# Optionnel : Email (nécessaire pour la vérification email)
+SMTP_HOST="smtp.gmail.com"
+SMTP_USER="..."
+SMTP_PASS="..."  # Mot de passe d'application Gmail
+```
+
+> Sans Google OAuth configuré, la connexion Google sera désactivée. Sans SMTP, les emails de vérification ne seront pas envoyés.
+
+---
+
+## 6. Initialiser la base de données
 
 ```bash
 cd apps/api
@@ -81,7 +111,7 @@ cd ../..
 
 ---
 
-## 6. Lancer le projet
+## 7. Lancer le projet
 
 ### Option A : Double-clic (la plus simple)
 
@@ -111,7 +141,7 @@ npx next dev --port 3000
 
 ---
 
-## 7. Tester
+## 8. Tester
 
 Ouvre ton navigateur :
 
@@ -124,8 +154,10 @@ Ouvre ton navigateur :
 
 | Rôle | Email | Mot de passe |
 |------|-------|-------------|
-| **Admin** | admin@xearn.com | admin123 |
+| **Admin** | juleszhou00@gmail.com | admin123 |
 | **Utilisateur** | test@xearn.com | test123 |
+
+> **Note** : Le compte admin nécessite un email vérifié. Si vous utilisez le seed, les comptes sont créés avec `emailVerifiedAt` défini.
 
 ### Test rapide de l'API
 
@@ -133,14 +165,14 @@ Ouvre ton navigateur :
 # Login admin
 $r = Invoke-RestMethod -Uri "http://localhost:4000/api/auth/login" `
   -Method POST -ContentType "application/json" `
-  -Body '{"email":"admin@xearn.com","password":"admin123"}'
+  -Body '{"email":"juleszhou00@gmail.com","password":"admin123"}'
 
 Write-Host "Connecté : $($r.user.firstName) $($r.user.lastName) ($($r.user.role))"
 ```
 
 ---
 
-## 8. Arrêter le projet
+## 9. Arrêter le projet
 
 ### Si lancé via start.bat :
 
@@ -212,7 +244,9 @@ docker stop xearn-postgres
 Une fois le projet démarré, explore :
 
 1. **Le dashboard utilisateur** : http://localhost:3000/dashboard
-2. **Le dashboard admin** : http://localhost:3000/admin (connecté en admin@xearn.com)
-3. **L'arbre de parrainage** : http://localhost:3000/dashboard/referrals
-4. **La documentation API** : [docs/API.md](docs/API.md)
-5. **L'architecture** : [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
+2. **Le dashboard admin** : http://localhost:3000/admin (connecté en juleszhou00@gmail.com)
+3. **Les tâches** : http://localhost:3000/dashboard/tasks
+4. **Le portefeuille** : http://localhost:3000/dashboard/wallet
+5. **L'arbre de parrainage** : http://localhost:3000/dashboard/referrals
+6. **La documentation API** : [docs/API.md](docs/API.md)
+7. **L'architecture** : [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)

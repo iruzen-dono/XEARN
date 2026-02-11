@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
+import { NotificationsService } from '../notifications/notifications.service';
 import { Decimal } from '@prisma/client/runtime/library';
 
 @Injectable()
@@ -8,6 +9,7 @@ export class ReferralsService {
   constructor(
     private prisma: PrismaService,
     private configService: ConfigService,
+    private notificationsService: NotificationsService,
   ) {}
 
   async getReferralTree(userId: string) {
@@ -142,6 +144,13 @@ export class ReferralsService {
           },
         }),
       ]);
+
+      // Notifier le parrain L1
+      try {
+        await this.notificationsService.notifyCommission(
+          user.referredBy.id, Number(commissionL1), 1, `${user.firstName} ${user.lastName}`,
+        );
+      } catch (err) { /* ignore */ }
     }
 
     // Commission niveau 2
@@ -175,6 +184,13 @@ export class ReferralsService {
           },
         }),
       ]);
+
+      // Notifier le parrain L2
+      try {
+        await this.notificationsService.notifyCommission(
+          user.referredBy.referredBy.id, Number(commissionL2), 2, `${user.firstName} ${user.lastName}`,
+        );
+      } catch (err) { /* ignore */ }
     }
   }
 }

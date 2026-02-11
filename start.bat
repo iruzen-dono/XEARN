@@ -79,13 +79,13 @@ REM ============================================
 REM 2. PRISMA
 REM ============================================
 echo.
-echo [2/5] Prisma (schema sync)...
+echo [2/5] Prisma (migrations)...
 
 pushd "%API_DIR%"
 call npx prisma generate >nul 2>&1
 echo    OK: Prisma Client genere
-call npx prisma db push >nul 2>&1
-echo    OK: Schema synchronise
+call npx prisma migrate deploy >nul 2>&1
+echo    OK: Migrations appliquees
 popd
 
 REM ============================================
@@ -187,8 +187,7 @@ echo   API        : http://localhost:4000
 echo   Frontend   : http://localhost:3000
 echo.
 echo   Comptes de test :
-echo     Admin : admin@xearn.com / admin123
-echo     User  : test@xearn.com / test123
+echo     Admin : juleszhou00@gmail.com / admin123
 echo.
 echo   Pour arreter : start.bat stop
 echo.

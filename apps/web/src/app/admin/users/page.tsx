@@ -50,6 +50,15 @@ export default function AdminUsersPage() {
 
   const handleAction = async (userId: string, action: 'activate' | 'suspend' | 'ban') => {
     if (!token) return;
+
+    // Confirmation dialog for destructive actions
+    if (action === 'suspend') {
+      if (!confirm('Êtes-vous sûr de vouloir suspendre cet utilisateur ?')) return;
+    }
+    if (action === 'ban') {
+      if (!confirm('Êtes-vous sûr de vouloir bannir cet utilisateur ? Cette action est difficilement réversible.')) return;
+    }
+
     setActionLoading(userId);
     try {
       if (action === 'activate') await adminApi.reactivateUser(token, userId);

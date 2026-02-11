@@ -3,14 +3,16 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Zap, LayoutDashboard, ListTodo, Users, Wallet, LogOut, Menu, X } from 'lucide-react';
+import { Zap, LayoutDashboard, ListTodo, Users, Wallet, LogOut, Menu, X, UserCircle } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
+import NotificationBell from '@/components/NotificationBell';
 
 const navItems = [
   { href: '/dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
   { href: '/dashboard/tasks', label: 'Tâches', icon: ListTodo },
   { href: '/dashboard/referrals', label: 'Parrainage', icon: Users },
   { href: '/dashboard/wallet', label: 'Portefeuille', icon: Wallet },
+  { href: '/dashboard/profile', label: 'Mon profil', icon: UserCircle },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -61,7 +63,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="text-sm font-medium truncate">{user?.firstName} {user?.lastName}</div>
           <div className="text-xs text-dark-500 truncate">{user?.email}</div>
         </div>
-        <button onClick={logout} className="flex items-center gap-3 px-4 py-3 rounded-xl text-dark-400 hover:text-red-400 hover:bg-red-500/10 transition-colors w-full">
+        <button onClick={() => logout()} className="flex items-center gap-3 px-4 py-3 rounded-xl text-dark-400 hover:text-red-400 hover:bg-red-500/10 transition-colors w-full">
           <LogOut className="w-5 h-5" />
           <span className="font-medium">Déconnexion</span>
         </button>
@@ -77,9 +79,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <Zap className="w-6 h-6 text-primary-400" />
           <span className="text-lg font-bold gradient-text">XEARN</span>
         </Link>
-        <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 text-dark-400 hover:text-white">
-          {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-        </button>
+        <div className="flex items-center gap-1">
+          <NotificationBell />
+          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 text-dark-400 hover:text-white">
+            {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
+        </div>
       </header>
 
       {/* Mobile overlay */}
@@ -99,6 +104,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Main content */}
       <main className="lg:ml-64 pt-14 lg:pt-0 min-h-screen">
+        {/* Desktop top bar with notification bell */}
+        <div className="hidden lg:flex items-center justify-end px-8 py-4 border-b border-dark-800">
+          <NotificationBell />
+        </div>
         <div className="p-4 sm:p-6 lg:p-8">
           {children}
         </div>

@@ -4,6 +4,7 @@ import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Zap, Mail, Lock, User, Phone, Eye, EyeOff } from 'lucide-react';
+import { signIn } from 'next-auth/react';
 import { useAuth } from '@/lib/auth';
 
 export default function RegisterPage() {
@@ -22,6 +23,7 @@ function RegisterForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
   const [form, setForm] = useState({
     firstName: '',
     lastName: '',
@@ -35,9 +37,13 @@ function RegisterForm() {
     e.preventDefault();
     setLoading(true);
     setError('');
+    setInfo('');
 
     try {
-      await register(form);
+      const result = await register(form);
+      if (result?.requiresEmailVerification) {
+        setInfo(result.message || 'Veuillez vérifier votre email pour activer votre compte.');
+      }
     } catch (err: any) {
       setError(err.message || 'Erreur lors de l\'inscription');
     } finally {
@@ -74,7 +80,28 @@ function RegisterForm() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {info && (
+          <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-3 mb-6 text-green-400 text-sm text-center">
+            {info}
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={() => {
+            try {
+              sessionStorage.setItem('googleAuthPending', 'true');
+              signIn('google', { callbackUrl: '/dashboard' });
+            } catch (err) {
+              console.error('Erreur Google Sign-In:', err);
+            }
+          }}
+          className="w-full border border-dark-600 rounded-xl py-3 text-sm font-medium hover:border-primary-400 transition-colors"
+        >
+          Continuer avec Google
+        </button>
+
+        <form onSubmit={handleSubmit} className="space-y-4 mt-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-sm text-dark-300 mb-1 block">Prénom</label>
@@ -162,6 +189,13 @@ function RegisterForm() {
               readOnly={!!refCode}
             />
           </div>
+
+          <p className="text-xs text-dark-400 text-center">
+            En créant un compte, vous acceptez nos{' '}
+            <Link href="/legal/cgu" className="text-primary-400 hover:text-primary-300 underline" target="_blank">Conditions Générales d&apos;Utilisation</Link>{' '}
+            et notre{' '}
+            <Link href="/legal/confidentialite" className="text-primary-400 hover:text-primary-300 underline" target="_blank">Politique de confidentialité</Link>.
+          </p>
 
           <button type="submit" disabled={loading} className="btn-primary w-full disabled:opacity-50">
             {loading ? 'Inscription...' : 'Créer mon compte'}

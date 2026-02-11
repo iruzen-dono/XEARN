@@ -8,11 +8,13 @@ dist/
 build/
 .next/
 out/
+*.tsbuildinfo
 
 # Env
 .env
 .env.local
 .env.production
+apps/api/.env
 
 # IDE
 .vscode/settings.json
@@ -33,3 +35,9 @@ apps/api/prisma/migrations/
 
 # Docker
 postgres-data/
+
+# Auto-generated
+next-env.d.ts
+
+# Temp SQL scripts
+fix-admin.sql

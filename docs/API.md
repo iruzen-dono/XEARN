@@ -17,6 +17,7 @@ Authorization: Bearer <accessToken>
 - [Tasks](#tasks)
 - [Wallet](#wallet)
 - [Referrals](#referrals)
+- [Payment](#payment)
 - [Codes d'erreur](#codes-derreur)
 
 ---
@@ -56,19 +57,12 @@ Inscription d'un nouvel utilisateur.
 
 ```json
 {
-  "user": {
-    "id": "clxyz...",
-    "email": "user@example.com",
-    "firstName": "Amadou",
-    "lastName": "Diallo",
-    "role": "USER",
-    "status": "FREE",
-    "referralCode": "clabc..."
-  },
-  "accessToken": "eyJhbGciOi...",
-  "refreshToken": "eyJhbGciOi..."
+  "requiresEmailVerification": true,
+  "message": "Inscription réussie ! Vérifiez votre boîte email pour activer votre compte."
 }
 ```
+
+Un email de vérification est envoyé automatiquement à l'adresse fournie. L'utilisateur doit cliquer sur le lien pour activer son compte avant de pouvoir se connecter.
 
 **Erreurs** :
 - `400` — Validation échouée (champs manquants ou invalides)
@@ -112,6 +106,94 @@ Connexion par email ou téléphone.
 **Erreurs** :
 - `401` — Email/téléphone ou mot de passe incorrect
 - `403` — Compte suspendu ou banni
+- `403` — Email non vérifié (message: "Veuillez vérifier votre email avant de vous connecter")
+
+---
+
+### POST `/api/auth/google`
+
+Connexion / inscription via Google OAuth. Appelé par le frontend après authentification Google via NextAuth.
+
+**Body** :
+
+```json
+{
+  "email": "user@gmail.com",
+  "googleId": "1234567890",
+  "firstName": "Amadou",
+  "lastName": "Diallo"
+}
+```
+
+| Champ | Type | Requis | Validation |
+|-------|------|--------|------------|
+| `email` | string | Oui | Format email valide |
+| `googleId` | string | Oui | ID Google |
+| `firstName` | string | Non | Prénom |
+| `lastName` | string | Non | Nom |
+
+**Réponse 200/201** :
+
+```json
+{
+  "user": {
+    "id": "clxyz...",
+    "email": "user@gmail.com",
+    "firstName": "Amadou",
+    "lastName": "Diallo",
+    "role": "USER",
+    "status": "FREE",
+    "provider": "GOOGLE"
+  },
+  "accessToken": "eyJhbGciOi...",
+  "refreshToken": "eyJhbGciOi..."
+}
+```
+
+Si l'utilisateur n'existe pas, il est créé automatiquement avec `emailVerifiedAt` défini (pas besoin de vérification email).
+
+---
+
+### GET `/api/auth/verify-email?token=xxx`
+
+Vérification de l'email via le lien envoyé à l'inscription.
+
+**Query params** :
+
+| Param | Type | Requis | Description |
+|-------|------|--------|-------------|
+| `token` | string | Oui | Token de vérification (reçu par email) |
+
+**Réponse** : Redirection `302` vers `/login?verified=true`
+
+**Erreurs** :
+- `400` — Token invalide ou expiré (après 24h)
+
+---
+
+### POST `/api/auth/resend-verification`
+
+Renvoyer l'email de vérification.
+
+**Body** :
+
+```json
+{
+  "email": "user@example.com"
+}
+```
+
+**Réponse 200** :
+
+```json
+{
+  "message": "Email de vérification envoyé"
+}
+```
+
+**Erreurs** :
+- `400` — Email déjà vérifié
+- `404` — Utilisateur introuvable
 
 ---
 
@@ -584,6 +666,28 @@ Statistiques de parrainage.
 
 ---
 
+## Payment
+
+### POST `/api/payment/webhook`
+
+Webhook de paiement Flutterwave. Appel\u00e9 automatiquement par Flutterwave apr\u00e8s un paiement.
+
+**Auth** : V\u00e9rification par `FLW_WEBHOOK_HASH` (header `verif-hash`)
+
+**Headers** :
+
+| Header | Description |
+|--------|-------------|
+| `verif-hash` | Hash de v\u00e9rification Flutterwave |
+
+**Body** : Payload Flutterwave (structure variable selon le type de transaction)
+
+**R\u00e9ponse 200** : `{ "status": "success" }`
+
+> **Note** : En mode `mock` (`PAYMENT_MODE=mock`), les webhooks sont simul\u00e9s automatiquement.
+
+---
+
 ## Codes d'erreur
 
 | Code HTTP | Signification |
@@ -634,7 +738,7 @@ curl -X POST http://localhost:4000/api/auth/register \
 curl -X POST http://localhost:4000/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "admin@xearn.com",
+    "email": "juleszhou00@gmail.com",
     "password": "admin123"
   }'
 ```
@@ -662,7 +766,7 @@ curl -X POST http://localhost:4000/api/tasks/<TASK_ID>/complete \
 # Login
 $r = Invoke-RestMethod -Uri "http://localhost:4000/api/auth/login" `
   -Method POST -ContentType "application/json" `
-  -Body '{"email":"admin@xearn.com","password":"admin123"}'
+  -Body '{"email":"juleszhou00@gmail.com","password":"admin123"}'
 
 $token = $r.accessToken
 

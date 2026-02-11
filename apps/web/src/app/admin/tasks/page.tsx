@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Plus, Loader2, Pause, Play, Trash2, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { Plus, Loader2, Pause, Play, Trash2, ChevronLeft, ChevronRight, X, Pencil } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { useToast } from '@/lib/toast';
 import { adminApi } from '@/lib/api';
@@ -24,6 +24,11 @@ export default function AdminTasksPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [editingTask, setEditingTask] = useState<any>(null);
+  const [saving, setSaving] = useState(false);
+  const [editForm, setEditForm] = useState({
+    title: '', description: '', type: 'VIDEO_AD', reward: '', maxCompletions: '', mediaUrl: '', externalUrl: '',
+  });
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -97,6 +102,43 @@ export default function AdminTasksPage() {
       toast.error(err.message || 'Erreur');
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  const openEdit = (task: any) => {
+    setEditForm({
+      title: task.title || '',
+      description: task.description || '',
+      type: task.type || 'VIDEO_AD',
+      reward: String(Number(task.reward) || ''),
+      maxCompletions: task.maxCompletions ? String(task.maxCompletions) : '',
+      mediaUrl: task.mediaUrl || '',
+      externalUrl: task.externalUrl || '',
+    });
+    setEditingTask(task);
+  };
+
+  const handleEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token || !editingTask) return;
+    setSaving(true);
+    try {
+      await adminApi.updateTask(token, editingTask.id, {
+        title: editForm.title,
+        description: editForm.description || undefined,
+        type: editForm.type,
+        reward: parseFloat(editForm.reward),
+        maxCompletions: editForm.maxCompletions ? parseInt(editForm.maxCompletions) : undefined,
+        mediaUrl: editForm.mediaUrl || undefined,
+        externalUrl: editForm.externalUrl || undefined,
+      });
+      setEditingTask(null);
+      toast.success('Tâche modifiée avec succès');
+      await fetchTasks();
+    } catch (err: any) {
+      toast.error(err.message || 'Erreur modification');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -202,6 +244,10 @@ export default function AdminTasksPage() {
                     <Loader2 className="w-4 h-4 animate-spin text-dark-400" />
                   ) : (
                     <>
+                      <button onClick={() => openEdit(task)} title="Modifier"
+                        className="p-2 rounded-lg text-primary-400 hover:bg-primary-500/10 transition-colors">
+                        <Pencil className="w-4 h-4" />
+                      </button>
                       <button onClick={() => handleToggle(task.id)}
                         title={task.status === 'ACTIVE' ? 'Mettre en pause' : 'Activer'}
                         className={`p-2 rounded-lg transition-colors ${
@@ -234,6 +280,71 @@ export default function AdminTasksPage() {
             </div>
           )}
         </>
+      )}
+
+      {/* Edit modal */}
+      {editingTask && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setEditingTask(null)}>
+          <div className="card max-w-lg w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold">Modifier la tâche</h2>
+              <button onClick={() => setEditingTask(null)} className="p-1 rounded-lg hover:bg-dark-700 text-dark-400">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleEdit} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-dark-400 mb-1">Titre *</label>
+                  <input type="text" value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} required
+                    className="w-full px-4 py-2.5 bg-dark-800 border border-dark-700 rounded-xl text-sm focus:border-primary-500 focus:outline-none" />
+                </div>
+                <div>
+                  <label className="block text-sm text-dark-400 mb-1">Type *</label>
+                  <select value={editForm.type} onChange={(e) => setEditForm({ ...editForm, type: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-dark-800 border border-dark-700 rounded-xl text-sm focus:border-primary-500 focus:outline-none">
+                    {taskTypes.map((t) => <option key={t} value={t}>{t.replace('_', ' ')}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm text-dark-400 mb-1">Récompense (FCFA) *</label>
+                  <input type="number" value={editForm.reward} onChange={(e) => setEditForm({ ...editForm, reward: e.target.value })} required min="1"
+                    className="w-full px-4 py-2.5 bg-dark-800 border border-dark-700 rounded-xl text-sm focus:border-primary-500 focus:outline-none" />
+                </div>
+                <div>
+                  <label className="block text-sm text-dark-400 mb-1">Max complétions</label>
+                  <input type="number" value={editForm.maxCompletions} onChange={(e) => setEditForm({ ...editForm, maxCompletions: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-dark-800 border border-dark-700 rounded-xl text-sm focus:border-primary-500 focus:outline-none"
+                    placeholder="Illimité" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm text-dark-400 mb-1">Description</label>
+                <textarea value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} rows={2}
+                  className="w-full px-4 py-2.5 bg-dark-800 border border-dark-700 rounded-xl text-sm focus:border-primary-500 focus:outline-none resize-none" />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-dark-400 mb-1">URL média</label>
+                  <input type="url" value={editForm.mediaUrl} onChange={(e) => setEditForm({ ...editForm, mediaUrl: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-dark-800 border border-dark-700 rounded-xl text-sm focus:border-primary-500 focus:outline-none" />
+                </div>
+                <div>
+                  <label className="block text-sm text-dark-400 mb-1">URL externe</label>
+                  <input type="url" value={editForm.externalUrl} onChange={(e) => setEditForm({ ...editForm, externalUrl: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-dark-800 border border-dark-700 rounded-xl text-sm focus:border-primary-500 focus:outline-none" />
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <button type="submit" disabled={saving} className="btn-primary flex items-center gap-2">
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Pencil className="w-4 h-4" />}
+                  Enregistrer
+                </button>
+                <button type="button" onClick={() => setEditingTask(null)} className="btn-secondary">Annuler</button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );

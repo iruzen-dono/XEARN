@@ -38,6 +38,11 @@ export class RegisterDto {
   @MaxLength(50)
   @Transform(({ value }) => sanitize(value))
   referralCode?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(256)
+  fingerprint?: string;
 }
 
 export class LoginDto {
@@ -55,10 +60,65 @@ export class LoginDto {
   @MinLength(1, { message: 'Le mot de passe est requis' })
   @MaxLength(128)
   password: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(256)
+  fingerprint?: string;
 }
 
 export class RefreshTokenDto {
   @IsString()
   @MinLength(1)
   refreshToken: string;
+}
+
+export class ResendVerificationDto {
+  @IsEmail({}, { message: 'Adresse email invalide' })
+  @Transform(({ value }) => (typeof value === 'string' ? value.toLowerCase().trim() : value))
+  email: string;
+}
+
+export class GoogleAuthDto {
+  @IsEmail({}, { message: 'Adresse email invalide' })
+  @Transform(({ value }) => (typeof value === 'string' ? value.toLowerCase().trim() : value))
+  email: string;
+
+  @IsString()
+  @MinLength(1)
+  googleId: string;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(50)
+  @Transform(({ value }) => sanitize(value))
+  firstName: string;
+
+  @IsString()
+  @MinLength(1)
+  @MaxLength(50)
+  @Transform(({ value }) => sanitize(value))
+  lastName: string;
+
+  @IsOptional()
+  @IsString()
+  @Transform(({ value }) => sanitize(value))
+  avatarUrl?: string;
+}
+
+export class ForgotPasswordDto {
+  @IsEmail({}, { message: 'Adresse email invalide' })
+  @Transform(({ value }) => (typeof value === 'string' ? value.toLowerCase().trim() : value))
+  email: string;
+}
+
+export class ResetPasswordDto {
+  @IsString()
+  @MinLength(1, { message: 'Token requis' })
+  token: string;
+
+  @IsString()
+  @MinLength(6, { message: 'Le mot de passe doit contenir au moins 6 caractères' })
+  @MaxLength(128, { message: 'Le mot de passe ne peut pas dépasser 128 caractères' })
+  password: string;
 }

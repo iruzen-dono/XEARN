@@ -1,13 +1,26 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ReferralsService } from '../referrals/referrals.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { Decimal } from '@prisma/client/runtime/library';
+
+// Durée minimum en secondes par type de tâche
+const MIN_DURATION_SECONDS: Record<string, number> = {
+  VIDEO_AD: 15,
+  CLICK_AD: 10,
+  SURVEY: 30,
+  SPONSORED: 15,
+};
+
+// Cooldown entre deux tâches (en secondes)
+const TASK_COOLDOWN_SECONDS = 10;
 
 @Injectable()
 export class TasksService {
   constructor(
     private prisma: PrismaService,
     private referralsService: ReferralsService,
+    private notificationsService: NotificationsService,
   ) {}
 
   async findAll(page = 1, limit = 20) {
@@ -62,6 +75,45 @@ export class TasksService {
     });
     if (existing) throw new BadRequestException('Tâche déjà complétée');
 
+    // Vérifier que la tâche a été démarrée (anti-triche)
+    const session = await this.prisma.taskSession.findUnique({
+      where: { userId_taskId: { userId, taskId } },
+    });
+    if (!session) {
+      throw new BadRequestException('Vous devez d\'abord démarrer la tâche');
+    }
+    if (session.completed) {
+      throw new BadRequestException('Session déjà utilisée');
+    }
+
+    // Vérifier le temps minimum selon le type de tâche
+    const minSeconds = MIN_DURATION_SECONDS[task.type] || 10;
+    const elapsedMs = Date.now() - session.startedAt.getTime();
+    const elapsedSeconds = elapsedMs / 1000;
+
+    if (elapsedSeconds < minSeconds) {
+      const remaining = Math.ceil(minSeconds - elapsedSeconds);
+      throw new BadRequestException(
+        `Temps insuffisant. Veuillez patienter encore ${remaining} seconde(s) avant de compléter cette tâche.`,
+      );
+    }
+
+    // Cooldown : vérifier la dernière complétion de l'utilisateur
+    const lastCompletion = await this.prisma.taskCompletion.findFirst({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (lastCompletion) {
+      const cooldownMs = TASK_COOLDOWN_SECONDS * 1000;
+      const timeSinceLast = Date.now() - lastCompletion.createdAt.getTime();
+      if (timeSinceLast < cooldownMs) {
+        const waitSeconds = Math.ceil((cooldownMs - timeSinceLast) / 1000);
+        throw new BadRequestException(
+          `Veuillez patienter ${waitSeconds} seconde(s) avant de compléter une autre tâche.`,
+        );
+      }
+    }
+
     // Vérifier max completions
     if (task.maxCompletions && task.completionCount >= task.maxCompletions) {
       throw new BadRequestException('Nombre maximum de complétions atteint');
@@ -69,6 +121,12 @@ export class TasksService {
 
     // Transaction atomique : compléter la tâche + créditer le wallet
     const result = await this.prisma.$transaction(async (tx) => {
+      // Marquer la session comme utilisée
+      await tx.taskSession.update({
+        where: { userId_taskId: { userId, taskId } },
+        data: { completed: true },
+      });
+
       // Créer la complétion
       const completion = await tx.taskCompletion.create({
         data: { userId, taskId, earned: task.reward },
@@ -113,7 +171,56 @@ export class TasksService {
       console.error('Erreur distribution commissions parrainage:', err);
     }
 
+    // Notification de tâche complétée
+    try {
+      await this.notificationsService.notifyTaskCompleted(userId, task.title, Number(task.reward));
+    } catch (err) {
+      console.error('Erreur notification:', err);
+    }
+
     return result;
+  }
+
+  async startTask(userId: string, taskId: string) {
+    const task = await this.prisma.task.findUnique({ where: { id: taskId } });
+    if (!task) throw new NotFoundException('Tâche introuvable');
+    if (task.status !== 'ACTIVE') throw new BadRequestException('Tâche non disponible');
+
+    // Vérifier que l'utilisateur est activé
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || user.status !== 'ACTIVATED') {
+      throw new BadRequestException('Compte non activé — activez votre compte pour gagner des récompenses');
+    }
+
+    // Vérifier si déjà complétée
+    const existing = await this.prisma.taskCompletion.findUnique({
+      where: { userId_taskId: { userId, taskId } },
+    });
+    if (existing) throw new BadRequestException('Tâche déjà complétée');
+
+    // Créer ou reset la session (upsert pour supporter le retry)
+    const session = await this.prisma.taskSession.upsert({
+      where: { userId_taskId: { userId, taskId } },
+      update: { startedAt: new Date(), completed: false },
+      create: { userId, taskId },
+    });
+
+    const minSeconds = MIN_DURATION_SECONDS[task.type] || 10;
+
+    return {
+      sessionId: session.id,
+      startedAt: session.startedAt,
+      minDurationSeconds: minSeconds,
+      task: {
+        id: task.id,
+        title: task.title,
+        type: task.type,
+        description: task.description,
+        mediaUrl: task.mediaUrl,
+        externalUrl: task.externalUrl,
+        reward: task.reward,
+      },
+    };
   }
 
   async getUserCompletions(userId: string) {
@@ -132,6 +239,20 @@ export class TasksService {
       where: { id: taskId },
       data: { status: newStatus },
     });
+  }
+
+  async updateTask(taskId: string, data: {
+    title?: string;
+    description?: string;
+    type?: 'VIDEO_AD' | 'CLICK_AD' | 'SURVEY' | 'SPONSORED';
+    reward?: number;
+    mediaUrl?: string;
+    externalUrl?: string;
+    maxCompletions?: number;
+  }) {
+    const task = await this.prisma.task.findUnique({ where: { id: taskId } });
+    if (!task) throw new NotFoundException('Tâche introuvable');
+    return this.prisma.task.update({ where: { id: taskId }, data });
   }
 
   async deleteTask(taskId: string) {
