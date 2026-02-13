@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { Play, CheckCircle, Loader2, ExternalLink, Clock, Timer, X, ListTodo } from 'lucide-react';
+import { Play, CheckCircle, Loader2, ExternalLink, Timer, X, ListTodo } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { useToast } from '@/lib/toast';
 import { tasksApi } from '@/lib/api';

@@ -12,7 +12,7 @@ function getCookieValue(name: string): string | null {
 }
 
 async function rawFetch(endpoint: string, options: FetchOptions = {}): Promise<Response> {
-  const { token, headers, ...rest } = options;
+  const { token: _token, headers, ...rest } = options;
   const csrfToken = getCookieValue('csrfToken');
   const method = String(options.method || 'GET').toUpperCase();
   const needsCsrf = method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS';

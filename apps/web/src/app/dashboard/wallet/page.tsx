@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Wallet, ArrowDownCircle, ArrowUpCircle, Clock, Loader2, Send, CreditCard, Smartphone, Zap, ChevronDown } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { useToast } from '@/lib/toast';
@@ -27,7 +27,7 @@ export default function WalletPage() {
   const [withdrawing, setWithdrawing] = useState(false);
   const [withdrawForm, setWithdrawForm] = useState({ amount: '', method: 'MTN_MOMO', accountInfo: '' });
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!token) return;
     try {
       const [w, txs] = await Promise.all([
@@ -43,11 +43,11 @@ export default function WalletPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
 
   useEffect(() => {
     fetchData();
-  }, [token]);
+  }, [fetchData]);
 
   const loadMoreTransactions = async () => {
     if (!token) return;
@@ -76,6 +76,8 @@ export default function WalletPage() {
         toast.info('Ouverture de la page de paiement FedaPay...');
         window.open(result.paymentUrl, '_blank');
         toast.success('Finalisez le paiement FedaPay. Votre compte sera activé automatiquement.');
+      } else if (result.status === 'pending' && !result.paymentUrl) {
+        toast.warning('Paiement en attente. Si la page de paiement ne s\'ouvre pas, réessayez dans quelques minutes.');
       } else {
         // Mock — activation immédiate
         toast.success('Compte activé avec succès !');
@@ -265,6 +267,7 @@ export default function WalletPage() {
                 required
               />
               <p className="text-dark-500 text-xs mt-1">Format : indicatif pays + numéro (ex: +22890000000)</p>
+              <p className="text-dark-500 text-xs mt-1">Traitement FedaPay sous 24-48h selon l\'opérateur.</p>
             </div>
             <div className="flex gap-3">
               <button type="submit" disabled={withdrawing} className="btn-primary disabled:opacity-50 flex items-center gap-2">
@@ -316,7 +319,7 @@ export default function WalletPage() {
               <Clock className="w-8 h-8 text-dark-500" />
             </div>
             <h3 className="text-lg font-semibold mb-2">Aucune transaction</h3>
-            <p className="text-dark-400 text-sm max-w-xs mx-auto">Vos transactions apparaîtront ici après avoir complété des tâches ou effectué des retraits.</p>
+            <p className="text-dark-400 text-sm max-w-xs mx-auto">Vos transactions apparaîtront ici après vos tâches, activations et retraits.</p>
           </div>
         ) : (
           <>

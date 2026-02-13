@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Users, Wallet, TrendingUp, Loader2, DollarSign, ArrowUpRight, BarChart3, ListTodo } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { adminApi } from '@/lib/api';
@@ -35,6 +35,26 @@ export default function AdminDashboardPage() {
 
   const fmt = (n: any) => Number(n || 0).toLocaleString('fr-FR');
 
+  const maxReg = useMemo(() => {
+    return analytics?.registrations?.length
+      ? Math.max(...analytics.registrations.map((r: any) => r.count), 1)
+      : 1;
+  }, [analytics]);
+
+  const activationRate = useMemo(() => {
+    const total = Number(stats?.totalUsers || 0);
+    const active = Number(stats?.activeUsers || 0);
+    if (!total) return 0;
+    return Math.round((active / total) * 100);
+  }, [stats]);
+
+  const avgRevenuePerActivated = useMemo(() => {
+    const active = Number(stats?.activeUsers || 0);
+    const revenue = Number(walletStats?.totalRevenue || 0);
+    if (!active) return 0;
+    return Math.round(revenue / active);
+  }, [stats, walletStats]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -42,10 +62,6 @@ export default function AdminDashboardPage() {
       </div>
     );
   }
-
-  const maxReg = analytics?.registrations?.length
-    ? Math.max(...analytics.registrations.map((r: any) => r.count), 1)
-    : 1;
 
   return (
     <div>
@@ -120,6 +136,42 @@ export default function AdminDashboardPage() {
             <BarChart3 className="w-5 h-5 text-purple-400" />
           </div>
           <div className="text-2xl font-bold">{fmt(walletStats?.totalTransactions)}</div>
+        </div>
+      </div>
+
+      {/* KPI Row 3 */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="card">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-dark-400 text-xs uppercase tracking-wide">Taux d'activation</span>
+            <TrendingUp className="w-5 h-5 text-primary-400" />
+          </div>
+          <div className="text-2xl font-bold text-primary-400">{activationRate}%</div>
+          <div className="text-dark-500 text-sm mt-1">utilisateurs activés</div>
+        </div>
+        <div className="card">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-dark-400 text-xs uppercase tracking-wide">Revenu / activé</span>
+            <DollarSign className="w-5 h-5 text-green-400" />
+          </div>
+          <div className="text-2xl font-bold text-green-400">{fmt(avgRevenuePerActivated)}</div>
+          <div className="text-dark-500 text-sm mt-1">FCFA moyen</div>
+        </div>
+        <div className="card">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-dark-400 text-xs uppercase tracking-wide">Tâches créées</span>
+            <ListTodo className="w-5 h-5 text-blue-400" />
+          </div>
+          <div className="text-2xl font-bold text-blue-400">{fmt(analytics?.topTasks?.length || 0)}</div>
+          <div className="text-dark-500 text-sm mt-1">top tâches suivies</div>
+        </div>
+        <div className="card">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-dark-400 text-xs uppercase tracking-wide">Parrainages</span>
+            <Users className="w-5 h-5 text-accent-400" />
+          </div>
+          <div className="text-2xl font-bold text-accent-400">{fmt(analytics?.topReferrers?.length || 0)}</div>
+          <div className="text-dark-500 text-sm mt-1">top parrains</div>
         </div>
       </div>
 
