@@ -1,38 +1,66 @@
-import { Controller, Post, Body, HttpCode, HttpStatus, Get, Query, Req } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, HttpStatus, Get, Query, Req, Res } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-import { Request } from 'express';
+import { Request, Response } from 'express';
+import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { RegisterDto, LoginDto, RefreshTokenDto, ResendVerificationDto, GoogleAuthDto, ForgotPasswordDto, ResetPasswordDto } from './dto/auth.dto';
+import { clearAuthCookies, setAuthCookies } from './auth.cookies';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(
+    private authService: AuthService,
+    private configService: ConfigService,
+  ) {}
 
   // 5 tentatives par minute pour register
   @Throttle({ default: { ttl: 60000, limit: 5 } })
   @Post('register')
-  async register(@Body() dto: RegisterDto, @Req() req: Request) {
+  async register(@Body() dto: RegisterDto, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip;
     const userAgent = req.headers['user-agent'];
-    return this.authService.register(dto, { ip, userAgent });
+    const result = await this.authService.register(dto, { ip, userAgent });
+    if ((result as any)?.accessToken && (result as any)?.refreshToken) {
+      setAuthCookies(res, this.configService, {
+        accessToken: (result as any).accessToken,
+        refreshToken: (result as any).refreshToken,
+      });
+    }
+    return this.filterAuthResponse(result, req);
   }
 
   // 10 tentatives par minute pour login (anti brute-force)
   @Throttle({ default: { ttl: 60000, limit: 10 } })
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  async login(@Body() dto: LoginDto, @Req() req: Request) {
+  async login(@Body() dto: LoginDto, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip;
     const userAgent = req.headers['user-agent'];
-    return this.authService.login(dto, { ip, userAgent });
+    const result = await this.authService.login(dto, { ip, userAgent });
+    if ((result as any)?.accessToken && (result as any)?.refreshToken) {
+      setAuthCookies(res, this.configService, {
+        accessToken: (result as any).accessToken,
+        refreshToken: (result as any).refreshToken,
+      });
+    }
+    return this.filterAuthResponse(result, req);
   }
 
   // 15 tentatives par minute pour refresh
   @Throttle({ default: { ttl: 60000, limit: 15 } })
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
-  async refreshToken(@Body() dto: RefreshTokenDto) {
-    return this.authService.refreshToken(dto.refreshToken);
+  async refreshToken(@Body() dto: RefreshTokenDto, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const tokenFromCookie = (req as any)?.cookies?.refreshToken as string | undefined;
+    const refreshToken = dto.refreshToken || tokenFromCookie || '';
+    const result = await this.authService.refreshToken(refreshToken);
+    if ((result as any)?.accessToken && (result as any)?.refreshToken) {
+      setAuthCookies(res, this.configService, {
+        accessToken: (result as any).accessToken,
+        refreshToken: (result as any).refreshToken,
+      });
+    }
+    return this.filterAuthResponse(result, req);
   }
 
   @Throttle({ default: { ttl: 60000, limit: 5 } })
@@ -47,8 +75,15 @@ export class AuthController {
   }
 
   @Post('google')
-  async googleAuth(@Body() dto: GoogleAuthDto) {
-    return this.authService.googleAuth(dto);
+  async googleAuth(@Body() dto: GoogleAuthDto, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const result = await this.authService.googleAuth(dto);
+    if ((result as any)?.accessToken && (result as any)?.refreshToken) {
+      setAuthCookies(res, this.configService, {
+        accessToken: (result as any).accessToken,
+        refreshToken: (result as any).refreshToken,
+      });
+    }
+    return this.filterAuthResponse(result, req);
   }
 
   // 3 tentatives par minute pour forgot-password (anti-spam)
@@ -64,5 +99,22 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async resetPassword(@Body() dto: ResetPasswordDto) {
     return this.authService.resetPassword(dto);
+  }
+
+  @Post('logout')
+  @HttpCode(HttpStatus.OK)
+  async logout(@Res({ passthrough: true }) res: Response) {
+    clearAuthCookies(res);
+    return { success: true };
+  }
+
+  private filterAuthResponse(result: any, req: Request) {
+    const wantsTokens = String(req.headers['x-auth-raw-tokens'] || '').toLowerCase() === 'true';
+    if (wantsTokens) return result;
+
+    if (result?.accessToken || result?.refreshToken) {
+      return { user: result.user };
+    }
+    return result;
   }
 }

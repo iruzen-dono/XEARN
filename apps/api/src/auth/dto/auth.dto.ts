@@ -68,9 +68,10 @@ export class LoginDto {
 }
 
 export class RefreshTokenDto {
+  @IsOptional()
   @IsString()
   @MinLength(1)
-  refreshToken: string;
+  refreshToken?: string;
 }
 
 export class ResendVerificationDto {

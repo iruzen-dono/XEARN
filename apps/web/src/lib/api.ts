@@ -2,15 +2,26 @@ export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000
 
 interface FetchOptions extends RequestInit {
   token?: string;
+  skipAuthRedirect?: boolean;
+}
+
+function getCookieValue(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(new RegExp(`(^|; )${name.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}=([^;]*)`));
+  return match ? decodeURIComponent(match[2]) : null;
 }
 
 async function rawFetch(endpoint: string, options: FetchOptions = {}): Promise<Response> {
   const { token, headers, ...rest } = options;
+  const csrfToken = getCookieValue('csrfToken');
+  const method = String(options.method || 'GET').toUpperCase();
+  const needsCsrf = method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS';
   return fetch(`${API_URL}/api${endpoint}`, {
     ...rest,
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(needsCsrf && csrfToken ? { 'X-CSRF-Token': csrfToken } : {}),
       ...headers,
     },
   });
@@ -24,22 +35,13 @@ async function doRefresh(): Promise<any> {
   if (refreshPromise) return refreshPromise;
 
   refreshPromise = (async () => {
-    const rt = localStorage.getItem('refreshToken');
-    if (!rt) throw new Error('No refresh token');
-
     const res = await rawFetch('/auth/refresh', {
       method: 'POST',
-      body: JSON.stringify({ refreshToken: rt }),
     });
 
     if (!res.ok) throw new Error('Refresh failed');
 
     const data = await res.json();
-    localStorage.setItem('accessToken', data.accessToken);
-    localStorage.setItem('refreshToken', data.refreshToken);
-    if (data.user) {
-      localStorage.setItem('user', JSON.stringify(data.user));
-    }
     // Notifier AuthContext du changement
     window.dispatchEvent(new CustomEvent('auth-refresh', { detail: data }));
     return data;
@@ -63,10 +65,9 @@ export async function api<T>(endpoint: string, options: FetchOptions = {}): Prom
       res = await rawFetch(endpoint, { ...options, token: data.accessToken });
     } catch {
       // Refresh échoué — session expirée, rediriger vers login
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
+      if (!options.skipAuthRedirect) {
+        window.location.href = '/login';
+      }
       throw new Error('Session expirée, veuillez vous reconnecter');
     }
   }
@@ -83,8 +84,13 @@ export async function api<T>(endpoint: string, options: FetchOptions = {}): Prom
 export const authApi = {
   register: (data: any) => api('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
   login: (data: any) => api('/auth/login', { method: 'POST', body: JSON.stringify(data) }),
-  refresh: (refreshToken: string) =>
-    api('/auth/refresh', { method: 'POST', body: JSON.stringify({ refreshToken }) }),
+  refresh: (refreshToken?: string) =>
+    api('/auth/refresh', {
+      method: 'POST',
+      ...(refreshToken ? { body: JSON.stringify({ refreshToken }) } : {}),
+      headers: refreshToken ? { 'X-Auth-Raw-Tokens': 'true' } : undefined,
+    }),
+  logout: () => api('/auth/logout', { method: 'POST' }),
   resendVerification: (email: string) =>
     api('/auth/resend-verification', { method: 'POST', body: JSON.stringify({ email }) }),
   forgotPassword: (email: string) =>
@@ -95,7 +101,8 @@ export const authApi = {
 
 // Users
 export const usersApi = {
-  getProfile: (token: string) => api('/users/me', { token }),
+  getProfile: (token?: string, opts?: { skipAuthRedirect?: boolean }) =>
+    api('/users/me', { token, skipAuthRedirect: opts?.skipAuthRedirect }),
   updateProfile: (token: string, data: { firstName?: string; lastName?: string; phone?: string }) =>
     api('/users/me', { method: 'PATCH', token, body: JSON.stringify(data) }),
   changePassword: (token: string, currentPassword: string, newPassword: string) =>

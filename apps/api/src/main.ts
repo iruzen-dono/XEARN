@@ -1,17 +1,53 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, RawBodyRequest, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Request, Response, NextFunction } from 'express';
 import helmet from 'helmet';
+import * as bodyParser from 'body-parser';
+import * as cookieParser from 'cookie-parser';
+import { randomUUID } from 'crypto';
 import { AppModule } from './app.module';
+import { ACCESS_TOKEN_COOKIE, CSRF_TOKEN_COOKIE } from './auth/auth.cookies';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const logger = new Logger('HTTP');
 
   const configService = app.get(ConfigService);
+
+  // Cookies + raw body (webhooks)
+  app.use(cookieParser());
+  app.use(
+    bodyParser.json({
+      limit: '1mb',
+      verify: (req: RawBodyRequest<Request>, _res: Response, buf: Buffer) => {
+        if (buf?.length) req.rawBody = buf;
+      },
+    }),
+  );
+
+  // Request logging with request id
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    const start = Date.now();
+    const requestId = (req.headers['x-request-id'] as string) || randomUUID();
+    (req as any).requestId = requestId;
+    res.setHeader('x-request-id', requestId);
+
+    res.on('finish', () => {
+      const duration = Date.now() - start;
+      logger.log(`${req.method} ${req.originalUrl} ${res.statusCode} ${duration}ms reqId=${requestId}`);
+    });
+
+    next();
+  });
 
   // Sécurité — headers HTTP stricts
   app.use(
     helmet({
+      hidePoweredBy: true,
+      frameguard: { action: 'deny' },
+      referrerPolicy: { policy: 'no-referrer' },
+      crossOriginResourcePolicy: { policy: 'same-site' },
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
@@ -42,6 +78,27 @@ async function bootstrap() {
       transformOptions: { enableImplicitConversion: true },
     }),
   );
+
+  // CSRF (double submit cookie)
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    const method = req.method.toUpperCase();
+    if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') return next();
+
+    const path = req.path || '';
+    if (path.startsWith('/api/auth') || path.startsWith('/api/payment/webhook')) return next();
+
+    const accessToken = (req as any)?.cookies?.[ACCESS_TOKEN_COOKIE];
+    if (!accessToken) return next();
+
+    const csrfCookie = (req as any)?.cookies?.[CSRF_TOKEN_COOKIE];
+    const csrfHeader = req.headers['x-csrf-token'];
+
+    if (!csrfCookie || !csrfHeader || csrfHeader !== csrfCookie) {
+      return res.status(403).json({ message: 'CSRF token invalide' });
+    }
+
+    return next();
+  });
 
   // CORS — origines autorisées depuis .env, fallback localhost
   const allowedOrigins = configService

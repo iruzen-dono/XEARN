@@ -87,7 +87,7 @@ export default function ConfidentialitePage() {
               Nous ne vendons jamais vos données personnelles. Vos données peuvent être partagées avec :
             </p>
             <ul className="mt-4 space-y-2 list-disc list-inside">
-              <li><strong className="text-dark-200">Prestataires de paiement :</strong> Flutterwave, pour le traitement des transactions financières</li>
+              <li><strong className="text-dark-200">Prestataires de paiement :</strong> FedaPay, pour le traitement des transactions financières</li>
               <li><strong className="text-dark-200">Hébergeurs :</strong> Vercel (frontend), Railway (API), Neon/Supabase (base de données)</li>
               <li><strong className="text-dark-200">Authentification :</strong> Google, si vous choisissez de vous connecter via votre compte Google</li>
             </ul>

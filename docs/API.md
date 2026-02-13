@@ -8,6 +8,8 @@ Toutes les réponses sont en JSON. Les routes protégées nécessitent le header
 Authorization: Bearer <accessToken>
 ```
 
+Ou l'authentification par cookies httpOnly (recommandée pour le frontend web).
+
 ---
 
 ## Table des matières
@@ -670,19 +672,19 @@ Statistiques de parrainage.
 
 ### POST `/api/payment/webhook`
 
-Webhook de paiement Flutterwave. Appel\u00e9 automatiquement par Flutterwave apr\u00e8s un paiement.
+Webhook de paiement FedaPay. Appel\u00e9 automatiquement par FedaPay apr\u00e8s un paiement.
 
-**Auth** : V\u00e9rification par `FLW_WEBHOOK_HASH` (header `verif-hash`)
+**Auth** : V\u00e9rification HMAC via `FEDAPAY_WEBHOOK_SECRET` (header `x-fedapay-signature`)
 
 **Headers** :
 
 | Header | Description |
 |--------|-------------|
-| `verif-hash` | Hash de v\u00e9rification Flutterwave |
+| `x-fedapay-signature` | Signature HMAC FedaPay |
 
-**Body** : Payload Flutterwave (structure variable selon le type de transaction)
+**Body** : Payload FedaPay (structure variable selon le type de transaction)
 
-**R\u00e9ponse 200** : `{ "status": "success" }`
+**R\u00e9ponse 200** : `{ "received": true }`
 
 > **Note** : En mode `mock` (`PAYMENT_MODE=mock`), les webhooks sont simul\u00e9s automatiquement.
 

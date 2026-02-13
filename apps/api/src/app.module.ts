@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { resolve } from 'path';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ScheduleModule } from '@nestjs/schedule';
 import { APP_GUARD } from '@nestjs/core';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
@@ -18,6 +19,8 @@ import { NotificationsModule } from './notifications/notifications.module';
       isGlobal: true,
       envFilePath: resolve(__dirname, '../../../.env'),
     }),
+
+    ScheduleModule.forRoot(),
 
     // Rate limiting par paliers
     ThrottlerModule.forRoot([

@@ -188,6 +188,13 @@ export class WalletService {
         callbackMeta: { withdrawalId: result.id, userId },
       });
 
+      if (disbursement.providerTransactionId) {
+        await this.prisma.transaction.updateMany({
+          where: { userId, type: 'WITHDRAWAL', status: 'PENDING', metadata: { path: ['withdrawalId'], equals: result.id } },
+          data: { metadata: { withdrawalId: result.id, providerTransactionId: disbursement.providerTransactionId } },
+        });
+      }
+
       if (disbursement.status === 'completed') {
         // Mock — marquer comme complété immédiatement
         await this.prisma.$transaction([
@@ -200,6 +207,11 @@ export class WalletService {
             data: { status: 'COMPLETED' },
           }),
         ]);
+      } else if (disbursement.status === 'pending') {
+        await this.prisma.withdrawal.update({
+          where: { id: result.id },
+          data: { status: 'PROCESSING' },
+        });
       }
 
       return {

@@ -1,14 +1,12 @@
 import { Controller, Post, Body, Headers, Logger, HttpCode, RawBodyRequest, Req } from '@nestjs/common';
+import { Request } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
-import * as crypto from 'crypto';
+import { verifyFedapaySignature } from './fedapay-signature';
 
 /**
  * Webhook pour recevoir les confirmations de paiement.
- * Supporte Flutterwave (principal) et FedaPay (legacy).
- *
- * URL à configurer dans le dashboard Flutterwave :
- *   https://votredomaine.com/api/payment/webhook
+ * Supporte FedaPay.
  */
 @Controller('payment')
 export class PaymentWebhookController {
@@ -19,203 +17,36 @@ export class PaymentWebhookController {
     private configService: ConfigService,
   ) {}
 
-  /* ───────────────────────────── Flutterwave webhook ───────────────────────────── */
-
   @Post('webhook')
   @HttpCode(200)
   async handleWebhook(
     @Body() body: any,
-    @Headers('verif-hash') flwVerifHash?: string,
     @Headers('x-fedapay-signature') fedapaySignature?: string,
+    @Req() req?: RawBodyRequest<Request>,
   ) {
     this.logger.log(`Webhook reçu: ${JSON.stringify(body).substring(0, 300)}`);
 
-    // ─── Détection du provider ───
-    if (flwVerifHash || body?.event?.startsWith?.('charge.') || body?.event?.startsWith?.('transfer.')) {
-      return this.handleFlutterwaveWebhook(body, flwVerifHash);
-    }
-
-    // Legacy FedaPay
     if (fedapaySignature || body?.entity) {
+      const secret = this.configService.get('FEDAPAY_WEBHOOK_SECRET')
+        || this.configService.get('FEDAPAY_SECRET_KEY');
+      if (!secret) {
+        this.logger.error('FEDAPAY_WEBHOOK_SECRET non configuré — webhook rejeté par sécurité');
+        return { received: false, error: 'Webhook secret not configured' };
+      }
+
+      const isValid = verifyFedapaySignature(req?.rawBody, fedapaySignature, secret);
+      if (!isValid) {
+        this.logger.warn('Signature FedaPay invalide — webhook rejeté');
+        return { received: false, error: 'Invalid signature' };
+      }
       return this.handleFedapayWebhook(body);
     }
 
-    this.logger.warn('Webhook de provider inconnu — ignoré');
+    this.logger.warn('Webhook FedaPay invalide — ignoré');
     return { received: true };
   }
 
-  /* ═══════════════════════════ FLUTTERWAVE ═══════════════════════════ */
-
-  private async handleFlutterwaveWebhook(body: any, verifHash?: string) {
-    // Vérifier le hash secret — OBLIGATOIRE en production
-    const webhookHash = this.configService.get('FLW_WEBHOOK_HASH');
-    if (!webhookHash) {
-      this.logger.error('FLW_WEBHOOK_HASH non configuré — webhook Flutterwave rejeté par sécurité');
-      return { received: false, error: 'Webhook hash not configured' };
-    }
-    if (verifHash !== webhookHash) {
-      this.logger.warn('Flutterwave webhook hash invalide — rejeté');
-      return { received: false, error: 'Invalid hash' };
-    }
-
-    const event = body?.event;
-    const data = body?.data;
-
-    if (!data) {
-      this.logger.warn('Flutterwave webhook sans data — ignoré');
-      return { received: true };
-    }
-
-    try {
-      switch (event) {
-        case 'charge.completed':
-          await this.handleFlwChargeCompleted(data);
-          break;
-        case 'transfer.completed':
-          await this.handleFlwTransferCompleted(data);
-          break;
-        case 'transfer.failed':
-          await this.handleFlwTransferFailed(data);
-          break;
-        default:
-          this.logger.log(`Flutterwave event non géré: ${event}`);
-      }
-    } catch (error: any) {
-      this.logger.error(`Erreur traitement webhook Flutterwave: ${error.message}`, error.stack);
-    }
-
-    return { received: true };
-  }
-
-  /**
-   * Paiement Flutterwave réussi → Activer le compte.
-   * data.meta contient userId et type passés lors du collect().
-   */
-  private async handleFlwChargeCompleted(data: any) {
-    if (data.status !== 'successful') {
-      this.logger.log(`Charge ${data.id} status=${data.status} — ignoré`);
-      return;
-    }
-
-    const meta = data.meta || {};
-    const userId = meta.userId;
-    const type = meta.type;
-    const providerTxId = String(data.id);
-
-    if (!userId) {
-      this.logger.warn('Charge completed sans userId dans meta');
-      return;
-    }
-
-    // Idempotence
-    const existing = await this.prisma.transaction.findFirst({
-      where: { metadata: { path: ['providerTransactionId'], equals: providerTxId } },
-    });
-    if (existing && existing.status === 'COMPLETED') {
-      this.logger.log(`Transaction ${providerTxId} déjà traitée — ignoré`);
-      return;
-    }
-
-    if (type === 'activation') {
-      const amount = data.amount || 4000;
-
-      await this.prisma.$transaction([
-        this.prisma.user.update({
-          where: { id: userId },
-          data: { status: 'ACTIVATED' },
-        }),
-        this.prisma.transaction.create({
-          data: {
-            userId,
-            type: 'ACTIVATION',
-            status: 'COMPLETED',
-            amount,
-            description: `Activation du compte (Flutterwave #${providerTxId})`,
-            metadata: { providerTransactionId: providerTxId },
-          },
-        }),
-      ]);
-
-      this.logger.log(`Compte ${userId} activé via Flutterwave (TX: ${providerTxId})`);
-    }
-  }
-
-  /**
-   * Transfert Flutterwave réussi → Retrait complété.
-   */
-  private async handleFlwTransferCompleted(data: any) {
-    if (data.status !== 'SUCCESSFUL') {
-      this.logger.log(`Transfer ${data.id} status=${data.status} — ignoré`);
-      return;
-    }
-
-    const meta = data.meta || {};
-    const withdrawalId = meta.withdrawalId;
-    const userId = meta.userId;
-
-    if (!withdrawalId) {
-      this.logger.warn('Transfer completed sans withdrawalId dans meta');
-      return;
-    }
-
-    const providerTxId = String(data.id);
-
-    await this.prisma.$transaction([
-      this.prisma.withdrawal.update({
-        where: { id: withdrawalId },
-        data: { status: 'COMPLETED', processedAt: new Date() },
-      }),
-      this.prisma.transaction.updateMany({
-        where: {
-          userId,
-          type: 'WITHDRAWAL',
-          status: 'PENDING',
-          metadata: { path: ['withdrawalId'], equals: withdrawalId },
-        },
-        data: { status: 'COMPLETED' },
-      }),
-    ]);
-
-    this.logger.log(`Retrait ${withdrawalId} complété via Flutterwave (Transfer: ${providerTxId})`);
-  }
-
-  /**
-   * Transfert Flutterwave échoué → Rembourser le wallet.
-   */
-  private async handleFlwTransferFailed(data: any) {
-    const meta = data.meta || {};
-    const withdrawalId = meta.withdrawalId;
-    const userId = meta.userId;
-
-    if (!withdrawalId || !userId) return;
-
-    const withdrawal = await this.prisma.withdrawal.findUnique({ where: { id: withdrawalId } });
-    if (!withdrawal || withdrawal.status === 'FAILED') return;
-
-    await this.prisma.$transaction([
-      this.prisma.wallet.update({
-        where: { userId },
-        data: { balance: { increment: withdrawal.amount } },
-      }),
-      this.prisma.withdrawal.update({
-        where: { id: withdrawalId },
-        data: { status: 'FAILED' },
-      }),
-      this.prisma.transaction.updateMany({
-        where: {
-          userId,
-          type: 'WITHDRAWAL',
-          status: 'PENDING',
-          metadata: { path: ['withdrawalId'], equals: withdrawalId },
-        },
-        data: { status: 'FAILED' },
-      }),
-    ]);
-
-    this.logger.log(`Transfer ${withdrawalId} échoué — wallet de ${userId} remboursé de ${withdrawal.amount} FCFA`);
-  }
-
-  /* ═══════════════════════════ FEDAPAY (legacy) ═══════════════════════════ */
+  /* ═══════════════════════════ FEDAPAY ═══════════════════════════ */
 
   private async handleFedapayWebhook(body: any) {
     const entity = body?.entity;
@@ -227,6 +58,8 @@ export class PaymentWebhookController {
     }
 
     try {
+      this.logger.log(`FedaPay event: ${eventType || 'unknown'}`);
+
       if (eventType === 'transaction.approved' || eventType === 'transaction.completed') {
         await this.handleTransactionApproved(entity);
       } else if (eventType === 'payout.sent' || eventType === 'payout.completed') {

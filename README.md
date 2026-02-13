@@ -15,7 +15,7 @@ Un système de parrainage à 2 niveaux récompense les parrains à chaque tâche
 | **Tâches** | Création admin, liste paginée, complétion utilisateur, crédit automatique au wallet |
 | **Portefeuille** | Solde en temps réel, historique de transactions, activation de compte (4 000 FCFA), retraits |
 | **Parrainage** | 2 niveaux (Niveau 1 : 40 %, Niveau 2 : 10 %), commissions automatiques, arbre de filleuls |
-| **Paiements** | Multi-provider (Flutterwave recommandé, FedaPay legacy, Mock dev), webhooks, Mobile Money |
+| **Paiements** | Multi-provider (FedaPay recommandé, Mock dev), webhooks, Mobile Money |
 | **Administration** | Dashboard admin, gestion utilisateurs (suspension/ban), statistiques globales |
 | **Sécurité** | Helmet (CSP, HSTS), rate limiting 3 paliers, CORS dynamique, validation DTOs |
 | **Pages légales** | CGU, Politique de confidentialité, Mentions légales |
@@ -31,7 +31,7 @@ Un système de parrainage à 2 niveaux récompense les parrains à chaque tâche
 | Backend | NestJS 10 · TypeScript · Prisma 6.19 · Nodemailer |
 | Base de données | PostgreSQL 16 (Docker) |
 | Auth | JWT (access 15 min + refresh 7 jours) · bcrypt · Google OAuth |
-| Paiements | Flutterwave (production) · FedaPay (legacy) · Mock (dev) |
+| Paiements | FedaPay (production) · Mock (dev) |
 | Monorepo | npm workspaces |
 | Runtime | Node.js 22+ |
 
@@ -52,7 +52,7 @@ XEARN/
 │   │       ├── tasks/          # Tâches & complétions
 │   │       ├── wallet/         # Portefeuille & transactions
 │   │       ├── referrals/      # Parrainage & commissions
-│   │       ├── payment/        # Paiements (Flutterwave, FedaPay, Mock)
+│   │       ├── payment/        # Paiements (FedaPay, Mock)
 │   │       ├── prisma/         # Service Prisma
 │   │       ├── app.module.ts
 │   │       └── main.ts
@@ -183,8 +183,7 @@ cd apps/api && npx ts-node prisma/seed.ts
 | `NEXTAUTH_SECRET` | — | Secret NextAuth |
 | `SMTP_HOST` | `smtp.gmail.com` | Serveur SMTP |
 | `SMTP_USER` / `SMTP_PASS` | — | Identifiants SMTP (Gmail app password) |
-| `PAYMENT_MODE` | `mock` | Mode de paiement (`mock` / `flutterwave` / `fedapay`) |
-| `FLW_SECRET_KEY` | — | Clé secrète Flutterwave |
+| `PAYMENT_MODE` | `fedapay` | Mode de paiement (`mock` / `fedapay`) |
 | `ACTIVATION_PRICE_FCFA` | `4000` | Prix d'activation du compte |
 | `WITHDRAWAL_MIN_FCFA` | `2000` | Montant minimum de retrait |
 | `REFERRAL_LEVEL1_PERCENT` | `40` | Commission parrainage niveau 1 |
@@ -222,7 +221,7 @@ Lorsqu'un filleul complète une tâche :
 - [x] Sécurité (Helmet CSP/HSTS, rate limiting 3 paliers, CORS dynamique)
 - [x] UX Mobile + Toasts
 - [x] Pages légales (CGU, Confidentialité, Mentions légales)
-- [x] Paiements Flutterwave (30+ pays africains, Mobile Money)
+- [x] Paiements FedaPay (Mobile Money)
 - [ ] Analytics avancés
 - [ ] Tests automatisés (Jest, Playwright)
 - [ ] Déploiement production (Vercel + Railway)

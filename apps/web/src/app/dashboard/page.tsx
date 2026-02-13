@@ -147,11 +147,11 @@ export default function DashboardPage() {
           <div className="flex items-center gap-4">
             <div className="w-3 h-3 bg-yellow-500 rounded-full animate-pulse" />
             <span className="text-dark-300">
-              Compte gratuit — Activez votre compte pour débloquer les retraits et le parrainage
+              Compte gratuit — Activez votre compte pour débloquer les retraits et le parrainage (paiement FedaPay)
             </span>
           </div>
           <button onClick={handleActivate} disabled={activating} className="btn-primary mt-4 disabled:opacity-50">
-            {activating ? 'Activation...' : 'Activer mon compte (4 000 FCFA)'}
+            {activating ? 'Activation...' : 'Activer mon compte (4 000 FCFA via FedaPay)'}
           </button>
         </div>
       )}

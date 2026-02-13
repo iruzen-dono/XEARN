@@ -73,9 +73,9 @@ export default function WalletPage() {
 
       if (result.status === 'pending' && result.paymentUrl) {
         // Paiement réel — rediriger vers la page de paiement
-        toast.info('Redirection vers la page de paiement...');
+        toast.info('Ouverture de la page de paiement FedaPay...');
         window.open(result.paymentUrl, '_blank');
-        toast.success('Finalisez le paiement dans la fenêtre ouverte. Votre compte sera activé automatiquement.');
+        toast.success('Finalisez le paiement FedaPay. Votre compte sera activé automatiquement.');
       } else {
         // Mock — activation immédiate
         toast.success('Compte activé avec succès !');
@@ -103,7 +103,7 @@ export default function WalletPage() {
       if (result.paymentStatus === 'completed') {
         toast.success('Retrait effectué avec succès !');
       } else {
-        toast.success('Demande de retrait envoyée ! En cours de traitement.');
+        toast.success('Demande de retrait envoyée à FedaPay. En cours de traitement.');
       }
 
       setShowWithdraw(false);
@@ -178,7 +178,7 @@ export default function WalletPage() {
   return (
     <div>
       <h1 className="text-3xl font-bold mb-2">Portefeuille</h1>
-      <p className="text-dark-400 mb-8">Gérez votre solde et vos paiements</p>
+      <p className="text-dark-400 mb-8">Gérez votre solde et vos retraits</p>
 
       {/* Balance card */}
       <div className="card bg-gradient-to-br from-primary-500/10 to-accent-500/10 border-primary-500/20 mb-8">
@@ -209,7 +209,7 @@ export default function WalletPage() {
         {user?.status !== 'ACTIVATED' && (
           <p className="text-dark-400 text-sm mt-3">
             <Smartphone className="w-4 h-4 inline mr-1" />
-            Paiement par Mobile Money (MTN, Moov, TMoney, Orange)
+            Paiement via FedaPay (MTN, Moov, TMoney, Orange)
           </p>
         )}
       </div>

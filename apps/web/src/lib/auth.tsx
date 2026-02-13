@@ -48,38 +48,7 @@ interface RegisterResult {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Token helpers
-function getStoredToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem('accessToken');
-}
-
-function getStoredRefreshToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem('refreshToken');
-}
-
-function getStoredUser(): User | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = localStorage.getItem('user');
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
-
-function storeAuth(accessToken: string, refreshToken: string, user: User) {
-  localStorage.setItem('accessToken', accessToken);
-  localStorage.setItem('refreshToken', refreshToken);
-  localStorage.setItem('user', JSON.stringify(user));
-}
-
-function clearAuth() {
-  localStorage.removeItem('accessToken');
-  localStorage.removeItem('refreshToken');
-  localStorage.removeItem('user');
-}
+const AUTH_SENTINEL = 'cookie';
 
 // Provider
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -90,16 +59,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Restore session from localStorage on mount
+  // Restore session from cookie (fetch profile)
   useEffect(() => {
-    const storedToken = getStoredToken();
-    const storedUser = getStoredUser();
+    const restore = async () => {
+      try {
+        const profile = await usersApi.getProfile(AUTH_SENTINEL, { skipAuthRedirect: true }) as User;
+        setUser(profile);
+        setToken(AUTH_SENTINEL);
+      } catch {
+        setUser(null);
+        setToken(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(storedUser);
-    }
-    setIsLoading(false);
+    restore();
   }, []);
 
   // Sync NextAuth Google session into local auth state
@@ -112,27 +87,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Only sync if the user explicitly clicked "Continue with Google"
     if (!sessionStorage.getItem('googleAuthPending')) return;
 
-    const apiAccessToken = (session as any)?.apiAccessToken as string | undefined;
     const apiRefreshToken = (session as any)?.apiRefreshToken as string | undefined;
     const apiUser = (session as any)?.apiUser as User | undefined;
 
-    if (!apiAccessToken || !apiRefreshToken || !apiUser) return;
+    if (!apiRefreshToken || !apiUser) return;
 
     // Clear the flag and sync
     sessionStorage.removeItem('googleAuthPending');
-    storeAuth(apiAccessToken, apiRefreshToken, apiUser);
-    setToken(apiAccessToken);
-    setUser(apiUser);
 
-    router.replace(apiUser.role === 'ADMIN' ? '/admin' : '/dashboard');
+    (async () => {
+      try {
+        await authApi.refresh(apiRefreshToken);
+      } catch {
+        // Ignore refresh failures here; user can retry login
+      }
+
+      setToken(AUTH_SENTINEL);
+      setUser(apiUser);
+
+      router.replace(apiUser.role === 'ADMIN' ? '/admin' : '/dashboard');
+    })();
   }, [sessionStatus, session, router, token]);
 
   // Listen for token refresh events from api.ts
   useEffect(() => {
     const handleAuthRefresh = (e: Event) => {
       const detail = (e as CustomEvent).detail;
-      if (detail?.accessToken) setToken(detail.accessToken);
-      if (detail?.user) setUser(detail.user);
+      if (detail?.user) {
+        setUser(detail.user);
+        setToken(AUTH_SENTINEL);
+      }
     };
     window.addEventListener('auth-refresh', handleAuthRefresh);
     return () => window.removeEventListener('auth-refresh', handleAuthRefresh);
@@ -164,26 +148,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [isLoading, token, user, pathname, router, sessionStatus]);
 
   const refreshUser = useCallback(async () => {
-    const currentToken = getStoredToken();
-    if (!currentToken) return;
     try {
-      const profile = await usersApi.getProfile(currentToken) as User;
+      const profile = await usersApi.getProfile(AUTH_SENTINEL) as User;
       setUser(profile);
-      localStorage.setItem('user', JSON.stringify(profile));
+      setToken(AUTH_SENTINEL);
     } catch {
-      const rt = getStoredRefreshToken();
-      if (rt) {
-        try {
-          const data = await authApi.refresh(rt) as any;
-          storeAuth(data.accessToken, data.refreshToken, data.user);
-          setToken(data.accessToken);
-          setUser(data.user);
-        } catch {
-          clearAuth();
-          setToken(null);
-          setUser(null);
-        }
-      }
+      setUser(null);
+      setToken(null);
     }
   }, []);
 
@@ -191,8 +162,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let fingerprint: string | undefined;
     try { fingerprint = await generateFingerprint(); } catch { /* ignore */ }
     const data = await authApi.login({ email, password, fingerprint }) as any;
-    storeAuth(data.accessToken, data.refreshToken, data.user);
-    setToken(data.accessToken);
+    setToken(AUTH_SENTINEL);
     setUser(data.user);
     router.push(data.user.role === 'ADMIN' ? '/admin' : '/dashboard');
   }, [router]);
@@ -205,15 +175,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       router.push(`/verify-email/pending?email=${encodeURIComponent(regData.email)}`);
       return { requiresEmailVerification: true, message: data.message };
     }
-    storeAuth(data.accessToken, data.refreshToken, data.user);
-    setToken(data.accessToken);
+    setToken(AUTH_SENTINEL);
     setUser(data.user);
     router.push('/dashboard');
     return {};
   }, [router]);
 
   const logout = useCallback(async () => {
-    clearAuth();
+    try {
+      await authApi.logout();
+    } catch { /* ignore */ }
     setToken(null);
     setUser(null);
     await nextAuthSignOut({ redirect: false });

@@ -241,9 +241,11 @@ export class AuthService {
       throw new BadRequestException('Token manquant');
     }
 
+    const tokenHash = this.hashToken(token);
+
     const user = await this.prisma.user.findFirst({
       where: {
-        emailVerificationToken: token,
+        emailVerificationToken: tokenHash,
         emailVerificationExpiresAt: { gt: new Date() },
       },
     });
@@ -319,12 +321,13 @@ export class AuthService {
     }
 
     const token = crypto.randomBytes(32).toString('hex');
+    const tokenHash = this.hashToken(token);
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1h
 
     await this.prisma.user.update({
       where: { id: user.id },
       data: {
-        passwordResetToken: token,
+        passwordResetToken: tokenHash,
         passwordResetExpiresAt: expiresAt,
       },
     });
@@ -339,9 +342,10 @@ export class AuthService {
   }
 
   async resetPassword(dto: ResetPasswordDto) {
+    const tokenHash = this.hashToken(dto.token);
     const user = await this.prisma.user.findFirst({
       where: {
-        passwordResetToken: dto.token,
+        passwordResetToken: tokenHash,
         passwordResetExpiresAt: { gt: new Date() },
       },
     });
@@ -383,12 +387,13 @@ export class AuthService {
 
   private async sendVerificationEmail(userId: string, email: string, firstName: string) {
     const token = crypto.randomBytes(32).toString('hex');
+    const tokenHash = this.hashToken(token);
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     await this.prisma.user.update({
       where: { id: userId },
       data: {
-        emailVerificationToken: token,
+        emailVerificationToken: tokenHash,
         emailVerificationExpiresAt: expiresAt,
       },
     });
@@ -561,6 +566,10 @@ export class AuthService {
 </body>
 </html>`,
     });
+  }
+
+  private hashToken(token: string) {
+    return crypto.createHash('sha256').update(token).digest('hex');
   }
 
   /** Shared mail transporter — avoids duplicating SMTP config */
