@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Bell, CheckCheck, X } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { notificationsApi } from '@/lib/api';
+import { timeAgo } from '@/lib/utils';
 
 const TYPE_ICONS: Record<string, string> = {
   WELCOME: '👋',
@@ -36,17 +37,18 @@ export default function NotificationBell() {
   // Fetch unread count periodically
   useEffect(() => {
     if (!token) return;
+    let cancelled = false;
 
     const fetchCount = async () => {
       try {
         const data = await notificationsApi.getUnreadCount(token);
-        setUnreadCount(data.count);
+        if (!cancelled) setUnreadCount(data.count);
       } catch { /* ignore */ }
     };
 
     fetchCount();
     const interval = setInterval(fetchCount, 30000); // every 30s
-    return () => clearInterval(interval);
+    return () => { cancelled = true; clearInterval(interval); };
   }, [token]);
 
   // Fetch notifications when opening dropdown
@@ -88,18 +90,6 @@ export default function NotificationBell() {
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
       setUnreadCount(0);
     } catch { /* ignore */ }
-  };
-
-  const timeAgo = (dateStr: string) => {
-    const diff = Date.now() - new Date(dateStr).getTime();
-    const minutes = Math.floor(diff / 60000);
-    if (minutes < 1) return 'À l\'instant';
-    if (minutes < 60) return `Il y a ${minutes}min`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `Il y a ${hours}h`;
-    const days = Math.floor(hours / 24);
-    if (days < 7) return `Il y a ${days}j`;
-    return new Date(dateStr).toLocaleDateString('fr-FR');
   };
 
   return (

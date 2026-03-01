@@ -14,6 +14,26 @@ export class WalletService {
     private notificationsService: NotificationsService,
   ) {}
 
+  // ── Fee rates by tier (percentage of withdrawal amount) ──
+  private getWithdrawalFeePercent(tier: string): number {
+    switch (tier) {
+      case 'VIP':     return 2;
+      case 'PREMIUM': return 5;
+      default:        return 10; // NORMAL
+    }
+  }
+
+  // ── Tier upgrade prices ──
+  private getTierUpgradePrice(targetTier: string): number {
+    switch (targetTier) {
+      case 'PREMIUM': return this.configService.get<number>('PREMIUM_PRICE_FCFA') || 10000;
+      case 'VIP':     return this.configService.get<number>('VIP_PRICE_FCFA') || 25000;
+      default: return 0;
+    }
+  }
+
+  private readonly TIER_ORDER = ['NORMAL', 'PREMIUM', 'VIP'] as const;
+
   async getWallet(userId: string) {
     const wallet = await this.prisma.wallet.findUnique({ where: { userId } });
     if (!wallet) return null;
@@ -132,32 +152,36 @@ export class WalletService {
 
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      include: { wallet: true },
     });
 
     if (!user || user.status !== 'ACTIVATED') {
       throw new BadRequestException('Compte non activé');
     }
-
-    if (!user.wallet || user.wallet.balance.lessThan(new Decimal(amount))) {
-      throw new BadRequestException('Solde insuffisant');
-    }
-
+    // Calculate withdrawal fee based on tier
+    const feePercent = this.getWithdrawalFeePercent(user.tier);
+    const feeAmount = Math.round(amount * feePercent / 100);
+    const netAmount = amount - feeAmount;
     const provider = this.paymentService.getProvider();
 
-    // Transaction atomique : débiter le wallet + créer le retrait
+    // Transaction atomique : vérifier le solde + débiter le wallet + créer le retrait
     const result = await this.prisma.$transaction(async (tx) => {
+      // Re-check balance inside transaction to prevent race conditions
+      const wallet = await tx.wallet.findUnique({ where: { userId } });
+      if (!wallet || wallet.balance.lessThan(new Decimal(amount))) {
+        throw new BadRequestException('Solde insuffisant');
+      }
+
       // Débiter le wallet
       await tx.wallet.update({
         where: { userId },
         data: { balance: { decrement: amount } },
       });
 
-      // Créer le retrait
+      // Créer le retrait (montant net après frais)
       const withdrawal = await tx.withdrawal.create({
         data: {
           userId,
-          amount,
+          amount: netAmount,
           method: method as any,
           accountInfo,
         },
@@ -170,8 +194,8 @@ export class WalletService {
           type: 'WITHDRAWAL',
           status: 'PENDING',
           amount,
-          description: `Retrait via ${method}`,
-          metadata: { withdrawalId: withdrawal.id },
+          description: `Retrait via ${method} (frais ${feePercent}% = ${feeAmount} FCFA, net = ${netAmount} FCFA)`,
+          metadata: { withdrawalId: withdrawal.id, feePercent, feeAmount, netAmount },
         },
       });
 
@@ -203,7 +227,7 @@ export class WalletService {
             data: { status: 'COMPLETED', processedAt: new Date() },
           }),
           this.prisma.transaction.updateMany({
-            where: { userId, type: 'WITHDRAWAL', status: 'PENDING' },
+            where: { userId, type: 'WITHDRAWAL', status: 'PENDING', metadata: { path: ['withdrawalId'], equals: result.id } },
             data: { status: 'COMPLETED' },
           }),
         ]);
@@ -333,5 +357,101 @@ export class WalletService {
     } catch (err) { /* ignore */ }
 
     return result;
+  }
+
+  // ═══════════════════════════════════════════════════
+  // TIER UPGRADE (Premium / VIP)
+  // ═══════════════════════════════════════════════════
+  async upgradeTier(userId: string, targetTier: 'PREMIUM' | 'VIP') {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { wallet: true },
+    });
+    if (!user) throw new BadRequestException('Utilisateur introuvable');
+    if (user.status !== 'ACTIVATED') throw new BadRequestException('Compte non activé — activez d\'abord votre compte');
+
+    const currentIdx = this.TIER_ORDER.indexOf(user.tier as any);
+    const targetIdx = this.TIER_ORDER.indexOf(targetTier);
+    if (targetIdx <= currentIdx) {
+      throw new BadRequestException(`Vous êtes déjà ${user.tier} — impossible de passer à ${targetTier}`);
+    }
+
+    const price = this.getTierUpgradePrice(targetTier);
+    const provider = this.paymentService.getProvider();
+
+    const result = await provider.collect({
+      amount: price,
+      description: `Upgrade vers ${targetTier} XEARN — ${user.firstName} ${user.lastName}`,
+      customerEmail: user.email || undefined,
+      customerName: `${user.firstName} ${user.lastName}`,
+      customerPhone: user.phone || undefined,
+      callbackMeta: { userId, type: 'tier_upgrade', targetTier },
+    });
+
+    if (result.status === 'completed') {
+      await this.prisma.$transaction([
+        this.prisma.user.update({
+          where: { id: userId },
+          data: { tier: targetTier },
+        }),
+        this.prisma.transaction.create({
+          data: {
+            userId,
+            type: 'TIER_UPGRADE',
+            status: 'COMPLETED',
+            amount: price,
+            description: `Upgrade vers ${targetTier}`,
+            metadata: { providerTransactionId: result.providerTransactionId, targetTier },
+          },
+        }),
+      ]);
+      return { success: true, message: `Félicitations ! Vous êtes maintenant ${targetTier}`, status: 'completed', tier: targetTier };
+    }
+
+    if (result.status === 'pending' && result.paymentUrl) {
+      await this.prisma.transaction.create({
+        data: {
+          userId,
+          type: 'TIER_UPGRADE',
+          status: 'PENDING',
+          amount: price,
+          description: `Upgrade ${targetTier} en attente de paiement`,
+          metadata: { providerTransactionId: result.providerTransactionId, targetTier },
+        },
+      });
+      return {
+        success: true,
+        message: result.message,
+        status: 'pending',
+        paymentUrl: result.paymentUrl,
+        providerTransactionId: result.providerTransactionId,
+      };
+    }
+
+    throw new BadRequestException(result.message || 'Erreur lors du paiement');
+  }
+
+  // Get withdrawal fee info for a user (used by frontend)
+  async getWithdrawalFees(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new BadRequestException('Utilisateur introuvable');
+    const feePercent = this.getWithdrawalFeePercent(user.tier);
+    return {
+      tier: user.tier,
+      feePercent,
+      tiers: {
+        NORMAL:  { feePercent: 10 },
+        PREMIUM: { feePercent: 5 },
+        VIP:     { feePercent: 2 },
+      },
+    };
+  }
+
+  // Get tier upgrade pricing
+  getTierPricing() {
+    return {
+      PREMIUM: { price: this.configService.get<number>('PREMIUM_PRICE_FCFA') || 10000 },
+      VIP:     { price: this.configService.get<number>('VIP_PRICE_FCFA') || 25000 },
+    };
   }
 }

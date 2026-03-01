@@ -12,6 +12,7 @@ import { ReferralsModule } from './referrals/referrals.module';
 import { WalletModule } from './wallet/wallet.module';
 import { PaymentModule } from './payment/payment.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { AdsModule } from './ads/ads.module';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { NotificationsModule } from './notifications/notifications.module';
     WalletModule,
     PaymentModule,
     NotificationsModule,
+    AdsModule,
   ],
   providers: [
     {

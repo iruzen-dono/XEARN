@@ -11,10 +11,11 @@ export class TasksController {
 
   @UseGuards(JwtAuthGuard)
   @Get()
-  async findAll(@Query('page') page?: string, @Query('limit') limit?: string) {
+  async findAll(@Request() req: any, @Query('page') page?: string, @Query('limit') limit?: string) {
     return this.tasksService.findAll(
-      page ? parseInt(page) : 1,
-      limit ? parseInt(limit) : 20,
+      req.user.id,
+      Math.max(1, parseInt(page || '') || 1),
+      Math.min(Math.max(1, parseInt(limit || '') || 20), 100),
     );
   }
 
@@ -44,8 +45,8 @@ export class TasksController {
   @Get('admin/all')
   async findAllAdmin(@Query('page') page?: string, @Query('limit') limit?: string) {
     return this.tasksService.findAllAdmin(
-      page ? parseInt(page) : 1,
-      limit ? parseInt(limit) : 20,
+      Math.max(1, parseInt(page || '') || 1),
+      Math.min(Math.max(1, parseInt(limit || '') || 20), 100),
     );
   }
 

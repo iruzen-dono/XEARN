@@ -8,9 +8,13 @@ import * as cookieParser from 'cookie-parser';
 import { randomUUID } from 'crypto';
 import { AppModule } from './app.module';
 import { ACCESS_TOKEN_COOKIE, CSRF_TOKEN_COOKIE } from './auth/auth.cookies';
+import { SanitizeInterceptor } from './common/sanitize.interceptor';
+import { StructuredLogger } from './common/structured-logger';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    logger: new StructuredLogger(),
+  });
   const logger = new Logger('HTTP');
 
   const configService = app.get(ConfigService);
@@ -79,13 +83,28 @@ async function bootstrap() {
     }),
   );
 
+  // Sanitization globale — strip HTML tags des réponses API (défense en profondeur)
+  app.useGlobalInterceptors(new SanitizeInterceptor());
+
   // CSRF (double submit cookie)
   app.use((req: Request, res: Response, next: NextFunction) => {
     const method = req.method.toUpperCase();
     if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') return next();
 
-    const path = req.path || '';
-    if (path.startsWith('/api/auth') || path.startsWith('/api/payment/webhook')) return next();
+    // CSRF exempt: auth registration/login routes, password reset, email verification, and payment webhooks
+    // Note: /api/auth/logout is NOT exempted — it requires CSRF protection
+    const csrfExempt = [
+      '/api/auth/register',
+      '/api/auth/login',
+      '/api/auth/refresh',
+      '/api/auth/google',
+      '/api/auth/forgot-password',
+      '/api/auth/reset-password',
+      '/api/auth/resend-verification',
+      '/api/auth/verify-email',
+      '/api/payment/webhook',
+    ];
+    if (csrfExempt.some((prefix) => req.path.startsWith(prefix))) return next();
 
     const accessToken = (req as any)?.cookies?.[ACCESS_TOKEN_COOKIE];
     if (!accessToken) return next();
@@ -108,8 +127,15 @@ async function bootstrap() {
 
   app.enableCors({
     origin: (origin, callback) => {
-      // Autorise les requêtes sans origin (mobile, curl, etc.) en dev
-      if (!origin || allowedOrigins.includes(origin)) {
+      // En production, rejeter les requêtes sans origin (sauf healthcheck/curl)
+      const isProduction = configService.get('NODE_ENV') === 'production';
+      if (!origin) {
+        if (isProduction) {
+          callback(new Error('Origin manquante — requête rejetée en production'));
+        } else {
+          callback(null, true);
+        }
+      } else if (allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
         callback(new Error(`Origin ${origin} non autorisée par CORS`));
@@ -117,7 +143,7 @@ async function bootstrap() {
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token'],
     maxAge: 86400, // preflight cache 24h
   });
 

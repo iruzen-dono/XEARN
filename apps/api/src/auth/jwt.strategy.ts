@@ -35,6 +35,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('Compte suspendu ou banni');
     }
 
-    return { id: user.id, email: user.email, role: user.role, status: user.status };
+    return { id: user.id, email: user.email, role: user.role, status: user.status, tier: (user as any).tier || 'NORMAL' };
   }
 }

@@ -23,16 +23,28 @@ export class TasksService {
     private notificationsService: NotificationsService,
   ) {}
 
-  async findAll(page = 1, limit = 20) {
+  private readonly TIER_ORDER = ['NORMAL', 'PREMIUM', 'VIP'] as const;
+
+  private tierSatisfied(userTier: string, requiredTier: string): boolean {
+    return this.TIER_ORDER.indexOf(userTier as any) >= this.TIER_ORDER.indexOf(requiredTier as any);
+  }
+
+  async findAll(userId: string, page = 1, limit = 20) {
+    // Fetch user tier to filter visible tasks
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { tier: true } });
+    const userTier = user?.tier || 'NORMAL';
+    const accessibleTiers = this.TIER_ORDER.slice(0, this.TIER_ORDER.indexOf(userTier as any) + 1);
+
     const skip = (page - 1) * limit;
+    const where = { status: 'ACTIVE' as const, requiredTier: { in: accessibleTiers as any } };
     const [tasks, total] = await Promise.all([
       this.prisma.task.findMany({
         skip,
         take: limit,
-        where: { status: 'ACTIVE' },
+        where,
         orderBy: { createdAt: 'desc' },
       }),
-      this.prisma.task.count({ where: { status: 'ACTIVE' } }),
+      this.prisma.task.count({ where }),
     ]);
     return { tasks, total, page, limit };
   }
@@ -54,6 +66,7 @@ export class TasksService {
     mediaUrl?: string;
     externalUrl?: string;
     maxCompletions?: number;
+    requiredTier?: 'NORMAL' | 'PREMIUM' | 'VIP';
   }) {
     return this.prisma.task.create({ data });
   }
@@ -67,6 +80,11 @@ export class TasksService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user || user.status !== 'ACTIVATED') {
       throw new BadRequestException('Compte non activé — activez votre compte pour gagner des récompenses');
+    }
+
+    // Vérifier le tier requis
+    if (!this.tierSatisfied(user.tier, task.requiredTier)) {
+      throw new BadRequestException(`Cette tâche nécessite le niveau ${task.requiredTier}`);
     }
 
     // Vérifier si déjà complétée
@@ -192,6 +210,11 @@ export class TasksService {
       throw new BadRequestException('Compte non activé — activez votre compte pour gagner des récompenses');
     }
 
+    // Vérifier le tier requis
+    if (!this.tierSatisfied(user.tier, task.requiredTier)) {
+      throw new BadRequestException(`Cette tâche nécessite le niveau ${task.requiredTier}`);
+    }
+
     // Vérifier si déjà complétée
     const existing = await this.prisma.taskCompletion.findUnique({
       where: { userId_taskId: { userId, taskId } },
@@ -249,6 +272,7 @@ export class TasksService {
     mediaUrl?: string;
     externalUrl?: string;
     maxCompletions?: number;
+    requiredTier?: 'NORMAL' | 'PREMIUM' | 'VIP';
   }) {
     const task = await this.prisma.task.findUnique({ where: { id: taskId } });
     if (!task) throw new NotFoundException('Tâche introuvable');
@@ -258,6 +282,10 @@ export class TasksService {
   async deleteTask(taskId: string) {
     const task = await this.prisma.task.findUnique({ where: { id: taskId } });
     if (!task) throw new NotFoundException('Tâche introuvable');
-    return this.prisma.task.delete({ where: { id: taskId } });
+    // Soft-delete: archive the task instead of destroying it (preserves history)
+    return this.prisma.task.update({
+      where: { id: taskId },
+      data: { status: 'EXPIRED' },
+    });
   }
 }

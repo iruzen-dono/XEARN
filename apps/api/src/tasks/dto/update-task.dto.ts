@@ -1,6 +1,6 @@
 import { IsString, IsNumber, IsOptional, IsUrl, IsEnum, Min, Max, MinLength, MaxLength } from 'class-validator';
 import { Transform } from 'class-transformer';
-import { TaskType } from './create-task.dto';
+import { TaskType, AccountTierDto } from './create-task.dto';
 
 const sanitize = (v: any) => (typeof v === 'string' ? v.trim().replace(/<[^>]*>/g, '') : v);
 
@@ -41,4 +41,8 @@ export class UpdateTaskDto {
   @Min(1)
   @Max(1000000)
   maxCompletions?: number;
+
+  @IsOptional()
+  @IsEnum(AccountTierDto, { message: 'Tier requis invalide (NORMAL, PREMIUM, VIP)' })
+  requiredTier?: AccountTierDto;
 }

@@ -26,7 +26,7 @@ export class AuthController {
         refreshToken: (result as any).refreshToken,
       });
     }
-    return this.filterAuthResponse(result, req);
+    return this.filterAuthResponse(result);
   }
 
   // 10 tentatives par minute pour login (anti brute-force)
@@ -43,7 +43,7 @@ export class AuthController {
         refreshToken: (result as any).refreshToken,
       });
     }
-    return this.filterAuthResponse(result, req);
+    return this.filterAuthResponse(result);
   }
 
   // 15 tentatives par minute pour refresh
@@ -60,7 +60,7 @@ export class AuthController {
         refreshToken: (result as any).refreshToken,
       });
     }
-    return this.filterAuthResponse(result, req);
+    return this.filterAuthResponse(result);
   }
 
   @Throttle({ default: { ttl: 60000, limit: 5 } })
@@ -74,6 +74,7 @@ export class AuthController {
     return this.authService.verifyEmail(token);
   }
 
+  @Throttle({ default: { ttl: 60000, limit: 10 } })
   @Post('google')
   async googleAuth(@Body() dto: GoogleAuthDto, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const result = await this.authService.googleAuth(dto);
@@ -83,7 +84,9 @@ export class AuthController {
         refreshToken: (result as any).refreshToken,
       });
     }
-    return this.filterAuthResponse(result, req);
+    // Return tokens in body — the NextAuth server-side callback needs them
+    // (cookies are only useful for browser requests, not server-to-server)
+    return result;
   }
 
   // 3 tentatives par minute pour forgot-password (anti-spam)
@@ -108,12 +111,10 @@ export class AuthController {
     return { success: true };
   }
 
-  private filterAuthResponse(result: any, req: Request) {
-    const wantsTokens = String(req.headers['x-auth-raw-tokens'] || '').toLowerCase() === 'true';
-    if (wantsTokens) return result;
-
+  private filterAuthResponse(result: any) {
     if (result?.accessToken || result?.refreshToken) {
-      return { user: result.user };
+      const { accessToken, refreshToken, ...rest } = result;
+      return rest;
     }
     return result;
   }

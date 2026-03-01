@@ -39,7 +39,25 @@ export class ReferralsService {
       },
     });
 
-    return { level1, level2 };
+    // Niveau 3 : filleuls des filleuls des filleuls (VIP only)
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { tier: true } });
+    let level3: any[] = [];
+    if (user?.tier === 'VIP') {
+      const level2Ids = level2.map((u) => u.id);
+      level3 = await this.prisma.user.findMany({
+        where: { referredById: { in: level2Ids } },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          status: true,
+          createdAt: true,
+          referredById: true,
+        },
+      });
+    }
+
+    return { level1, level2, level3 };
   }
 
   async getCommissions(userId: string, page = 1, limit = 20) {
@@ -64,12 +82,21 @@ export class ReferralsService {
   async getStats(userId: string) {
     const l1Percent = this.configService.get<number>('REFERRAL_LEVEL1_PERCENT') || 40;
     const l2Percent = this.configService.get<number>('REFERRAL_LEVEL2_PERCENT') || 10;
+    const l3Percent = this.configService.get<number>('REFERRAL_LEVEL3_PERCENT') || 5;
 
-    const [totalLevel1, totalLevel2, totalCommissions, commissionsL1, commissionsL2] = await Promise.all([
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { tier: true } });
+
+    const [totalLevel1, totalLevel2, totalLevel3, totalCommissions, commissionsL1, commissionsL2, commissionsL3] = await Promise.all([
       this.prisma.user.count({ where: { referredById: userId } }),
       this.prisma.user.count({
         where: {
           referredBy: { referredById: userId },
+        },
+      }),
+      // Level 3 count (relevant for VIP)
+      this.prisma.user.count({
+        where: {
+          referredBy: { referredBy: { referredById: userId } },
         },
       }),
       this.prisma.commission.aggregate({
@@ -84,16 +111,25 @@ export class ReferralsService {
         where: { beneficiaryId: userId, level: 2 },
         _sum: { amount: true },
       }),
+      this.prisma.commission.aggregate({
+        where: { beneficiaryId: userId, level: 3 },
+        _sum: { amount: true },
+      }),
     ]);
 
     return {
       totalLevel1,
       totalLevel2,
-      totalCommissions: totalCommissions._sum.amount || new Decimal(0),
-      commissionsL1: commissionsL1._sum.amount || new Decimal(0),
-      commissionsL2: commissionsL2._sum.amount || new Decimal(0),
+      totalLevel3,
+      totalCommissions: Number(totalCommissions._sum.amount || 0),
+      commissionsL1: Number(commissionsL1._sum.amount || 0),
+      commissionsL2: Number(commissionsL2._sum.amount || 0),
+      commissionsL3: Number(commissionsL3._sum.amount || 0),
       l1Percent,
       l2Percent,
+      l3Percent,
+      userTier: user?.tier || 'NORMAL',
+      l3Active: user?.tier === 'VIP',
     };
   }
 
@@ -103,7 +139,11 @@ export class ReferralsService {
       where: { id: userId },
       include: {
         referredBy: {
-          include: { referredBy: true },
+          include: {
+            referredBy: {
+              include: { referredBy: true },
+            },
+          },
         },
       },
     });
@@ -112,12 +152,16 @@ export class ReferralsService {
 
     const l1Percent = this.configService.get<number>('REFERRAL_LEVEL1_PERCENT') || 40;
     const l2Percent = this.configService.get<number>('REFERRAL_LEVEL2_PERCENT') || 10;
+    const l3Percent = this.configService.get<number>('REFERRAL_LEVEL3_PERCENT') || 5;
+
+    // Single atomic transaction for both L1 and L2 commissions
+    const operations: any[] = [];
 
     // Commission niveau 1
     if (user.referredBy.status === 'ACTIVATED') {
       const commissionL1 = amount.mul(l1Percent).div(100);
 
-      await this.prisma.$transaction([
+      operations.push(
         this.prisma.commission.create({
           data: {
             beneficiaryId: user.referredBy.id,
@@ -143,21 +187,14 @@ export class ReferralsService {
             description: `Commission N1 - ${user.firstName} ${user.lastName}`,
           },
         }),
-      ]);
-
-      // Notifier le parrain L1
-      try {
-        await this.notificationsService.notifyCommission(
-          user.referredBy.id, Number(commissionL1), 1, `${user.firstName} ${user.lastName}`,
-        );
-      } catch (err) { /* ignore */ }
+      );
     }
 
     // Commission niveau 2
     if (user.referredBy.referredBy?.status === 'ACTIVATED') {
       const commissionL2 = amount.mul(l2Percent).div(100);
 
-      await this.prisma.$transaction([
+      operations.push(
         this.prisma.commission.create({
           data: {
             beneficiaryId: user.referredBy.referredBy.id,
@@ -183,12 +220,71 @@ export class ReferralsService {
             description: `Commission N2 - ${user.firstName} ${user.lastName}`,
           },
         }),
-      ]);
+      );
+    }
 
-      // Notifier le parrain L2
+    // Commission niveau 3 (VIP uniquement)
+    const l3Beneficiary = user.referredBy.referredBy?.referredBy;
+    if (l3Beneficiary?.status === 'ACTIVATED' && (l3Beneficiary as any).tier === 'VIP') {
+      const commissionL3 = amount.mul(l3Percent).div(100);
+
+      operations.push(
+        this.prisma.commission.create({
+          data: {
+            beneficiaryId: l3Beneficiary.id,
+            sourceUserId: userId,
+            level: 3,
+            percentage: l3Percent,
+            amount: commissionL3,
+          },
+        }),
+        this.prisma.wallet.update({
+          where: { userId: l3Beneficiary.id },
+          data: {
+            balance: { increment: commissionL3 },
+            totalEarned: { increment: commissionL3 },
+          },
+        }),
+        this.prisma.transaction.create({
+          data: {
+            userId: l3Beneficiary.id,
+            type: 'REFERRAL_L3',
+            status: 'COMPLETED',
+            amount: commissionL3,
+            description: `Commission N3 VIP - ${user.firstName} ${user.lastName}`,
+          },
+        }),
+      );
+    }
+
+    if (operations.length > 0) {
+      await this.prisma.$transaction(operations);
+    }
+
+    // Notifications (outside transaction — non-critical)
+    if (user.referredBy.status === 'ACTIVATED') {
+      const commissionL1 = amount.mul(l1Percent).div(100);
+      try {
+        await this.notificationsService.notifyCommission(
+          user.referredBy.id, Number(commissionL1), 1, `${user.firstName} ${user.lastName}`,
+        );
+      } catch (err) { /* ignore */ }
+    }
+
+    if (user.referredBy.referredBy?.status === 'ACTIVATED') {
+      const commissionL2 = amount.mul(l2Percent).div(100);
       try {
         await this.notificationsService.notifyCommission(
           user.referredBy.referredBy.id, Number(commissionL2), 2, `${user.firstName} ${user.lastName}`,
+        );
+      } catch (err) { /* ignore */ }
+    }
+
+    if (l3Beneficiary?.status === 'ACTIVATED' && (l3Beneficiary as any).tier === 'VIP') {
+      const commissionL3 = amount.mul(l3Percent).div(100);
+      try {
+        await this.notificationsService.notifyCommission(
+          l3Beneficiary.id, Number(commissionL3), 3, `${user.firstName} ${user.lastName}`,
         );
       } catch (err) { /* ignore */ }
     }

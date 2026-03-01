@@ -13,6 +13,13 @@ const statusColors: Record<string, string> = {
   SUSPENDED: 'bg-yellow-500/10 text-yellow-400',
   BANNED: 'bg-red-500/10 text-red-400',
 };
+const statusLabels: Record<string, string> = {
+  ALL: 'Tous',
+  FREE: 'Gratuit',
+  ACTIVATED: 'Activé',
+  SUSPENDED: 'Suspendu',
+  BANNED: 'Banni',
+};
 
 export default function AdminUsersPage() {
   const { token } = useAuth();
@@ -106,7 +113,7 @@ export default function AdminUsersPage() {
                     : 'bg-dark-800 text-dark-400 hover:text-white border border-dark-700'
                 }`}
               >
-                {s === 'ALL' ? 'Tous' : s}
+                {statusLabels[s] || s}
               </button>
             ))}
           </div>
@@ -144,7 +151,7 @@ export default function AdminUsersPage() {
                     <td className="py-3 text-dark-400 hidden md:table-cell">{u.phone || '—'}</td>
                     <td className="py-3">
                       <span className={`text-xs px-2 py-1 rounded-full ${statusColors[u.status] || 'bg-dark-800 text-dark-400'}`}>
-                        {u.status}
+                        {statusLabels[u.status] || u.status}
                       </span>
                     </td>
                     <td className="py-3 text-dark-300 hidden lg:table-cell">
@@ -159,19 +166,19 @@ export default function AdminUsersPage() {
                       ) : (
                         <div className="flex gap-1 justify-end">
                           {u.status !== 'ACTIVATED' && (
-                            <button onClick={() => handleAction(u.id, 'activate')} title="Activer"
+                            <button onClick={() => handleAction(u.id, 'activate')} title="Activer" aria-label="Activer l'utilisateur"
                               className="p-1.5 rounded-lg text-green-400 hover:bg-green-500/10 transition-colors">
                               <UserCheck className="w-4 h-4" />
                             </button>
                           )}
                           {u.status !== 'SUSPENDED' && (
-                            <button onClick={() => handleAction(u.id, 'suspend')} title="Suspendre"
+                            <button onClick={() => handleAction(u.id, 'suspend')} title="Suspendre" aria-label="Suspendre l'utilisateur"
                               className="p-1.5 rounded-lg text-yellow-400 hover:bg-yellow-500/10 transition-colors">
                               <Shield className="w-4 h-4" />
                             </button>
                           )}
                           {u.status !== 'BANNED' && (
-                            <button onClick={() => handleAction(u.id, 'ban')} title="Bannir"
+                            <button onClick={() => handleAction(u.id, 'ban')} title="Bannir" aria-label="Bannir l'utilisateur"
                               className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors">
                               <Ban className="w-4 h-4" />
                             </button>
@@ -188,11 +195,13 @@ export default function AdminUsersPage() {
           {totalPages > 1 && (
             <div className="flex items-center justify-center gap-4 mt-6">
               <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
+                aria-label="Page précédente"
                 className="p-2 rounded-lg bg-dark-800 text-dark-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
                 <ChevronLeft className="w-5 h-5" />
               </button>
               <span className="text-sm text-dark-400">Page {page} / {totalPages}</span>
               <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+                aria-label="Page suivante"
                 className="p-2 rounded-lg bg-dark-800 text-dark-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
                 <ChevronRight className="w-5 h-5" />
               </button>

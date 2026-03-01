@@ -14,6 +14,13 @@ const statusColors: Record<string, string> = {
   EXPIRED: 'bg-dark-700 text-dark-400',
 };
 
+const statusLabels: Record<string, string> = {
+  ACTIVE: 'Active',
+  PAUSED: 'En pause',
+  COMPLETED: 'Terminée',
+  EXPIRED: 'Expirée',
+};
+
 export default function AdminTasksPage() {
   const { token } = useAuth();
   const toast = useToast();
@@ -228,7 +235,7 @@ export default function AdminTasksPage() {
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className="font-semibold truncate">{task.title}</h3>
                     <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${statusColors[task.status] || ''}`}>
-                      {task.status}
+                      {statusLabels[task.status] || task.status}
                     </span>
                   </div>
                   <div className="text-dark-500 text-xs flex flex-wrap gap-3">
@@ -244,18 +251,19 @@ export default function AdminTasksPage() {
                     <Loader2 className="w-4 h-4 animate-spin text-dark-400" />
                   ) : (
                     <>
-                      <button onClick={() => openEdit(task)} title="Modifier"
+                      <button onClick={() => openEdit(task)} title="Modifier" aria-label="Modifier la tâche"
                         className="p-2 rounded-lg text-primary-400 hover:bg-primary-500/10 transition-colors">
                         <Pencil className="w-4 h-4" />
                       </button>
                       <button onClick={() => handleToggle(task.id)}
                         title={task.status === 'ACTIVE' ? 'Mettre en pause' : 'Activer'}
+                        aria-label={task.status === 'ACTIVE' ? 'Mettre en pause la tâche' : 'Activer la tâche'}
                         className={`p-2 rounded-lg transition-colors ${
                           task.status === 'ACTIVE' ? 'text-yellow-400 hover:bg-yellow-500/10' : 'text-green-400 hover:bg-green-500/10'
                         }`}>
                         {task.status === 'ACTIVE' ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                       </button>
-                      <button onClick={() => handleDelete(task.id)} title="Supprimer"
+                      <button onClick={() => handleDelete(task.id)} title="Supprimer" aria-label="Supprimer la tâche"
                         className="p-2 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors">
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -269,11 +277,13 @@ export default function AdminTasksPage() {
           {totalPages > 1 && (
             <div className="flex items-center justify-center gap-4 mt-6">
               <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
+                aria-label="Page précédente"
                 className="p-2 rounded-lg bg-dark-800 text-dark-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed">
                 <ChevronLeft className="w-5 h-5" />
               </button>
               <span className="text-sm text-dark-400">Page {page} / {totalPages}</span>
               <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+                aria-label="Page suivante"
                 className="p-2 rounded-lg bg-dark-800 text-dark-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed">
                 <ChevronRight className="w-5 h-5" />
               </button>

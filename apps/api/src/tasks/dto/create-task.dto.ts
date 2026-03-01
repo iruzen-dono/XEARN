@@ -10,6 +10,12 @@ export enum TaskType {
   SPONSORED = 'SPONSORED',
 }
 
+export enum AccountTierDto {
+  NORMAL = 'NORMAL',
+  PREMIUM = 'PREMIUM',
+  VIP = 'VIP',
+}
+
 export class CreateTaskDto {
   @IsString()
   @MinLength(1, { message: 'Le titre ne peut pas être vide' })
@@ -44,4 +50,8 @@ export class CreateTaskDto {
   @Min(1)
   @Max(1000000)
   maxCompletions?: number;
+
+  @IsOptional()
+  @IsEnum(AccountTierDto, { message: 'Tier requis invalide (NORMAL, PREMIUM, VIP)' })
+  requiredTier?: AccountTierDto;
 }

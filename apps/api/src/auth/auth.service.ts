@@ -4,6 +4,8 @@ import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import * as nodemailer from 'nodemailer';
+import * as fs from 'fs';
+import * as path from 'path';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AntiCheatService } from './anti-cheat.service';
@@ -83,11 +85,14 @@ export class AuthService {
     // Anti-triche : enregistrer l'empreinte
     if (dto.fingerprint) {
       try {
-        await this.antiCheatService.recordFingerprint(user.id, {
+        const check = await this.antiCheatService.recordFingerprint(user.id, {
           fingerprint: dto.fingerprint,
           ipAddress: ctx?.ip,
           userAgent: ctx?.userAgent,
         });
+        if (check?.suspicious) {
+          console.warn(`[AntiCheat] Multi-compte détecté à l'inscription : user=${user.id}, comptes liés=${check.matchedAccounts.join(',')}`);
+        }
       } catch (err) { /* ignore */ }
     }
 
@@ -165,11 +170,14 @@ export class AuthService {
     // Anti-triche : enregistrer l'empreinte
     if (dto.fingerprint) {
       try {
-        await this.antiCheatService.recordFingerprint(user.id, {
+        const check = await this.antiCheatService.recordFingerprint(user.id, {
           fingerprint: dto.fingerprint,
           ipAddress: ctx?.ip,
           userAgent: ctx?.userAgent,
         });
+        if (check?.suspicious) {
+          console.warn(`[AntiCheat] Multi-compte détecté au login : user=${user.id}, comptes liés=${check.matchedAccounts.join(',')}`);
+        }
       } catch (err) { /* ignore */ }
     }
 
@@ -219,7 +227,8 @@ export class AuthService {
         },
         ...tokens,
       };
-    } catch {
+    } catch (err) {
+      if (err instanceof UnauthorizedException) throw err;
       throw new UnauthorizedException('Token invalide');
     }
   }
@@ -402,8 +411,13 @@ export class AuthService {
     const verifyUrl = `${webUrl}/verify-email?token=${token}`;
 
     const transporter = this.getMailTransporter();
-
     const from = this.configService.get('SMTP_FROM') || this.configService.get('SMTP_USER');
+
+    const html = this.loadTemplate('verification-email.html', {
+      firstName,
+      verifyUrl,
+      year: String(new Date().getFullYear()),
+    });
 
     await transporter.sendMail({
       from: `"XEARN" <${from}>`,
@@ -425,62 +439,7 @@ export class AuthService {
         'Cordialement,',
         'L\'équipe XEARN',
       ].join('\n'),
-      html: `
-<!DOCTYPE html>
-<html lang="fr">
-<head><meta charset="UTF-8"></head>
-<body style="margin:0;padding:0;background-color:#f4f4f7;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f7;padding:40px 0;">
-    <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-        <!-- Header -->
-        <tr>
-          <td style="background-color:#6366f1;padding:32px 40px;text-align:center;">
-            <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:1px;">XEARN</h1>
-          </td>
-        </tr>
-        <!-- Body -->
-        <tr>
-          <td style="padding:40px;">
-            <h2 style="margin:0 0 16px;color:#1a1a2e;font-size:22px;font-weight:600;">Bienvenue sur XEARN, ${firstName} !</h2>
-            <p style="margin:0 0 16px;color:#4a4a68;font-size:15px;line-height:1.6;">
-              Merci de vous être inscrit(e) sur notre plateforme. Pour activer votre compte et commencer à utiliser XEARN, veuillez confirmer votre adresse e-mail.
-            </p>
-            <table width="100%" cellpadding="0" cellspacing="0" style="margin:24px 0;">
-              <tr><td align="center">
-                <a href="${verifyUrl}" style="display:inline-block;background-color:#6366f1;color:#ffffff;text-decoration:none;font-size:16px;font-weight:600;padding:14px 36px;border-radius:6px;">
-                  Confirmer mon adresse e-mail
-                </a>
-              </td></tr>
-            </table>
-            <p style="margin:0 0 8px;color:#4a4a68;font-size:14px;line-height:1.6;">
-              Ou copiez-collez ce lien dans votre navigateur :
-            </p>
-            <p style="margin:0 0 24px;word-break:break-all;">
-              <a href="${verifyUrl}" style="color:#6366f1;font-size:13px;">${verifyUrl}</a>
-            </p>
-            <hr style="border:none;border-top:1px solid #e5e5ef;margin:24px 0;">
-            <p style="margin:0 0 8px;color:#8b8ba3;font-size:13px;line-height:1.5;">
-              Ce lien est valable pendant <strong>24 heures</strong>. Passé ce délai, vous devrez demander un nouveau lien de vérification.
-            </p>
-            <p style="margin:0;color:#8b8ba3;font-size:13px;line-height:1.5;">
-              Si vous n'avez pas créé de compte sur XEARN, ignorez simplement cet e-mail.
-            </p>
-          </td>
-        </tr>
-        <!-- Footer -->
-        <tr>
-          <td style="background-color:#f9f9fb;padding:24px 40px;text-align:center;border-top:1px solid #e5e5ef;">
-            <p style="margin:0;color:#8b8ba3;font-size:12px;">
-              &copy; ${new Date().getFullYear()} XEARN — Tous droits réservés.
-            </p>
-          </td>
-        </tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`,
+      html,
     });
   }
 
@@ -489,8 +448,13 @@ export class AuthService {
     const resetUrl = `${webUrl}/reset-password?token=${token}`;
 
     const transporter = this.getMailTransporter();
-
     const from = this.configService.get('SMTP_FROM') || this.configService.get('SMTP_USER');
+
+    const html = this.loadTemplate('password-reset.html', {
+      firstName,
+      resetUrl,
+      year: String(new Date().getFullYear()),
+    });
 
     await transporter.sendMail({
       from: `"XEARN" <${from}>`,
@@ -512,59 +476,7 @@ export class AuthService {
         'Cordialement,',
         'L\'équipe XEARN',
       ].join('\n'),
-      html: `
-<!DOCTYPE html>
-<html lang="fr">
-<head><meta charset="UTF-8"></head>
-<body style="margin:0;padding:0;background-color:#f4f4f7;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f7;padding:40px 0;">
-    <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-        <tr>
-          <td style="background-color:#6366f1;padding:32px 40px;text-align:center;">
-            <h1 style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:1px;">XEARN</h1>
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:40px;">
-            <h2 style="margin:0 0 16px;color:#1a1a2e;font-size:22px;font-weight:600;">Réinitialisation du mot de passe</h2>
-            <p style="margin:0 0 16px;color:#4a4a68;font-size:15px;line-height:1.6;">
-              Bonjour ${firstName}, vous avez demandé la réinitialisation de votre mot de passe. Cliquez sur le bouton ci-dessous pour en choisir un nouveau.
-            </p>
-            <table width="100%" cellpadding="0" cellspacing="0" style="margin:24px 0;">
-              <tr><td align="center">
-                <a href="${resetUrl}" style="display:inline-block;background-color:#6366f1;color:#ffffff;text-decoration:none;font-size:16px;font-weight:600;padding:14px 36px;border-radius:6px;">
-                  Réinitialiser mon mot de passe
-                </a>
-              </td></tr>
-            </table>
-            <p style="margin:0 0 8px;color:#4a4a68;font-size:14px;line-height:1.6;">
-              Ou copiez-collez ce lien dans votre navigateur :
-            </p>
-            <p style="margin:0 0 24px;word-break:break-all;">
-              <a href="${resetUrl}" style="color:#6366f1;font-size:13px;">${resetUrl}</a>
-            </p>
-            <hr style="border:none;border-top:1px solid #e5e5ef;margin:24px 0;">
-            <p style="margin:0 0 8px;color:#8b8ba3;font-size:13px;line-height:1.5;">
-              Ce lien est valable pendant <strong>1 heure</strong>.
-            </p>
-            <p style="margin:0;color:#8b8ba3;font-size:13px;line-height:1.5;">
-              Si vous n'avez pas demandé cette réinitialisation, ignorez simplement cet e-mail.
-            </p>
-          </td>
-        </tr>
-        <tr>
-          <td style="background-color:#f9f9fb;padding:24px 40px;text-align:center;border-top:1px solid #e5e5ef;">
-            <p style="margin:0;color:#8b8ba3;font-size:12px;">
-              &copy; ${new Date().getFullYear()} XEARN — Tous droits réservés.
-            </p>
-          </td>
-        </tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`,
+      html,
     });
   }
 
@@ -572,17 +484,37 @@ export class AuthService {
     return crypto.createHash('sha256').update(token).digest('hex');
   }
 
-  /** Shared mail transporter — avoids duplicating SMTP config */
+  /** Load an HTML template from /templates and replace {{placeholders}} */
+  private templateCache = new Map<string, string>();
+
+  private loadTemplate(filename: string, vars: Record<string, string>): string {
+    if (!this.templateCache.has(filename)) {
+      const filePath = path.resolve(__dirname, 'templates', filename);
+      this.templateCache.set(filename, fs.readFileSync(filePath, 'utf-8'));
+    }
+    let html = this.templateCache.get(filename)!;
+    for (const [key, value] of Object.entries(vars)) {
+      html = html.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value);
+    }
+    return html;
+  }
+
+  /** Cached mail transporter singleton — avoids creating a new SMTP connection on every email */
+  private mailTransporter: nodemailer.Transporter | null = null;
+
   private getMailTransporter() {
-    return nodemailer.createTransport({
-      host: this.configService.get('SMTP_HOST') || 'smtp.gmail.com',
-      port: Number(this.configService.get('SMTP_PORT') || 465),
-      secure: String(this.configService.get('SMTP_SECURE') || 'true') === 'true',
-      auth: {
-        user: this.configService.get('SMTP_USER'),
-        pass: this.configService.get('SMTP_PASS'),
-      },
-    });
+    if (!this.mailTransporter) {
+      this.mailTransporter = nodemailer.createTransport({
+        host: this.configService.get('SMTP_HOST') || 'smtp.gmail.com',
+        port: Number(this.configService.get('SMTP_PORT') || 465),
+        secure: String(this.configService.get('SMTP_SECURE') || 'true') === 'true',
+        auth: {
+          user: this.configService.get('SMTP_USER'),
+          pass: this.configService.get('SMTP_PASS'),
+        },
+      });
+    }
+    return this.mailTransporter;
   }
 
 }

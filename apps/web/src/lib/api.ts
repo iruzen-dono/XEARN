@@ -1,6 +1,7 @@
 export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 
 interface FetchOptions extends RequestInit {
+  /** @deprecated Auth is handled via httpOnly cookies. This field is kept for backward compat as a signal that the request is authenticated (triggers auto-refresh on 401). */
   token?: string;
   skipAuthRedirect?: boolean;
 }
@@ -12,7 +13,8 @@ function getCookieValue(name: string): string | null {
 }
 
 async function rawFetch(endpoint: string, options: FetchOptions = {}): Promise<Response> {
-  const { token: _token, headers, ...rest } = options;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { token: _token, skipAuthRedirect: _skip, headers, ...rest } = options;
   const csrfToken = getCookieValue('csrfToken');
   const method = String(options.method || 'GET').toUpperCase();
   const needsCsrf = method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS';
@@ -57,12 +59,12 @@ async function doRefresh(): Promise<any> {
 export async function api<T>(endpoint: string, options: FetchOptions = {}): Promise<T> {
   let res = await rawFetch(endpoint, options);
 
-  // Si 401 et qu'on avait un token, tenter un refresh automatique
-  if (res.status === 401 && options.token && typeof window !== 'undefined') {
+  // Auto-refresh on 401 when in browser (auth is cookie-based)
+  if (res.status === 401 && typeof window !== 'undefined' && !options.skipAuthRedirect) {
     try {
-      const data = await doRefresh();
-      // Re-tenter la requête originale avec le nouveau token
-      res = await rawFetch(endpoint, { ...options, token: data.accessToken });
+      await doRefresh();
+      // Re-tenter la requête originale (cookies sont maintenant à jour)
+      res = await rawFetch(endpoint, options);
     } catch {
       // Refresh échoué — session expirée, rediriger vers login
       if (!options.skipAuthRedirect) {
@@ -88,7 +90,6 @@ export const authApi = {
     api('/auth/refresh', {
       method: 'POST',
       ...(refreshToken ? { body: JSON.stringify({ refreshToken }) } : {}),
-      headers: refreshToken ? { 'X-Auth-Raw-Tokens': 'true' } : undefined,
     }),
   logout: () => api('/auth/logout', { method: 'POST' }),
   resendVerification: (email: string) =>
@@ -123,9 +124,14 @@ export const tasksApi = {
 export const walletApi = {
   get: (token: string) => api('/wallet', { token }),
   getTransactions: (token: string, page = 1) => api(`/wallet/transactions?page=${page}`, { token }),
+  getWithdrawals: (token: string) => api<any>('/wallet/withdrawals', { token }),
   activate: (token: string) => api<any>('/wallet/activate', { method: 'POST', token }),
   withdraw: (token: string, data: any) =>
     api('/wallet/withdraw', { method: 'POST', token, body: JSON.stringify(data) }),
+  getFees: (token: string) => api<any>('/wallet/fees', { token }),
+  getTierPricing: (token: string) => api<any>('/wallet/tier-pricing', { token }),
+  upgradeTier: (token: string, targetTier: string) =>
+    api<any>('/wallet/upgrade-tier', { method: 'POST', token, body: JSON.stringify({ targetTier }) }),
 };
 
 // Referrals
@@ -143,6 +149,18 @@ export const notificationsApi = {
     api(`/notifications/${id}/read`, { method: 'PATCH', token }),
   markAllAsRead: (token: string) =>
     api('/notifications/read-all', { method: 'PATCH', token }),
+};
+
+// Ads (Pub Maker)
+export const adsApi = {
+  getActive: (token: string, page = 1) => api<any>(`/ads?page=${page}`, { token }),
+  create: (token: string, data: any) =>
+    api('/ads', { method: 'POST', token, body: JSON.stringify(data) }),
+  getMine: (token: string, page = 1) => api<any>(`/ads/mine?page=${page}`, { token }),
+  update: (token: string, id: string, data: any) =>
+    api(`/ads/${id}`, { method: 'PATCH', token, body: JSON.stringify(data) }),
+  remove: (token: string, id: string) =>
+    api(`/ads/${id}`, { method: 'DELETE', token }),
 };
 
 // Admin
@@ -174,4 +192,16 @@ export const adminApi = {
     api(`/wallet/admin/withdrawals/${id}/approve`, { method: 'PATCH', token }),
   rejectWithdrawal: (token: string, id: string) =>
     api(`/wallet/admin/withdrawals/${id}/reject`, { method: 'PATCH', token }),
+  // Ads admin
+  getAllAds: (token: string, page = 1, status?: string) => {
+    let url = `/ads/admin/all?page=${page}`;
+    if (status) url += `&status=${status}`;
+    return api<any>(url, { token });
+  },
+  approveAd: (token: string, id: string) =>
+    api(`/ads/admin/${id}/approve`, { method: 'PATCH', token }),
+  rejectAd: (token: string, id: string) =>
+    api(`/ads/admin/${id}/reject`, { method: 'PATCH', token }),
+  pauseAd: (token: string, id: string) =>
+    api(`/ads/admin/${id}/pause`, { method: 'PATCH', token }),
 };

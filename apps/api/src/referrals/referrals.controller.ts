@@ -21,8 +21,8 @@ export class ReferralsController {
   ) {
     return this.referralsService.getCommissions(
       req.user.id,
-      page ? parseInt(page) : 1,
-      limit ? parseInt(limit) : 20,
+      Math.max(1, parseInt(page || '') || 1),
+      Math.min(Math.max(1, parseInt(limit || '') || 20), 100),
     );
   }
 

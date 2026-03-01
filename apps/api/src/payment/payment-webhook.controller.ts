@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Headers, Logger, HttpCode, RawBodyRequest, Req } from '@nestjs/common';
+import { Controller, Post, Body, Headers, Logger, HttpCode, RawBodyRequest, Req, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { Request } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
@@ -31,19 +31,19 @@ export class PaymentWebhookController {
         || this.configService.get('FEDAPAY_SECRET_KEY');
       if (!secret) {
         this.logger.error('FEDAPAY_WEBHOOK_SECRET non configuré — webhook rejeté par sécurité');
-        return { received: false, error: 'Webhook secret not configured' };
+        throw new BadRequestException('Webhook secret not configured');
       }
 
       const isValid = verifyFedapaySignature(req?.rawBody, fedapaySignature, secret);
       if (!isValid) {
         this.logger.warn('Signature FedaPay invalide — webhook rejeté');
-        return { received: false, error: 'Invalid signature' };
+        throw new ForbiddenException('Invalid signature');
       }
       return this.handleFedapayWebhook(body);
     }
 
     this.logger.warn('Webhook FedaPay invalide — ignoré');
-    return { received: true };
+    throw new BadRequestException('Unrecognized webhook format');
   }
 
   /* ═══════════════════════════ FEDAPAY ═══════════════════════════ */
@@ -101,22 +101,39 @@ export class PaymentWebhookController {
     if (type === 'activation') {
       const amount = entity.amount || 4000;
 
-      await this.prisma.$transaction([
-        this.prisma.user.update({
-          where: { id: userId },
-          data: { status: 'ACTIVATED' },
-        }),
-        this.prisma.transaction.create({
-          data: {
-            userId,
-            type: 'ACTIVATION',
-            status: 'COMPLETED',
-            amount,
-            description: `Activation du compte (FedaPay #${providerTxId})`,
-            metadata: { providerTransactionId: providerTxId },
-          },
-        }),
-      ]);
+      // Update existing PENDING transaction or create new one (idempotent)
+      if (existing) {
+        await this.prisma.$transaction([
+          this.prisma.user.update({
+            where: { id: userId },
+            data: { status: 'ACTIVATED' },
+          }),
+          this.prisma.transaction.update({
+            where: { id: existing.id },
+            data: {
+              status: 'COMPLETED',
+              description: `Activation du compte (FedaPay #${providerTxId})`,
+            },
+          }),
+        ]);
+      } else {
+        await this.prisma.$transaction([
+          this.prisma.user.update({
+            where: { id: userId },
+            data: { status: 'ACTIVATED' },
+          }),
+          this.prisma.transaction.create({
+            data: {
+              userId,
+              type: 'ACTIVATION',
+              status: 'COMPLETED',
+              amount,
+              description: `Activation du compte (FedaPay #${providerTxId})`,
+              metadata: { providerTransactionId: providerTxId },
+            },
+          }),
+        ]);
+      }
 
       this.logger.log(`Compte ${userId} activé via FedaPay (TX: ${providerTxId})`);
     }

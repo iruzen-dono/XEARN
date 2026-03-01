@@ -38,7 +38,7 @@ const handler = NextAuth({
 
           const res = await fetch(`${API_URL}/api/auth/google`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-Auth-Raw-Tokens': 'true' },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               email,
               googleId,

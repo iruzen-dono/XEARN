@@ -18,15 +18,16 @@ export class NotificationsController {
     return { count };
   }
 
-  @Patch(':id/read')
-  async markAsRead(@Request() req: any, @Param('id') id: string) {
-    await this.notificationsService.markAsRead(req.user.id, id);
-    return { success: true };
-  }
-
+  // Static route 'read-all' MUST be declared before the dynamic ':id/read' route
   @Patch('read-all')
   async markAllAsRead(@Request() req: any) {
     await this.notificationsService.markAllAsRead(req.user.id);
+    return { success: true };
+  }
+
+  @Patch(':id/read')
+  async markAsRead(@Request() req: any, @Param('id') id: string) {
+    await this.notificationsService.markAsRead(req.user.id, id);
     return { success: true };
   }
 }

@@ -4,7 +4,7 @@ import { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Zap, CheckCircle, XCircle } from 'lucide-react';
-import { API_URL } from '@/lib/api';
+import { api } from '@/lib/api';
 
 export default function VerifyEmailPage() {
   return (
@@ -29,10 +29,8 @@ function VerifyEmailContent() {
       return;
     }
 
-    fetch(`${API_URL}/api/auth/verify-email?token=${encodeURIComponent(token)}`)
-      .then(async (res) => {
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data?.message || 'Lien invalide ou expiré');
+    api(`/auth/verify-email?token=${encodeURIComponent(token)}`, { skipAuthRedirect: true })
+      .then((data: any) => {
         setStatus('success');
         setMessage(data?.message || 'Email vérifié avec succès !');
       })

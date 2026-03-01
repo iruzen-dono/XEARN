@@ -154,10 +154,9 @@ Ouvre ton navigateur :
 
 | Rôle | Email | Mot de passe |
 |------|-------|-------------|
-| **Admin** | juleszhou00@gmail.com | admin123 |
-| **Utilisateur** | test@xearn.com | test123 |
+| **Admin** | juleszhou01@gmail.com | *(votre mot de passe)* |
 
-> **Note** : Le compte admin nécessite un email vérifié. Si vous utilisez le seed, les comptes sont créés avec `emailVerifiedAt` défini.
+> **Note** : Créez de nouveaux comptes via la page d'inscription http://localhost:3000/register.
 
 ### Test rapide de l'API
 
@@ -165,7 +164,7 @@ Ouvre ton navigateur :
 # Login admin
 $r = Invoke-RestMethod -Uri "http://localhost:4000/api/auth/login" `
   -Method POST -ContentType "application/json" `
-  -Body '{"email":"juleszhou00@gmail.com","password":"admin123"}'
+  -Body '{"email":"juleszhou01@gmail.com","password":"votre_mot_de_passe"}'
 
 Write-Host "Connecté : $($r.user.firstName) $($r.user.lastName) ($($r.user.role))"
 ```
@@ -244,9 +243,9 @@ docker stop xearn-postgres
 Une fois le projet démarré, explore :
 
 1. **Le dashboard utilisateur** : http://localhost:3000/dashboard
-2. **Le dashboard admin** : http://localhost:3000/admin (connecté en juleszhou00@gmail.com)
-3. **Les tâches** : http://localhost:3000/dashboard/tasks
-4. **Le portefeuille** : http://localhost:3000/dashboard/wallet
-5. **L'arbre de parrainage** : http://localhost:3000/dashboard/referrals
+2. **Le dashboard admin** : http://localhost:3000/admin (connecté en admin)
+3. **Les tâches** : http://localhost:3000/dashboard/tasks (filtrées par ton tier)
+4. **Le portefeuille** : http://localhost:3000/dashboard/wallet (upgrade de tier, frais de retrait)
+5. **L'arbre de parrainage** : http://localhost:3000/dashboard/referrals (3 niveaux pour VIP)
 6. **La documentation API** : [docs/API.md](docs/API.md)
 7. **L'architecture** : [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)

@@ -157,7 +157,7 @@ export class FedaPayProvider implements PaymentProvider {
     const map: Record<string, string> = {
       'MTN_MOMO': 'mtn',
       'FLOOZ': 'moov',
-      'TMONEY': 'moov',
+      'TMONEY': 'togocom',
       'ORANGE_MONEY': 'orange',
       'MOBILE_MONEY': 'mtn',     // Par défaut MTN
       'BANK_TRANSFER': 'bank',

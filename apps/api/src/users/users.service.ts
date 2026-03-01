@@ -60,20 +60,33 @@ export class UsersService {
   }
 
   async reactivateUser(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new BadRequestException('Utilisateur introuvable');
+    if (user.status === 'ACTIVATED') throw new BadRequestException('Utilisateur déjà activé');
     return this.prisma.user.update({
       where: { id: userId },
       data: { status: 'ACTIVATED' },
     });
   }
 
-  async suspendUser(userId: string) {
+  async suspendUser(userId: string, requestingAdminId?: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new BadRequestException('Utilisateur introuvable');
+    if (user.role === 'ADMIN') throw new BadRequestException('Impossible de suspendre un admin');
+    if (userId === requestingAdminId) throw new BadRequestException('Impossible de vous suspendre vous-même');
+    if (user.status === 'SUSPENDED') throw new BadRequestException('Utilisateur déjà suspendu');
     return this.prisma.user.update({
       where: { id: userId },
       data: { status: 'SUSPENDED' },
     });
   }
 
-  async banUser(userId: string) {
+  async banUser(userId: string, requestingAdminId?: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new BadRequestException('Utilisateur introuvable');
+    if (user.role === 'ADMIN') throw new BadRequestException('Impossible de bannir un admin');
+    if (userId === requestingAdminId) throw new BadRequestException('Impossible de vous bannir vous-même');
+    if (user.status === 'BANNED') throw new BadRequestException('Utilisateur déjà banni');
     return this.prisma.user.update({
       where: { id: userId },
       data: { status: 'BANNED' },
@@ -169,8 +182,8 @@ export class UsersService {
     }
 
     const updateData: any = {};
-    if (data.firstName) updateData.firstName = data.firstName;
-    if (data.lastName) updateData.lastName = data.lastName;
+    if (data.firstName !== undefined && data.firstName !== '') updateData.firstName = data.firstName;
+    if (data.lastName !== undefined && data.lastName !== '') updateData.lastName = data.lastName;
     if (data.phone !== undefined) updateData.phone = data.phone || null;
 
     const user = await this.prisma.user.update({

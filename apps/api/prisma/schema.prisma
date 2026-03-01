@@ -16,6 +16,7 @@ datasource db {
 
 enum UserRole {
   USER
+  PARTNER   // Pub Maker — peut créer des campagnes publicitaires
   ADMIN
 }
 
@@ -24,6 +25,12 @@ enum AccountStatus {
   ACTIVATED   // Compte activé (4000 FCFA payé)
   SUSPENDED
   BANNED
+}
+
+enum AccountTier {
+  NORMAL      // Tâches standard, parrainage L1 uniquement
+  PREMIUM     // + tâches premium, parrainage L1+L2, frais retrait réduits
+  VIP         // + tâches VIP, parrainage L1+L2+L3 (5%), frais min
 }
 
 enum AuthProvider {
@@ -40,6 +47,7 @@ model User {
   lastName      String
   role          UserRole      @default(USER)
   status        AccountStatus @default(FREE)
+  tier          AccountTier   @default(NORMAL)
   referralCode  String        @unique @default(cuid())
   avatarUrl     String?
   provider      AuthProvider  @default(LOCAL)
@@ -119,6 +127,7 @@ model Task {
   reward          Decimal     @db.Decimal(10, 2)  // Rémunération en FCFA
   mediaUrl        String?     // URL de la vidéo/image
   externalUrl     String?     // Lien externe
+  requiredTier    AccountTier @default(NORMAL) // Tier minimum requis
   maxCompletions  Int?        // Nombre max de complétions
   completionCount Int         @default(0)
   expiresAt       DateTime?
@@ -165,7 +174,9 @@ enum TransactionType {
   TASK_EARNING    // Gain tâche
   REFERRAL_L1     // Commission parrainage niveau 1
   REFERRAL_L2     // Commission parrainage niveau 2
+  REFERRAL_L3     // Commission parrainage niveau 3 (VIP)
   WITHDRAWAL      // Retrait
+  TIER_UPGRADE    // Upgrade de tier (Premium/VIP)
   PUB_MAKER       // Abonnement Pub Maker
 }
 
@@ -188,6 +199,8 @@ model Transaction {
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
 
+  @@index([userId])
+  @@index([userId, type, status])
   @@map("transactions")
 }
 
@@ -225,6 +238,8 @@ model Withdrawal {
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
 
+  @@index([userId])
+  @@index([status])
   @@map("withdrawals")
 }
 
@@ -243,6 +258,8 @@ model Commission {
   amount        Decimal  @db.Decimal(12, 2)
   createdAt     DateTime @default(now())
 
+  @@index([beneficiaryId])
+  @@index([sourceUserId])
   @@map("commissions")
 }
 
@@ -308,16 +325,20 @@ enum AdStatus {
 }
 
 model Advertisement {
-  id          String   @id @default(cuid())
-  publisherId String   // ID de l'utilisateur/entreprise
-  title       String
-  description String?
-  mediaUrl    String?
-  targetUrl   String?
-  status      AdStatus @default(PENDING)
-  expiresAt   DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              String   @id @default(cuid())
+  publisherId     String   // ID de l'utilisateur/entreprise (PARTNER)
+  title           String
+  description     String?
+  mediaUrl        String?
+  targetUrl       String?
+  status          AdStatus @default(PENDING)
+  targetCountries String[] @default([])  // ex: ["TG","BJ","CI"] — vide = tous
+  targetTiers     AccountTier[] @default([]) // ex: [PREMIUM, VIP] — vide = tous
+  budget          Decimal? @db.Decimal(12, 2) // Budget total de la campagne
+  spent           Decimal  @default(0) @db.Decimal(12, 2)
+  expiresAt       DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   @@map("advertisements")
 }

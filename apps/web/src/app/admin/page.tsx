@@ -1,9 +1,12 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Users, Wallet, TrendingUp, Loader2, DollarSign, ArrowUpRight, BarChart3, ListTodo } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Users, Wallet, TrendingUp, DollarSign, ArrowUpRight, BarChart3, ListTodo } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { adminApi } from '@/lib/api';
+import { MotionDiv, AnimatedCounter, staggerContainer, staggerItem } from '@/components/ui';
+import { PageSkeleton } from '@/components/ui/Skeleton';
 
 export default function AdminDashboardPage() {
   const { token } = useAuth();
@@ -17,7 +20,7 @@ export default function AdminDashboardPage() {
     const fetchData = async () => {
       try {
         const [s, ws, an] = await Promise.all([
-          adminApi.getUserStats(token) as any,
+          adminApi.getUserStats(token).catch(() => null) as any,
           adminApi.getWalletStats(token).catch(() => null) as any,
           adminApi.getAnalytics(token).catch(() => null) as any,
         ]);
@@ -55,241 +58,216 @@ export default function AdminDashboardPage() {
     return Math.round(revenue / active);
   }, [stats, walletStats]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-8 h-8 animate-spin text-primary-400" />
-      </div>
-    );
-  }
+  if (loading) return <PageSkeleton />;
+
+  const kpiRow1 = [
+    { label: 'Utilisateurs', value: stats?.totalUsers, sub: `${fmt(stats?.activeUsers)} activés`, icon: Users, color: 'primary' },
+    { label: 'Revenus', value: walletStats?.totalRevenue, sub: 'FCFA (activations)', icon: DollarSign, color: 'success' },
+    { label: 'Retraits versés', value: walletStats?.totalWithdrawals, sub: 'FCFA', icon: ArrowUpRight, color: 'warning' },
+    { label: 'En attente', value: walletStats?.pendingWithdrawals, sub: 'retraits à traiter', icon: Wallet, color: 'danger' },
+  ];
+
+  const kpiRow2 = [
+    { label: 'Suspendus', value: stats?.suspendedUsers, icon: Users, color: 'warning' },
+    { label: 'Bannis', value: stats?.bannedUsers, icon: Users, color: 'danger' },
+    { label: 'Solde wallets', value: walletStats?.totalBalance, sub: 'FCFA', icon: Wallet, color: 'primary' },
+    { label: 'Transactions', value: walletStats?.totalTransactions, icon: BarChart3, color: 'accent' },
+  ];
+
+  const kpiRow3 = [
+    { label: "Taux d'activation", value: activationRate, suffix: '%', sub: 'utilisateurs activés', icon: TrendingUp, color: 'primary' },
+    { label: 'Revenu / activé', value: avgRevenuePerActivated, sub: 'FCFA moyen', icon: DollarSign, color: 'success' },
+    { label: 'Tâches créées', value: analytics?.topTasks?.length || 0, sub: 'top tâches suivies', icon: ListTodo, color: 'primary' },
+    { label: 'Parrainages', value: analytics?.topReferrers?.length || 0, sub: 'top parrains', icon: Users, color: 'accent' },
+  ];
+
+  const colorMap: Record<string, string> = {
+    primary: 'from-primary-500/20 to-primary-500/5 text-primary-400',
+    success: 'from-success-500/20 to-success-500/5 text-success-400',
+    warning: 'from-warning-500/20 to-warning-500/5 text-warning-400',
+    danger: 'from-danger-500/20 to-danger-500/5 text-danger-400',
+    accent: 'from-accent-500/20 to-accent-500/5 text-accent-400',
+  };
+
+  const textColorMap: Record<string, string> = {
+    primary: 'text-primary-400', success: 'text-success-400', warning: 'text-warning-400',
+    danger: 'text-danger-400', accent: 'text-accent-400',
+  };
+
+  const renderKpiRow = (items: { label: string; value: any; sub?: string; suffix?: string; icon: any; color: string }[]) => (
+    <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {items.map((kpi, i) => (
+        <motion.div key={i} variants={staggerItem}>
+          <div className="card-hover group">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-dark-400 text-xs uppercase tracking-wide font-medium">{kpi.label}</span>
+              <div className={`p-2 rounded-xl bg-gradient-to-br ${colorMap[kpi.color]} group-hover:scale-110 transition-transform`}>
+                <kpi.icon className="w-4 h-4" />
+              </div>
+            </div>
+            <div className={`text-2xl font-bold ${textColorMap[kpi.color]}`}>
+              <AnimatedCounter end={Number(kpi.value || 0)} suffix={kpi.suffix} />
+            </div>
+            {kpi.sub && <div className="text-dark-500 text-sm mt-1">{kpi.sub}</div>}
+          </div>
+        </motion.div>
+      ))}
+    </motion.div>
+  );
 
   return (
-    <div>
-      <h1 className="text-3xl font-bold mb-8">Dashboard Admin</h1>
+    <div className="space-y-6">
+      <MotionDiv preset="fadeUp">
+        <h1 className="heading-lg">Dashboard Admin</h1>
+      </MotionDiv>
 
-      {/* KPI Cards Row 1 */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="card">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-dark-400 text-xs uppercase tracking-wide">Utilisateurs</span>
-            <Users className="w-5 h-5 text-primary-400" />
-          </div>
-          <div className="text-2xl font-bold">{fmt(stats?.totalUsers)}</div>
-          <div className="text-dark-500 text-sm mt-1">{fmt(stats?.activeUsers)} activés</div>
-        </div>
-
-        <div className="card">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-dark-400 text-xs uppercase tracking-wide">Revenus</span>
-            <DollarSign className="w-5 h-5 text-green-400" />
-          </div>
-          <div className="text-2xl font-bold text-green-400">{fmt(walletStats?.totalRevenue)}</div>
-          <div className="text-dark-500 text-sm mt-1">FCFA (activations)</div>
-        </div>
-
-        <div className="card">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-dark-400 text-xs uppercase tracking-wide">Retraits versés</span>
-            <ArrowUpRight className="w-5 h-5 text-orange-400" />
-          </div>
-          <div className="text-2xl font-bold">{fmt(walletStats?.totalWithdrawals)}</div>
-          <div className="text-dark-500 text-sm mt-1">FCFA</div>
-        </div>
-
-        <div className="card">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-dark-400 text-xs uppercase tracking-wide">En attente</span>
-            <Wallet className="w-5 h-5 text-red-400" />
-          </div>
-          <div className="text-2xl font-bold text-red-400">{fmt(walletStats?.pendingWithdrawals)}</div>
-          <div className="text-dark-500 text-sm mt-1">retraits à traiter</div>
-        </div>
-      </div>
-
-      {/* KPI Row 2 */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div className="card">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-dark-400 text-xs uppercase tracking-wide">Suspendus</span>
-            <Users className="w-5 h-5 text-yellow-400" />
-          </div>
-          <div className="text-2xl font-bold text-yellow-400">{fmt(stats?.suspendedUsers)}</div>
-        </div>
-        <div className="card">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-dark-400 text-xs uppercase tracking-wide">Bannis</span>
-            <Users className="w-5 h-5 text-red-500" />
-          </div>
-          <div className="text-2xl font-bold text-red-500">{fmt(stats?.bannedUsers)}</div>
-        </div>
-        <div className="card">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-dark-400 text-xs uppercase tracking-wide">Solde wallets</span>
-            <Wallet className="w-5 h-5 text-blue-400" />
-          </div>
-          <div className="text-2xl font-bold text-blue-400">{fmt(walletStats?.totalBalance)}</div>
-          <div className="text-dark-500 text-sm mt-1">FCFA</div>
-        </div>
-        <div className="card">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-dark-400 text-xs uppercase tracking-wide">Transactions</span>
-            <BarChart3 className="w-5 h-5 text-purple-400" />
-          </div>
-          <div className="text-2xl font-bold">{fmt(walletStats?.totalTransactions)}</div>
-        </div>
-      </div>
-
-      {/* KPI Row 3 */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div className="card">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-dark-400 text-xs uppercase tracking-wide">Taux d'activation</span>
-            <TrendingUp className="w-5 h-5 text-primary-400" />
-          </div>
-          <div className="text-2xl font-bold text-primary-400">{activationRate}%</div>
-          <div className="text-dark-500 text-sm mt-1">utilisateurs activés</div>
-        </div>
-        <div className="card">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-dark-400 text-xs uppercase tracking-wide">Revenu / activé</span>
-            <DollarSign className="w-5 h-5 text-green-400" />
-          </div>
-          <div className="text-2xl font-bold text-green-400">{fmt(avgRevenuePerActivated)}</div>
-          <div className="text-dark-500 text-sm mt-1">FCFA moyen</div>
-        </div>
-        <div className="card">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-dark-400 text-xs uppercase tracking-wide">Tâches créées</span>
-            <ListTodo className="w-5 h-5 text-blue-400" />
-          </div>
-          <div className="text-2xl font-bold text-blue-400">{fmt(analytics?.topTasks?.length || 0)}</div>
-          <div className="text-dark-500 text-sm mt-1">top tâches suivies</div>
-        </div>
-        <div className="card">
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-dark-400 text-xs uppercase tracking-wide">Parrainages</span>
-            <Users className="w-5 h-5 text-accent-400" />
-          </div>
-          <div className="text-2xl font-bold text-accent-400">{fmt(analytics?.topReferrers?.length || 0)}</div>
-          <div className="text-dark-500 text-sm mt-1">top parrains</div>
-        </div>
-      </div>
+      {renderKpiRow(kpiRow1)}
+      {renderKpiRow(kpiRow2)}
+      {renderKpiRow(kpiRow3)}
 
       {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Inscriptions Bar Chart */}
-        <div className="card">
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-primary-400" />
-            Inscriptions (30 jours)
-          </h2>
-          {analytics?.registrations?.length > 0 ? (
-            <div className="flex items-end gap-1 h-40">
-              {analytics.registrations.map((r: any, i: number) => (
-                <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                  <span className="text-[10px] text-dark-500">{r.count > 0 ? r.count : ''}</span>
-                  <div
-                    className="w-full bg-primary-500/80 rounded-t min-h-[2px] transition-all"
-                    style={{ height: `${(r.count / maxReg) * 100}%` }}
-                  />
-                  {i % 7 === 0 && (
-                    <span className="text-[9px] text-dark-600 mt-1">
-                      {new Date(r.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })}
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-dark-500 text-center py-8">Aucune inscription récente</div>
-          )}
-        </div>
+        <MotionDiv preset="fadeUp" delay={0.15}>
+          <div className="card-hover">
+            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <div className="p-2 rounded-xl bg-gradient-to-br from-primary-500/20 to-primary-500/5">
+                <TrendingUp className="w-5 h-5 text-primary-400" />
+              </div>
+              Inscriptions (30 jours)
+            </h2>
+            {analytics?.registrations?.length > 0 ? (
+              <div className="flex items-end gap-1 h-40">
+                {analytics.registrations.map((r: any, i: number) => (
+                  <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                    <span className="text-[10px] text-dark-500">{r.count > 0 ? r.count : ''}</span>
+                    <motion.div initial={{ height: 0 }} animate={{ height: `${(r.count / maxReg) * 100}%` }}
+                      transition={{ delay: i * 0.02, type: 'spring', stiffness: 200, damping: 20 }}
+                      className="w-full bg-gradient-to-t from-primary-500 to-primary-400 rounded-t-md min-h-[2px]" />
+                    {i % 7 === 0 && (
+                      <span className="text-[9px] text-dark-600 mt-1">
+                        {new Date(r.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="empty-state py-8">
+                <p className="text-dark-500">Aucune inscription récente</p>
+              </div>
+            )}
+          </div>
+        </MotionDiv>
 
         {/* Top Parrains */}
-        <div className="card">
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <Users className="w-5 h-5 text-accent-400" />
-            Top 10 Parrains
-          </h2>
-          {analytics?.topReferrers?.length > 0 ? (
-            <div className="space-y-2 max-h-40 overflow-y-auto">
-              {analytics.topReferrers.map((r: any, i: number) => (
-                <div key={r.id} className="flex items-center justify-between py-2 border-b border-dark-800 last:border-0">
-                  <div className="flex items-center gap-3">
-                    <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                      i < 3 ? 'bg-primary-500/20 text-primary-400' : 'bg-dark-800 text-dark-400'
-                    }`}>{i + 1}</span>
-                    <div>
-                      <div className="font-medium text-sm">{r.name}</div>
-                      <div className="text-dark-500 text-xs">{r.email}</div>
+        <MotionDiv preset="fadeUp" delay={0.2}>
+          <div className="card-hover">
+            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <div className="p-2 rounded-xl bg-gradient-to-br from-accent-500/20 to-accent-500/5">
+                <Users className="w-5 h-5 text-accent-400" />
+              </div>
+              Top 10 Parrains
+            </h2>
+            {analytics?.topReferrers?.length > 0 ? (
+              <div className="space-y-1 max-h-40 overflow-y-auto">
+                {analytics.topReferrers.map((r: any, i: number) => (
+                  <motion.div key={r.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.04 }}
+                    className="flex items-center justify-between py-2.5 border-b border-white/[0.04] last:border-0">
+                    <div className="flex items-center gap-3">
+                      <span className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold ${
+                        i < 3 ? 'bg-gradient-to-br from-primary-500/20 to-accent-500/10 text-primary-400' : 'bg-white/[0.04] text-dark-400'
+                      }`}>{i + 1}</span>
+                      <div>
+                        <div className="font-medium text-sm text-white">{r.name}</div>
+                        <div className="text-dark-500 text-xs">{r.email}</div>
+                      </div>
                     </div>
-                  </div>
-                  <span className="text-primary-400 font-semibold text-sm">{r.referrals} filleuls</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-dark-500 text-center py-8">Aucun parrain</div>
-          )}
-        </div>
+                    <span className="text-primary-400 font-semibold text-sm">{r.referrals} filleuls</span>
+                  </motion.div>
+                ))}
+              </div>
+            ) : (
+              <div className="empty-state py-8">
+                <p className="text-dark-500">Aucun parrain</p>
+              </div>
+            )}
+          </div>
+        </MotionDiv>
       </div>
 
       {/* Bottom Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top Tâches */}
-        <div className="card">
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <ListTodo className="w-5 h-5 text-blue-400" />
-            Top Tâches
-          </h2>
-          {analytics?.topTasks?.length > 0 ? (
-            <div className="space-y-2">
-              {analytics.topTasks.map((t: any) => (
-                <div key={t.id} className="flex items-center justify-between py-2 border-b border-dark-800 last:border-0">
-                  <div>
-                    <div className="font-medium text-sm">{t.title}</div>
-                    <div className="text-dark-500 text-xs">{t.type} — {Number(t.reward)} FCFA</div>
-                  </div>
-                  <span className="text-blue-400 font-semibold text-sm">{t.completionCount}</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-dark-500 text-center py-8">Aucune tâche</div>
-          )}
-        </div>
+        <MotionDiv preset="fadeUp" delay={0.25}>
+          <div className="card-hover">
+            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <div className="p-2 rounded-xl bg-gradient-to-br from-primary-500/20 to-primary-500/5">
+                <ListTodo className="w-5 h-5 text-primary-400" />
+              </div>
+              Top Tâches
+            </h2>
+            {analytics?.topTasks?.length > 0 ? (
+              <div className="space-y-1">
+                {analytics.topTasks.map((t: any, i: number) => (
+                  <motion.div key={t.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.04 }}
+                    className="flex items-center justify-between py-2.5 border-b border-white/[0.04] last:border-0">
+                    <div>
+                      <div className="font-medium text-sm text-white">{t.title}</div>
+                      <div className="text-dark-500 text-xs">{t.type} — {Number(t.reward)} FCFA</div>
+                    </div>
+                    <span className="badge bg-primary-500/10 text-primary-400 border-primary-500/20">{t.completionCount}</span>
+                  </motion.div>
+                ))}
+              </div>
+            ) : (
+              <div className="empty-state py-8"><p className="text-dark-500">Aucune tâche</p></div>
+            )}
+          </div>
+        </MotionDiv>
 
         {/* Tâches par type */}
-        <div className="card">
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <BarChart3 className="w-5 h-5 text-purple-400" />
-            Tâches par type
-          </h2>
-          {analytics?.tasksByType?.length > 0 ? (
-            <div className="space-y-3">
-              {analytics.tasksByType.map((t: any) => {
-                const total = analytics.tasksByType.reduce((a: number, b: any) => a + b.count, 0);
-                const pct = total > 0 ? Math.round((t.count / total) * 100) : 0;
-                const colors: Record<string, string> = {
-                  VIDEO_AD: 'bg-red-500', CLICK_AD: 'bg-blue-500', SURVEY: 'bg-green-500', SPONSORED: 'bg-purple-500',
-                };
-                return (
-                  <div key={t.type}>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-dark-300">{t.type.replace('_', ' ')}</span>
-                      <span className="text-dark-400">{t.count} ({pct}%)</span>
+        <MotionDiv preset="fadeUp" delay={0.3}>
+          <div className="card-hover">
+            <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <div className="p-2 rounded-xl bg-gradient-to-br from-accent-500/20 to-accent-500/5">
+                <BarChart3 className="w-5 h-5 text-accent-400" />
+              </div>
+              Tâches par type
+            </h2>
+            {analytics?.tasksByType?.length > 0 ? (
+              <div className="space-y-4">
+                {analytics.tasksByType.map((t: any) => {
+                  const total = analytics.tasksByType.reduce((a: number, b: any) => a + b.count, 0);
+                  const pct = total > 0 ? Math.round((t.count / total) * 100) : 0;
+                  const colors: Record<string, string> = {
+                    VIDEO_AD: 'from-danger-500 to-danger-400',
+                    CLICK_AD: 'from-primary-500 to-primary-400',
+                    SURVEY: 'from-success-500 to-success-400',
+                    SPONSORED: 'from-accent-500 to-accent-400',
+                  };
+                  return (
+                    <div key={t.type}>
+                      <div className="flex justify-between text-sm mb-1.5">
+                        <span className="text-dark-300 font-medium">{t.type.replace('_', ' ')}</span>
+                        <span className="text-dark-400 tabular-nums">{t.count} ({pct}%)</span>
+                      </div>
+                      <div className="h-2.5 bg-white/[0.04] rounded-full overflow-hidden">
+                        <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }}
+                          transition={{ duration: 0.8, ease: 'easeOut' }}
+                          className={`h-full rounded-full bg-gradient-to-r ${colors[t.type] || 'from-primary-500 to-primary-400'}`} />
+                      </div>
                     </div>
-                    <div className="h-2 bg-dark-800 rounded-full overflow-hidden">
-                      <div className={`h-full rounded-full ${colors[t.type] || 'bg-primary-500'}`} style={{ width: `${pct}%` }} />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="text-dark-500 text-center py-8">Aucune donnée</div>
-          )}
-        </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="empty-state py-8"><p className="text-dark-500">Aucune donnée</p></div>
+            )}
+          </div>
+        </MotionDiv>
       </div>
     </div>
   );

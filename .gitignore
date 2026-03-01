@@ -39,5 +39,8 @@ postgres-data/
 # Auto-generated
 next-env.d.ts
 
+# Test artifacts
+test-results/
+
 # Temp SQL scripts
 fix-admin.sql

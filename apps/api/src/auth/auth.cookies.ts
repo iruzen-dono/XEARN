@@ -65,7 +65,8 @@ export function setAuthCookies(
 }
 
 export function clearAuthCookies(res: Response) {
-  res.cookie(ACCESS_TOKEN_COOKIE, '', { maxAge: 0, path: '/' });
-  res.cookie(REFRESH_TOKEN_COOKIE, '', { maxAge: 0, path: '/' });
-  res.cookie(CSRF_TOKEN_COOKIE, '', { maxAge: 0, path: '/' });
+  const clearOpts = { maxAge: 0, path: '/', httpOnly: true, sameSite: 'lax' as const };
+  res.cookie(ACCESS_TOKEN_COOKIE, '', clearOpts);
+  res.cookie(REFRESH_TOKEN_COOKIE, '', clearOpts);
+  res.cookie(CSRF_TOKEN_COOKIE, '', { maxAge: 0, path: '/', sameSite: 'lax' as const });
 }

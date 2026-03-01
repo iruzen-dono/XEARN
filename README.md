@@ -3,7 +3,8 @@
 **Plateforme panafricaine de micro-revenus digitaux**
 
 XEARN permet aux utilisateurs de gagner de l'argent (FCFA) en réalisant des micro-tâches digitales : visionnage de publicités, sondages, clics sponsorisés, etc.  
-Un système de parrainage à 2 niveaux récompense les parrains à chaque tâche complétée par leurs filleuls.
+Un système de parrainage à 3 niveaux (dont le niveau 3 réservé aux VIP) récompense les parrains à chaque tâche complétée par leurs filleuls.  
+Trois niveaux de compte (Normal, Premium, VIP) offrent des avantages progressifs : frais de retrait réduits, accès à des tâches exclusives et commissions étendues.
 
 ---
 
@@ -12,9 +13,11 @@ Un système de parrainage à 2 niveaux récompense les parrains à chaque tâche
 | Module | Description |
 |--------|-------------|
 | **Authentification** | Email + Google OAuth (NextAuth v4), vérification email, JWT (access + refresh), rate limiting anti brute-force |
-| **Tâches** | Création admin, liste paginée, complétion utilisateur, crédit automatique au wallet |
-| **Portefeuille** | Solde en temps réel, historique de transactions, activation de compte (4 000 FCFA), retraits |
-| **Parrainage** | 2 niveaux (Niveau 1 : 40 %, Niveau 2 : 10 %), commissions automatiques, arbre de filleuls |
+| **Niveaux de compte** | 3 tiers (Normal / Premium / VIP) avec avantages progressifs, upgrade payant depuis le wallet |
+| **Tâches** | Création admin, liste paginée filtrée par tier, complétion utilisateur, crédit automatique au wallet |
+| **Portefeuille** | Solde en temps réel, historique, activation (4 000 FCFA), retraits avec frais par tier (10% / 5% / 2%) |
+| **Parrainage** | 3 niveaux (L1 : 40 %, L2 : 10 %, L3 VIP : 5 %), commissions automatiques, arbre de filleuls |
+| **Publicités** | Rôle Partenaire (Pub Maker), ciblage par pays et par tier, budget et dépenses, approbation admin |
 | **Paiements** | Multi-provider (FedaPay recommandé, Mock dev), webhooks, Mobile Money |
 | **Administration** | Dashboard admin, gestion utilisateurs (suspension/ban), statistiques globales |
 | **Sécurité** | Helmet (CSP, HSTS), rate limiting 3 paliers, CORS dynamique, validation DTOs |
@@ -27,8 +30,8 @@ Un système de parrainage à 2 niveaux récompense les parrains à chaque tâche
 
 | Couche | Technologie |
 |--------|-------------|
-| Frontend | Next.js 15 · React 19 · TypeScript · TailwindCSS 3.4 · Lucide React · NextAuth v4 |
-| Backend | NestJS 10 · TypeScript · Prisma 6.19 · Nodemailer |
+| Frontend | Next.js 15.5 · React 19 · TypeScript 5.8 · TailwindCSS 3.4 · Lucide React · NextAuth v4 |
+| Backend | NestJS 10 · TypeScript 5.8 · Prisma 6.19 · Nodemailer |
 | Base de données | PostgreSQL 16 (Docker) |
 | Auth | JWT (access 15 min + refresh 7 jours) · bcrypt · Google OAuth |
 | Paiements | FedaPay (production) · Mock (dev) |
@@ -49,10 +52,12 @@ XEARN/
 │   │   └── src/
 │   │       ├── auth/           # Auth (JWT, Google OAuth, email verification)
 │   │       ├── users/          # Gestion des utilisateurs
-│   │       ├── tasks/          # Tâches & complétions
-│   │       ├── wallet/         # Portefeuille & transactions
-│   │       ├── referrals/      # Parrainage & commissions
+│   │       ├── tasks/          # Tâches & complétions (filtrage par tier)
+│   │       ├── wallet/         # Portefeuille, retraits, upgrade de tier
+│   │       ├── referrals/      # Parrainage 3 niveaux & commissions
+│   │       ├── ads/            # Publicités (Pub Maker, ciblage)
 │   │       ├── payment/        # Paiements (FedaPay, Mock)
+│   │       ├── notifications/  # Notifications en temps réel
 │   │       ├── prisma/         # Service Prisma
 │   │       ├── app.module.ts
 │   │       └── main.ts
@@ -125,12 +130,13 @@ Ou avec PowerShell :
 | API | http://localhost:4000 |
 | Prisma Studio | `npx prisma studio` (dans `apps/api`) |
 
-### Comptes de test (seed)
+### Comptes
 
-| Rôle | Email | Mot de passe |
-|------|-------|-------------|
-| Admin | juleszhou00@gmail.com | admin123 |
-| Utilisateur | test@xearn.com | test123 |
+| Rôle | Email |
+|------|-------|
+| Admin | juleszhou01@gmail.com |
+
+> Créez de nouveaux comptes via http://localhost:3000/register
 
 ---
 
@@ -138,7 +144,7 @@ Ou avec PowerShell :
 
 - [QUICKSTART.md](QUICKSTART.md) — Guide de démarrage rapide pas à pas
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — Architecture technique détaillée
-- [docs/API.md](docs/API.md) — Référence complète de l'API (22 endpoints)
+- [docs/API.md](docs/API.md) — Référence complète de l'API (25+ endpoints)
 
 ---
 
@@ -188,6 +194,9 @@ cd apps/api && npx ts-node prisma/seed.ts
 | `WITHDRAWAL_MIN_FCFA` | `2000` | Montant minimum de retrait |
 | `REFERRAL_LEVEL1_PERCENT` | `40` | Commission parrainage niveau 1 |
 | `REFERRAL_LEVEL2_PERCENT` | `10` | Commission parrainage niveau 2 |
+| `REFERRAL_LEVEL3_PERCENT` | `5` | Commission parrainage niveau 3 (VIP uniquement) |
+| `PREMIUM_PRICE_FCFA` | `10000` | Prix upgrade vers Premium |
+| `VIP_PRICE_FCFA` | `25000` | Prix upgrade vers VIP |
 
 > Voir [.env.example](.env.example) pour la liste complète des variables.
 
@@ -198,7 +207,9 @@ cd apps/api && npx ts-node prisma/seed.ts
 ```
 Parrain (Niveau 0)
 ├── Filleul A (Niveau 1) ──── Parrain reçoit 40% des gains de A
-│   └── Filleul C (Niveau 2) ── Parrain reçoit 10% des gains de C
+│   ├── Filleul C (Niveau 2) ── Parrain reçoit 10% des gains de C
+│   │   └── Filleul D (Niveau 3) ── Parrain reçoit 5% des gains de D (VIP uniquement)
+│   └── ...
 └── Filleul B (Niveau 1) ──── Parrain reçoit 40% des gains de B
 ```
 
@@ -206,6 +217,19 @@ Lorsqu'un filleul complète une tâche :
 1. Le filleul reçoit la récompense complète dans son wallet
 2. Le parrain de niveau 1 reçoit automatiquement **40%** en commission
 3. Le parrain de niveau 2 (s'il existe) reçoit automatiquement **10%** en commission
+4. Le parrain de niveau 3 (s'il existe **et est VIP**) reçoit automatiquement **5%** en commission
+
+---
+
+## Niveaux de compte
+
+| Tier | Prix d'upgrade | Frais de retrait | Tâches | Parrainage L3 |
+|------|---------------|-----------------|--------|---------------|
+| **Normal** | — (par défaut) | 10% | Tâches standard | ❌ |
+| **Premium** | 10 000 FCFA | 5% | + Tâches Premium | ❌ |
+| **VIP** | 25 000 FCFA | 2% | + Tâches VIP | ✅ (5%) |
+
+L'upgrade se fait depuis le portefeuille. Le montant est débité du solde de l'utilisateur.
 
 ---
 
@@ -216,14 +240,17 @@ Lorsqu'un filleul complète une tâche :
 - [x] Vérification email (Nodemailer + Gmail SMTP)
 - [x] Système de tâches
 - [x] Portefeuille & transactions
-- [x] Parrainage 2 niveaux
+- [x] Parrainage 3 niveaux (L1: 40%, L2: 10%, L3 VIP: 5%)
+- [x] Niveaux de compte (Normal / Premium / VIP)
+- [x] Frais de retrait par tier (10% / 5% / 2%)
+- [x] Rôle Partenaire (Pub Maker) + ciblage pub par pays et tier
 - [x] Dashboard admin
 - [x] Sécurité (Helmet CSP/HSTS, rate limiting 3 paliers, CORS dynamique)
 - [x] UX Mobile + Toasts
 - [x] Pages légales (CGU, Confidentialité, Mentions légales)
 - [x] Paiements FedaPay (Mobile Money)
+- [x] Tests unitaires (Jest — 7 suites, 60 tests)
 - [ ] Analytics avancés
-- [ ] Tests automatisés (Jest, Playwright)
 - [ ] Déploiement production (Vercel + Railway)
 - [ ] Application mobile
 

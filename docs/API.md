@@ -20,6 +20,9 @@ Ou l'authentification par cookies httpOnly (recommandée pour le frontend web).
 - [Wallet](#wallet)
 - [Referrals](#referrals)
 - [Payment](#payment)
+- [Notifications](#notifications)
+- [Ads (Pub Maker)](#ads-pub-maker)
+- [Niveaux de compte (Tiers)](#niveaux-de-compte-tiers)
 - [Codes d'erreur](#codes-derreur)
 
 ---
@@ -48,7 +51,7 @@ Inscription d'un nouvel utilisateur.
 |-------|------|--------|------------|
 | `email` | string | Oui* | Format email valide |
 | `phone` | string | Oui* | Format `+22890123456` (8 à 15 chiffres) |
-| `password` | string | Oui | 6 à 128 caractères |
+| `password` | string | Oui | 8 à 128 caractères, au moins 1 majuscule, 1 minuscule, 1 chiffre |
 | `firstName` | string | Oui | 1 à 50 caractères |
 | `lastName` | string | Oui | 1 à 50 caractères |
 | `referralCode` | string | Non | Max 50 caractères |
@@ -326,7 +329,7 @@ Bannir un utilisateur.
 
 ### GET `/api/tasks?page=1&limit=20`
 
-Liste paginée des tâches disponibles (actives, non expirées).
+Liste paginée des tâches disponibles (actives, non expirées). **Les tâches sont filtrées par le tier de l'utilisateur** : seules les tâches dont le `requiredTier` est inférieur ou égal au tier de l'utilisateur sont affichées.
 
 **Auth** : JWT
 
@@ -383,6 +386,26 @@ Tâches complétées par l'utilisateur connecté.
 
 ---
 
+### POST `/api/tasks/:id/start`
+
+Démarrer une tâche. L'utilisateur est redirigé vers l'URL de la tâche.
+
+**Auth** : JWT
+
+**Réponse 200** :
+
+```json
+{
+  "message": "Tâche démarrée"
+}
+```
+
+**Erreurs** :
+- `404` — Tâche introuvable
+- `400` — Tâche déjà complétée, inactive, ou expirée
+
+---
+
 ### POST `/api/tasks/:id/complete`
 
 Marquer une tâche comme complétée. Crédite le wallet et distribue les commissions de parrainage.
@@ -408,6 +431,9 @@ Marquer une tâche comme complétée. Crédite le wallet et distribue les commis
 **Erreurs** :
 - `404` — Tâche introuvable
 - `400` — Tâche déjà complétée, inactive, ou expirée
+- `400` — Compte non activé
+- `400` — **Tier insuffisant** ("Cette tâche nécessite le niveau PREMIUM/VIP")
+- `400` — Temps insuffisant (anti-triche)
 
 ---
 
@@ -445,6 +471,7 @@ Créer une nouvelle tâche.
 | `reward` | number | Oui | 1 à 100 000 FCFA |
 | `url` | string | Non | URL valide |
 | `maxCompletions` | number | Non | 1 à 1 000 000 |
+| `requiredTier` | enum | Non | `NORMAL` (défaut), `PREMIUM`, `VIP` — tier minimum requis |
 
 **Réponse 201** : La tâche créée
 
@@ -522,7 +549,7 @@ Activer le compte (passage de FREE → ACTIVATED). Débite 4 000 FCFA.
 
 ### POST `/api/wallet/withdraw`
 
-Demander un retrait.
+Demander un retrait. **Les frais sont calculés selon le tier de l'utilisateur** : Normal = 10%, Premium = 5%, VIP = 2%.
 
 **Auth** : JWT  
 **Rate limit** : 5 requêtes / minute
@@ -547,6 +574,75 @@ Demander un retrait.
 - `400` — Compte non activé (FREE)
 - `400` — Solde insuffisant
 - `400` — Montant inférieur au minimum (2 000 FCFA)
+
+---
+
+### GET `/api/wallet/fees`
+
+Informations sur les frais de retrait pour l'utilisateur connecté.
+
+**Auth** : JWT
+
+**Réponse 200** :
+
+```json
+{
+  "tier": "NORMAL",
+  "feePercent": 10,
+  "description": "Normal: 10% de frais"
+}
+```
+
+---
+
+### GET `/api/wallet/tier-pricing`
+
+Prix des upgrades de tier.
+
+**Auth** : JWT
+
+**Réponse 200** :
+
+```json
+{
+  "PREMIUM": 10000,
+  "VIP": 25000
+}
+```
+
+---
+
+### POST `/api/wallet/upgrade-tier`
+
+Upgrader le niveau de compte. Débite le montant du wallet.
+
+**Auth** : JWT  
+**Rate limit** : 3 requêtes / minute
+
+**Body** :
+
+```json
+{
+  "targetTier": "PREMIUM"
+}
+```
+
+| Champ | Type | Requis | Validation |
+|-------|------|--------|------------|
+| `targetTier` | enum | Oui | `PREMIUM` ou `VIP` |
+
+**Réponse 200** :
+
+```json
+{
+  "message": "Compte upgrated vers PREMIUM",
+  "tier": "PREMIUM"
+}
+```
+
+**Erreurs** :
+- `400` — Déjà à ce tier ou supérieur
+- `400` — Solde insuffisant
 
 ---
 
@@ -581,7 +677,7 @@ Statistiques financières globales.
 
 ### GET `/api/referrals/tree`
 
-Arbre de parrainage de l'utilisateur connecté (filleuls L1 et L2).
+Arbre de parrainage de l'utilisateur connecté (filleuls L1, L2, et **L3 si VIP**).
 
 **Auth** : JWT
 
@@ -599,17 +695,12 @@ Arbre de parrainage de l'utilisateur connecté (filleuls L1 et L2).
       "createdAt": "2026-02-08T..."
     }
   ],
-  "level2": [
-    {
-      "id": "clabc...",
-      "firstName": "Moussa",
-      "lastName": "Koné",
-      "email": "moussa@example.com",
-      "status": "FREE",
-      "createdAt": "2026-02-08T..."
-    }
-  ]
+  "level2": [ ... ],
+  "level3": [ ... ]
 }
+```
+
+> **Note** : `level3` n'est renseigné que si l'utilisateur est **VIP**. Sinon, c'est un tableau vide.
 ```
 
 ---
@@ -658,12 +749,20 @@ Statistiques de parrainage.
   "totalReferrals": 5,
   "level1Count": 3,
   "level2Count": 2,
-  "totalCommissions": "280.00",
+  "totalLevel3": 1,
+  "totalCommissions": "325.00",
   "level1Commissions": "240.00",
   "level2Commissions": "40.00",
+  "commissionsL3": "45.00",
   "level1Percent": 40,
-  "level2Percent": 10
+  "level2Percent": 10,
+  "l3Percent": 5,
+  "userTier": "VIP",
+  "l3Active": true
 }
+```
+
+> `l3Active` est `true` uniquement pour les utilisateurs **VIP**.
 ```
 
 ---
@@ -689,7 +788,244 @@ Webhook de paiement FedaPay. Appel\u00e9 automatiquement par FedaPay apr\u00e8s 
 > **Note** : En mode `mock` (`PAYMENT_MODE=mock`), les webhooks sont simul\u00e9s automatiquement.
 
 ---
+## Notifications
 
+### GET `/api/notifications?page=1`
+
+Liste paginée des notifications de l'utilisateur connecté.
+
+**Auth** : JWT
+
+**Query params** :
+
+| Param | Type | Défaut | Description |
+|-------|------|--------|-------------|
+| `page` | number | 1 | Numéro de page |
+
+**Réponse 200** :
+
+```json
+{
+  "notifications": [
+    {
+      "id": "clxyz...",
+      "type": "TASK_COMPLETED",
+      "title": "Tâche complétée",
+      "message": "Vous avez gagné 100 FCFA",
+      "read": false,
+      "createdAt": "2026-02-08T..."
+    }
+  ],
+  "total": 5,
+  "page": 1,
+  "pages": 1
+}
+```
+
+---
+
+### GET `/api/notifications/unread-count`
+
+Nombre de notifications non lues.
+
+**Auth** : JWT
+
+**Réponse 200** :
+
+```json
+{
+  "count": 3
+}
+```
+
+---
+
+### PATCH `/api/notifications/:id/read`
+
+Marquer une notification comme lue.
+
+**Auth** : JWT
+
+**Réponse 200** : Notification mise à jour
+
+---
+
+### PATCH `/api/notifications/read-all`
+
+Marquer toutes les notifications comme lues.
+
+**Auth** : JWT
+
+**Réponse 200** : `{ "count": 5 }` (nombre de notifications mises à jour)
+
+---
+
+## Ads (Pub Maker)
+
+### GET `/api/ads?page=1`
+
+Liste des publicités actives. **Filtrées par le tier et le pays de l'utilisateur** (ciblage). Les publicités dont le budget est épuisé sont exclues.
+
+**Auth** : JWT (requis pour le ciblage par tier/pays)
+
+**Query params** :
+
+| Param | Type | Défaut | Description |
+|-------|------|--------|-------------|
+| `page` | number | 1 | Numéro de page |
+
+**Réponse 200** :
+
+```json
+{
+  "ads": [
+    {
+      "id": "clxyz...",
+      "publisherId": "clabc...",
+      "title": "Promo MTN",
+      "description": "Offre spéciale 5G",
+      "mediaUrl": "https://example.com/image.jpg",
+      "targetUrl": "https://mtn.com/promo",
+      "status": "ACTIVE",
+      "expiresAt": "2026-06-01T00:00:00.000Z",
+      "createdAt": "2026-02-08T..."
+    }
+  ],
+  "total": 10,
+  "page": 1,
+  "pages": 1
+}
+```
+
+---
+
+### POST `/api/ads`
+
+Créer une publicité (l'utilisateur connecté devient le publisher).
+
+**Auth** : JWT (**rôle PARTNER ou ADMIN requis**)
+
+**Body** :
+
+```json
+{
+  "title": "Promo MTN",
+  "description": "Offre spéciale 5G",
+  "mediaUrl": "https://example.com/image.jpg",
+  "targetUrl": "https://mtn.com/promo",
+  "expiresAt": "2026-06-01T00:00:00.000Z",
+  "targetCountries": ["TG", "BJ", "CI"],
+  "targetTiers": ["NORMAL", "PREMIUM", "VIP"],
+  "budget": 50000
+}
+```
+
+| Champ | Type | Requis | Validation |
+|-------|------|--------|------------|
+| `title` | string | Oui | 3 à 120 caractères |
+| `description` | string | Non | Max 500 caractères |
+| `mediaUrl` | string | Non | URL valide |
+| `targetUrl` | string | Non | URL valide |
+| `expiresAt` | string | Non | Date ISO 8601 |
+| `targetCountries` | string[] | Non | Codes pays ISO (ex: `["TG", "BJ"]`) |
+| `targetTiers` | enum[] | Non | `NORMAL`, `PREMIUM`, `VIP` |
+| `budget` | number | Non | Budget max en FCFA (≥ 0) |
+
+**Réponse 201** : La publicité créée (status: `PENDING`)
+
+---
+
+### GET `/api/ads/mine?page=1`
+
+Liste des publicités de l'utilisateur connecté.
+
+**Auth** : JWT
+
+---
+
+### PATCH `/api/ads/:id`
+
+Mettre à jour une publicité (uniquement le publisher ou un admin).
+
+**Auth** : JWT
+
+**Body** : Mêmes champs que `POST /api/ads` (tous optionnels), y compris `targetCountries`, `targetTiers`, `budget`. Les admins peuvent aussi passer `status`.
+
+---
+
+### DELETE `/api/ads/:id`
+
+Supprimer une publicité (uniquement le publisher ou un admin).
+
+**Auth** : JWT
+
+---
+
+### GET `/api/ads/admin/all?page=1&status=PENDING`
+
+Liste admin de toutes les publicités.
+
+**Auth** : ADMIN
+
+**Query params** :
+
+| Param | Type | Description |
+|-------|------|-------------|
+| `page` | number | Numéro de page |
+| `status` | string | Filtrer par statut (`PENDING`, `ACTIVE`, `PAUSED`, `EXPIRED`, `REJECTED`) |
+
+---
+
+### PATCH `/api/ads/admin/:id/approve`
+
+Approuver une publicité (passe en `ACTIVE`).
+
+**Auth** : ADMIN
+
+---
+
+### PATCH `/api/ads/admin/:id/reject`
+
+Rejeter une publicité (passe en `REJECTED`).
+
+**Auth** : ADMIN
+
+---
+
+### PATCH `/api/ads/admin/:id/pause`
+
+Mettre en pause une publicité (passe en `PAUSED`).
+
+**Auth** : ADMIN
+
+---
+
+## Niveaux de compte (Tiers)
+
+XEARN propose 3 niveaux de compte avec des avantages progressifs :
+
+| Tier | Prix | Frais de retrait | Tâches accessibles | Parrainage L3 |
+|------|------|-----------------|--------------------|--------------|
+| **NORMAL** | Gratuit (défaut) | 10% | Standard uniquement | ❌ |
+| **PREMIUM** | 10 000 FCFA | 5% | Standard + Premium | ❌ |
+| **VIP** | 25 000 FCFA | 2% | Toutes (Standard + Premium + VIP) | ✅ 5% |
+
+### Endpoints liés aux tiers
+
+| Endpoint | Méthode | Description |
+|----------|---------|-------------|
+| `/api/wallet/fees` | GET | Frais de retrait selon le tier de l'utilisateur |
+| `/api/wallet/tier-pricing` | GET | Prix d'upgrade PREMIUM et VIP |
+| `/api/wallet/upgrade-tier` | POST | Upgrader son tier (débite le wallet) |
+
+### Impact sur les autres modules
+
+- **Tâches** : `GET /api/tasks` filtre automatiquement par `requiredTier <= user.tier`. Les tâches avec `requiredTier: PREMIUM` ne sont pas visibles par un utilisateur NORMAL.
+- **Retraits** : `POST /api/wallet/withdraw` applique les frais selon le tier. Les frais sont stockés dans les métadonnées de la transaction.
+- **Parrainage** : `GET /api/referrals/tree` inclut les filleuls L3 seulement pour les VIP. Les commissions L3 (5%) ne sont distribuées qu'aux parrains VIP.
+- **Publicités** : `POST /api/ads` est réservé aux rôles `PARTNER` et `ADMIN`. Les pubs peuvent cibler des tiers spécifiques via `targetTiers`.
+
+---
 ## Codes d'erreur
 
 | Code HTTP | Signification |
@@ -728,7 +1064,7 @@ curl -X POST http://localhost:4000/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "email": "nouveau@example.com",
-    "password": "test123",
+    "password": "Motdepasse1",
     "firstName": "Amadou",
     "lastName": "Diallo"
   }'

@@ -130,11 +130,11 @@ export default function AdminTransactionsPage() {
                     <Loader2 className="w-5 h-5 animate-spin text-dark-400" />
                   ) : (
                     <div className="flex gap-2">
-                      <button onClick={() => handleApprove(w.id)} title="Approuver"
+                      <button onClick={() => handleApprove(w.id)} title="Approuver" aria-label="Approuver le retrait"
                         className="p-2 rounded-lg text-green-400 hover:bg-green-500/10 transition-colors">
                         <CheckCircle className="w-5 h-5" />
                       </button>
-                      <button onClick={() => handleReject(w.id)} title="Rejeter (rembourser)"
+                      <button onClick={() => handleReject(w.id)} title="Rejeter" aria-label="Rejeter le retrait"
                         className="p-2 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors">
                         <XCircle className="w-5 h-5" />
                       </button>

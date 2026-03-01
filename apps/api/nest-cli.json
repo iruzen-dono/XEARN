@@ -3,7 +3,15 @@
   "collection": "@nestjs/schematics",
   "sourceRoot": "src",
   "compilerOptions": {
+    "builder": "tsc",
     "deleteOutDir": true,
-    "tsConfigPath": "tsconfig.json"
+    "tsConfigPath": "tsconfig.json",
+    "assets": [
+      {
+        "include": "auth/templates/**/*.html",
+        "outDir": "dist",
+        "watchAssets": true
+      }
+    ]
   }
 }

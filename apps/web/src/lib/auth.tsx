@@ -13,8 +13,9 @@ export interface User {
   phone: string | null;
   firstName: string;
   lastName: string;
-  role: 'USER' | 'ADMIN';
+  role: 'USER' | 'PARTNER' | 'ADMIN';
   status: 'FREE' | 'ACTIVATED' | 'SUSPENDED' | 'BANNED';
+  tier: 'NORMAL' | 'PREMIUM' | 'VIP';
   referralCode: string;
   provider: 'LOCAL' | 'GOOGLE';
   emailVerifiedAt: string | null;
@@ -81,6 +82,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Only syncs when 'googleAuthPending' flag exists in sessionStorage
   // (set by the Google button before calling signIn)
   useEffect(() => {
+    // Clean up flag if Google auth was cancelled or failed
+    if (sessionStatus === 'unauthenticated' && typeof window !== 'undefined') {
+      sessionStorage.removeItem('googleAuthPending');
+    }
+
     if (sessionStatus !== 'authenticated') return;
     if (token) return; // Already logged in
 

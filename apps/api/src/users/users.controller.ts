@@ -35,8 +35,8 @@ export class UsersController {
     @Query('status') status?: string,
   ) {
     return this.usersService.findAll(
-      page ? parseInt(page) : 1,
-      limit ? parseInt(limit) : 20,
+      Math.max(1, parseInt(page || '') || 1),
+      Math.min(Math.max(1, parseInt(limit || '') || 20), 100),
       search,
       status,
     );
@@ -66,14 +66,14 @@ export class UsersController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
   @Patch(':id/suspend')
-  async suspendUser(@Param('id') id: string) {
-    return this.usersService.suspendUser(id);
+  async suspendUser(@Request() req: any, @Param('id') id: string) {
+    return this.usersService.suspendUser(id, req.user.id);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
   @Patch(':id/ban')
-  async banUser(@Param('id') id: string) {
-    return this.usersService.banUser(id);
+  async banUser(@Request() req: any, @Param('id') id: string) {
+    return this.usersService.banUser(id, req.user.id);
   }
 }

@@ -1,4 +1,4 @@
-import { IsEmail, IsOptional, IsString, MinLength, MaxLength, Matches } from 'class-validator';
+import { IsEmail, IsOptional, IsString, IsUrl, MinLength, MaxLength, Matches } from 'class-validator';
 import { Transform } from 'class-transformer';
 
 // Sanitize helper: trim + strip HTML tags
@@ -17,8 +17,11 @@ export class RegisterDto {
   phone?: string;
 
   @IsString()
-  @MinLength(6, { message: 'Le mot de passe doit contenir au moins 6 caractères' })
+  @MinLength(8, { message: 'Le mot de passe doit contenir au moins 8 caractères' })
   @MaxLength(128, { message: 'Le mot de passe ne peut pas dépasser 128 caractères' })
+  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/, {
+    message: 'Le mot de passe doit contenir au moins une majuscule, une minuscule et un chiffre',
+  })
   password: string;
 
   @IsString()
@@ -54,6 +57,7 @@ export class LoginDto {
   @IsOptional()
   @IsString()
   @Matches(/^\+?[0-9]{8,15}$/, { message: 'Numéro de téléphone invalide' })
+  @Transform(({ value }) => sanitize(value))
   phone?: string;
 
   @IsString()
@@ -103,6 +107,7 @@ export class GoogleAuthDto {
 
   @IsOptional()
   @IsString()
+  @IsUrl({}, { message: 'URL d\'avatar invalide' })
   @Transform(({ value }) => sanitize(value))
   avatarUrl?: string;
 }
@@ -119,7 +124,10 @@ export class ResetPasswordDto {
   token: string;
 
   @IsString()
-  @MinLength(6, { message: 'Le mot de passe doit contenir au moins 6 caractères' })
+  @MinLength(8, { message: 'Le mot de passe doit contenir au moins 8 caractères' })
   @MaxLength(128, { message: 'Le mot de passe ne peut pas dépasser 128 caractères' })
+  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/, {
+    message: 'Le mot de passe doit contenir au moins une majuscule, une minuscule et un chiffre',
+  })
   password: string;
 }
