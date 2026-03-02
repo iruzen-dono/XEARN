@@ -1,4 +1,56 @@
+import type {
+  AuthResponse,
+  RegisterPayload,
+  RegisterResponse,
+  LoginPayload,
+  MessageResponse,
+  User,
+  Task,
+  TaskSession,
+  WalletOverview,
+  Withdrawal,
+  WithdrawPayload,
+  FeesInfo,
+  TierPricing,
+  TasksPage,
+  TaskCompletion,
+  NotificationsPage,
+  ReferralTree,
+  Commission,
+  ReferralStats,
+  AdsPage,
+  Advertisement,
+  CreateAdPayload,
+  UpdateAdPayload,
+  UsersPage,
+  UserStats,
+  AdminAnalytics,
+  WalletStats,
+  WithdrawalsPage,
+  CreateTaskPayload,
+  UpdateTaskPayload,
+  AdStats,
+  StreakInfo,
+  Badge,
+  LeaderboardEntry,
+} from '@/types';
+
 export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+
+// Bootstrap CSRF token cookie on first load (idempotent GET request)
+let csrfBootstrapped = false;
+async function ensureCsrfToken() {
+  if (csrfBootstrapped || typeof window === 'undefined') return;
+  csrfBootstrapped = true;
+  try {
+    await fetch(`${API_URL}/api/health`, { credentials: 'include' });
+  } catch {
+    /* ignore — CSRF cookie will be attempted on next request */
+  }
+}
+if (typeof window !== 'undefined') {
+  ensureCsrfToken();
+}
 
 interface FetchOptions extends RequestInit {
   /** @deprecated Auth is handled via httpOnly cookies. This field is kept for backward compat as a signal that the request is authenticated (triggers auto-refresh on 401). */
@@ -8,7 +60,9 @@ interface FetchOptions extends RequestInit {
 
 function getCookieValue(name: string): string | null {
   if (typeof document === 'undefined') return null;
-  const match = document.cookie.match(new RegExp(`(^|; )${name.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}=([^;]*)`));
+  const match = document.cookie.match(
+    new RegExp(`(^|; )${name.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')}=([^;]*)`),
+  );
   return match ? decodeURIComponent(match[2]) : null;
 }
 
@@ -31,9 +85,9 @@ async function rawFetch(endpoint: string, options: FetchOptions = {}): Promise<R
 
 // --- Refresh token deduplication ---
 // Si plusieurs requêtes 401 arrivent en parallèle, une seule refresh se lance
-let refreshPromise: Promise<any> | null = null;
+let refreshPromise: Promise<AuthResponse> | null = null;
 
-async function doRefresh(): Promise<any> {
+async function doRefresh(): Promise<AuthResponse> {
   if (refreshPromise) return refreshPromise;
 
   refreshPromise = (async () => {
@@ -84,83 +138,116 @@ export async function api<T>(endpoint: string, options: FetchOptions = {}): Prom
 
 // Auth
 export const authApi = {
-  register: (data: any) => api('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
-  login: (data: any) => api('/auth/login', { method: 'POST', body: JSON.stringify(data) }),
+  register: (data: RegisterPayload) =>
+    api<RegisterResponse>('/auth/register', { method: 'POST', body: JSON.stringify(data) }),
+  login: (data: LoginPayload) =>
+    api<AuthResponse>('/auth/login', { method: 'POST', body: JSON.stringify(data) }),
   refresh: (refreshToken?: string) =>
-    api('/auth/refresh', {
+    api<AuthResponse>('/auth/refresh', {
       method: 'POST',
       ...(refreshToken ? { body: JSON.stringify({ refreshToken }) } : {}),
     }),
-  logout: () => api('/auth/logout', { method: 'POST' }),
+  logout: () => api<MessageResponse>('/auth/logout', { method: 'POST' }),
   resendVerification: (email: string) =>
-    api('/auth/resend-verification', { method: 'POST', body: JSON.stringify({ email }) }),
+    api<MessageResponse>('/auth/resend-verification', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
   forgotPassword: (email: string) =>
-    api('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),
+    api<MessageResponse>('/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    }),
   resetPassword: (token: string, password: string) =>
-    api('/auth/reset-password', { method: 'POST', body: JSON.stringify({ token, password }) }),
+    api<MessageResponse>('/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, password }),
+    }),
 };
 
 // Users
 export const usersApi = {
   getProfile: (token?: string, opts?: { skipAuthRedirect?: boolean }) =>
-    api('/users/me', { token, skipAuthRedirect: opts?.skipAuthRedirect }),
+    api<User>('/users/me', { token, skipAuthRedirect: opts?.skipAuthRedirect }),
   updateProfile: (token: string, data: { firstName?: string; lastName?: string; phone?: string }) =>
-    api('/users/me', { method: 'PATCH', token, body: JSON.stringify(data) }),
+    api<User>('/users/me', { method: 'PATCH', token, body: JSON.stringify(data) }),
   changePassword: (token: string, currentPassword: string, newPassword: string) =>
-    api('/users/me/password', { method: 'PATCH', token, body: JSON.stringify({ currentPassword, newPassword }) }),
+    api<MessageResponse>('/users/me/password', {
+      method: 'PATCH',
+      token,
+      body: JSON.stringify({ currentPassword, newPassword }),
+    }),
 };
 
 // Tasks
 export const tasksApi = {
-  getAll: (token: string, page = 1) => api(`/tasks?page=${page}`, { token }),
+  getAll: (token: string, page = 1) => api<TasksPage>(`/tasks?page=${page}`, { token }),
   start: (token: string, taskId: string) =>
-    api(`/tasks/${taskId}/start`, { method: 'POST', token }),
+    api<TaskSession>(`/tasks/${taskId}/start`, { method: 'POST', token }),
   complete: (token: string, taskId: string) =>
-    api(`/tasks/${taskId}/complete`, { method: 'POST', token }),
-  getMyCompletions: (token: string) => api('/tasks/my-completions', { token }),
+    api<MessageResponse>(`/tasks/${taskId}/complete`, { method: 'POST', token }),
+  getMyCompletions: (token: string) =>
+    api<{ completions: TaskCompletion[] }>('/tasks/my-completions', { token }),
 };
 
 // Wallet
 export const walletApi = {
-  get: (token: string) => api('/wallet', { token }),
-  getTransactions: (token: string, page = 1) => api(`/wallet/transactions?page=${page}`, { token }),
-  getWithdrawals: (token: string) => api<any>('/wallet/withdrawals', { token }),
-  activate: (token: string) => api<any>('/wallet/activate', { method: 'POST', token }),
-  withdraw: (token: string, data: any) =>
-    api('/wallet/withdraw', { method: 'POST', token, body: JSON.stringify(data) }),
-  getFees: (token: string) => api<any>('/wallet/fees', { token }),
-  getTierPricing: (token: string) => api<any>('/wallet/tier-pricing', { token }),
+  get: (token: string) => api<WalletOverview>('/wallet', { token }),
+  getTransactions: (token: string, page = 1) =>
+    api<{
+      transactions: import('@/types').Transaction[];
+      total: number;
+      page: number;
+      pages: number;
+    }>(`/wallet/transactions?page=${page}`, { token }),
+  getWithdrawals: (token: string) =>
+    api<{ withdrawals: Withdrawal[] }>('/wallet/withdrawals', { token }),
+  activate: (token: string) =>
+    api<{ paymentUrl: string }>('/wallet/activate', { method: 'POST', token }),
+  withdraw: (token: string, data: WithdrawPayload) =>
+    api<Withdrawal>('/wallet/withdraw', { method: 'POST', token, body: JSON.stringify(data) }),
+  getFees: (token: string) => api<FeesInfo>('/wallet/fees', { token }),
+  getTierPricing: (token: string) =>
+    api<{ tiers: TierPricing[] }>('/wallet/tier-pricing', { token }),
   upgradeTier: (token: string, targetTier: string) =>
-    api<any>('/wallet/upgrade-tier', { method: 'POST', token, body: JSON.stringify({ targetTier }) }),
+    api<{ paymentUrl: string }>('/wallet/upgrade-tier', {
+      method: 'POST',
+      token,
+      body: JSON.stringify({ targetTier }),
+    }),
 };
 
 // Referrals
 export const referralsApi = {
-  getTree: (token: string) => api('/referrals/tree', { token }),
-  getCommissions: (token: string) => api('/referrals/commissions', { token }),
-  getStats: (token: string) => api('/referrals/stats', { token }),
+  getTree: (token: string) => api<ReferralTree>('/referrals/tree', { token }),
+  getCommissions: (token: string) =>
+    api<{ commissions: Commission[] }>('/referrals/commissions', { token }),
+  getStats: (token: string) => api<ReferralStats>('/referrals/stats', { token }),
 };
 
 // Notifications
 export const notificationsApi = {
-  getAll: (token: string, page = 1) => api<any>(`/notifications?page=${page}`, { token }),
-  getUnreadCount: (token: string) => api<{ count: number }>('/notifications/unread-count', { token }),
+  getAll: (token: string, page = 1) =>
+    api<NotificationsPage>(`/notifications?page=${page}`, { token }),
+  getUnreadCount: (token: string) =>
+    api<{ count: number }>('/notifications/unread-count', { token }),
   markAsRead: (token: string, id: string) =>
-    api(`/notifications/${id}/read`, { method: 'PATCH', token }),
+    api<{ success: boolean }>(`/notifications/${id}/read`, { method: 'PATCH', token }),
   markAllAsRead: (token: string) =>
-    api('/notifications/read-all', { method: 'PATCH', token }),
+    api<{ success: boolean }>('/notifications/read-all', { method: 'PATCH', token }),
 };
 
 // Ads (Pub Maker)
 export const adsApi = {
-  getActive: (token: string, page = 1) => api<any>(`/ads?page=${page}`, { token }),
-  create: (token: string, data: any) =>
-    api('/ads', { method: 'POST', token, body: JSON.stringify(data) }),
-  getMine: (token: string, page = 1) => api<any>(`/ads/mine?page=${page}`, { token }),
-  update: (token: string, id: string, data: any) =>
-    api(`/ads/${id}`, { method: 'PATCH', token, body: JSON.stringify(data) }),
+  getActive: (token: string, page = 1) => api<AdsPage>(`/ads?page=${page}`, { token }),
+  create: (token: string, data: CreateAdPayload) =>
+    api<Advertisement>('/ads', { method: 'POST', token, body: JSON.stringify(data) }),
+  getMine: (token: string, page = 1) => api<AdsPage>(`/ads/mine?page=${page}`, { token }),
+  getMyStats: (token: string) => api<AdStats>('/ads/mine/stats', { token }),
+  update: (token: string, id: string, data: UpdateAdPayload) =>
+    api<Advertisement>(`/ads/${id}`, { method: 'PATCH', token, body: JSON.stringify(data) }),
   remove: (token: string, id: string) =>
-    api(`/ads/${id}`, { method: 'DELETE', token }),
+    api<Advertisement>(`/ads/${id}`, { method: 'DELETE', token }),
 };
 
 // Admin
@@ -169,39 +256,50 @@ export const adminApi = {
     let url = `/users?page=${page}`;
     if (search) url += `&search=${encodeURIComponent(search)}`;
     if (status && status !== 'ALL') url += `&status=${status}`;
-    return api(url, { token });
+    return api<UsersPage>(url, { token });
   },
-  getUserStats: (token: string) => api('/users/stats', { token }),
-  getAnalytics: (token: string) => api<any>('/users/analytics', { token }),
-  reactivateUser: (token: string, id: string) => api(`/users/${id}/activate`, { method: 'PATCH', token }),
-  suspendUser: (token: string, id: string) => api(`/users/${id}/suspend`, { method: 'PATCH', token }),
-  banUser: (token: string, id: string) => api(`/users/${id}/ban`, { method: 'PATCH', token }),
-  getAllTasks: (token: string, page = 1) => api(`/tasks/admin/all?page=${page}`, { token }),
-  createTask: (token: string, data: any) =>
-    api('/tasks/admin/create', { method: 'POST', token, body: JSON.stringify(data) }),
+  getUserStats: (token: string) => api<UserStats>('/users/stats', { token }),
+  getAnalytics: (token: string) => api<AdminAnalytics>('/users/analytics', { token }),
+  reactivateUser: (token: string, id: string) =>
+    api<User>(`/users/${id}/activate`, { method: 'PATCH', token }),
+  suspendUser: (token: string, id: string) =>
+    api<User>(`/users/${id}/suspend`, { method: 'PATCH', token }),
+  banUser: (token: string, id: string) => api<User>(`/users/${id}/ban`, { method: 'PATCH', token }),
+  getAllTasks: (token: string, page = 1) =>
+    api<TasksPage>(`/tasks/admin/all?page=${page}`, { token }),
+  createTask: (token: string, data: CreateTaskPayload) =>
+    api<Task>('/tasks/admin/create', { method: 'POST', token, body: JSON.stringify(data) }),
   toggleTask: (token: string, id: string) =>
-    api(`/tasks/admin/${id}/toggle`, { method: 'PATCH', token }),
-  updateTask: (token: string, id: string, data: any) =>
-    api(`/tasks/admin/${id}`, { method: 'PATCH', token, body: JSON.stringify(data) }),
+    api<Task>(`/tasks/admin/${id}/toggle`, { method: 'PATCH', token }),
+  updateTask: (token: string, id: string, data: UpdateTaskPayload) =>
+    api<Task>(`/tasks/admin/${id}`, { method: 'PATCH', token, body: JSON.stringify(data) }),
   deleteTask: (token: string, id: string) =>
-    api(`/tasks/admin/${id}`, { method: 'DELETE', token }),
-  getWalletStats: (token: string) => api('/wallet/admin/stats', { token }),
+    api<MessageResponse>(`/tasks/admin/${id}`, { method: 'DELETE', token }),
+  getWalletStats: (token: string) => api<WalletStats>('/wallet/admin/stats', { token }),
   getPendingWithdrawals: (token: string, page = 1) =>
-    api<any>(`/wallet/admin/withdrawals?page=${page}`, { token }),
+    api<WithdrawalsPage>(`/wallet/admin/withdrawals?page=${page}`, { token }),
   approveWithdrawal: (token: string, id: string) =>
-    api(`/wallet/admin/withdrawals/${id}/approve`, { method: 'PATCH', token }),
+    api<Withdrawal>(`/wallet/admin/withdrawals/${id}/approve`, { method: 'PATCH', token }),
   rejectWithdrawal: (token: string, id: string) =>
-    api(`/wallet/admin/withdrawals/${id}/reject`, { method: 'PATCH', token }),
+    api<Withdrawal>(`/wallet/admin/withdrawals/${id}/reject`, { method: 'PATCH', token }),
   // Ads admin
   getAllAds: (token: string, page = 1, status?: string) => {
     let url = `/ads/admin/all?page=${page}`;
     if (status) url += `&status=${status}`;
-    return api<any>(url, { token });
+    return api<AdsPage>(url, { token });
   },
   approveAd: (token: string, id: string) =>
-    api(`/ads/admin/${id}/approve`, { method: 'PATCH', token }),
+    api<Advertisement>(`/ads/admin/${id}/approve`, { method: 'PATCH', token }),
   rejectAd: (token: string, id: string) =>
-    api(`/ads/admin/${id}/reject`, { method: 'PATCH', token }),
+    api<Advertisement>(`/ads/admin/${id}/reject`, { method: 'PATCH', token }),
   pauseAd: (token: string, id: string) =>
-    api(`/ads/admin/${id}/pause`, { method: 'PATCH', token }),
+    api<Advertisement>(`/ads/admin/${id}/pause`, { method: 'PATCH', token }),
+};
+
+// Gamification
+export const gamificationApi = {
+  getStreak: (token: string) => api<StreakInfo>('/gamification/streak', { token }),
+  getBadges: (token: string) => api<Badge[]>('/gamification/badges', { token }),
+  getLeaderboard: (token: string, limit = 20) =>
+    api<LeaderboardEntry[]>(`/gamification/leaderboard?limit=${limit}`, { token }),
 };

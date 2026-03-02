@@ -1,15 +1,36 @@
 import { Injectable } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationType } from '@prisma/client';
 
 @Injectable()
 export class NotificationsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private eventEmitter: EventEmitter2,
+  ) {}
 
-  async create(userId: string, type: NotificationType, title: string, message: string, metadata?: any) {
-    return this.prisma.notification.create({
-      data: { userId, type, title, message, metadata },
+  async create(
+    userId: string,
+    type: NotificationType,
+    title: string,
+    message: string,
+    metadata?: Record<string, unknown>,
+  ) {
+    const notification = await this.prisma.notification.create({
+      data: {
+        userId,
+        type,
+        title,
+        message,
+        metadata: metadata as import('@prisma/client').Prisma.InputJsonValue | undefined,
+      },
     });
+
+    // Emit SSE event for real-time push
+    this.eventEmitter.emit(`notification.${userId}`, notification);
+
+    return notification;
   }
 
   async getForUser(userId: string, page = 1, limit = 20) {
@@ -54,7 +75,7 @@ export class NotificationsService {
       userId,
       'WELCOME',
       'Bienvenue sur XEARN !',
-      'Votre compte a été créé avec succès. Commencez par compléter des tâches pour gagner de l\'argent !',
+      "Votre compte a été créé avec succès. Commencez par compléter des tâches pour gagner de l'argent !",
     );
   }
 

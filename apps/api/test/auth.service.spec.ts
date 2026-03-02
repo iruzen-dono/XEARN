@@ -24,7 +24,7 @@ const mockJwtService = {
 };
 
 const mockConfigService = {
-  get: jest.fn((key: string) => {
+  get: jest.fn((key: string): string | undefined => {
     const map: Record<string, string> = {
       JWT_SECRET: 'test-secret',
       JWT_EXPIRES_IN: '15m',
@@ -35,8 +35,9 @@ const mockConfigService = {
       SMTP_USER: 'test@test.com',
       SMTP_PASS: 'password',
       FRONTEND_URL: 'http://localhost:3000',
+      GOOGLE_CLIENT_ID: 'test-client-id',
     };
-    return map[key] ?? null;
+    return map[key] ?? undefined;
   }),
 };
 
@@ -81,7 +82,12 @@ describe('AuthService', () => {
       mockPrisma.user.findUnique.mockResolvedValue({ id: 'existing' });
 
       await expect(
-        service.register({ email: 'a@b.com', password: 'Test1234', firstName: 'A', lastName: 'B' } as any),
+        service.register({
+          email: 'a@b.com',
+          password: 'Test1234',
+          firstName: 'A',
+          lastName: 'B',
+        } as any),
       ).rejects.toThrow('Email déjà utilisé');
     });
 
@@ -111,7 +117,12 @@ describe('AuthService', () => {
       mockPrisma.user.findUnique
         .mockResolvedValueOnce(null) // email check
         .mockResolvedValueOnce({ id: 'referrer-123', referralCode: 'ABC' }); // referrer lookup
-      mockPrisma.user.create.mockResolvedValue({ id: 'new-user', email: 'x@y.com', firstName: 'A', lastName: 'B' });
+      mockPrisma.user.create.mockResolvedValue({
+        id: 'new-user',
+        email: 'x@y.com',
+        firstName: 'A',
+        lastName: 'B',
+      });
 
       await service.register({
         email: 'x@y.com',
@@ -191,7 +202,24 @@ describe('AuthService', () => {
 
   // ─── Google OAuth ──────────────────────────────────
   describe('googleAuth', () => {
+    // Mock the Google OAuth client on the service instance
+    const mockVerifyIdToken = jest.fn();
+
+    beforeEach(() => {
+      (service as any).googleClient = { verifyIdToken: mockVerifyIdToken };
+    });
+
     it('should create a new user for unknown Google account', async () => {
+      mockVerifyIdToken.mockResolvedValue({
+        getPayload: () => ({
+          email: 'google@test.com',
+          sub: 'gid123',
+          given_name: 'G',
+          family_name: 'User',
+          picture: undefined,
+        }),
+      });
+
       mockPrisma.user.findUnique.mockResolvedValue(null);
       mockPrisma.user.create.mockResolvedValue({
         id: 'g-user',
@@ -203,18 +231,26 @@ describe('AuthService', () => {
         provider: 'GOOGLE',
       });
 
-      const result = await service.googleAuth({
-        email: 'google@test.com',
-        googleId: 'gid123',
-        firstName: 'G',
-        lastName: 'User',
-      });
+      const result = await service.googleAuth({ idToken: 'valid-google-id-token' });
 
       expect(result).toHaveProperty('accessToken');
       expect(mockPrisma.user.create).toHaveBeenCalled();
+      expect(mockVerifyIdToken).toHaveBeenCalledWith({
+        idToken: 'valid-google-id-token',
+        audience: 'test-client-id',
+      });
     });
 
     it('should login existing Google user', async () => {
+      mockVerifyIdToken.mockResolvedValue({
+        getPayload: () => ({
+          email: 'google@test.com',
+          sub: 'gid123',
+          given_name: 'G',
+          family_name: 'User',
+        }),
+      });
+
       mockPrisma.user.findUnique.mockResolvedValue({
         id: 'g-user',
         email: 'google@test.com',
@@ -225,16 +261,33 @@ describe('AuthService', () => {
         provider: 'GOOGLE',
         googleId: 'gid123',
       });
-      mockPrisma.user.update.mockResolvedValue({});
-
-      const result = await service.googleAuth({
+      mockPrisma.user.update.mockResolvedValue({
+        id: 'g-user',
         email: 'google@test.com',
-        googleId: 'gid123',
         firstName: 'G',
         lastName: 'User',
+        role: 'USER',
+        status: 'FREE',
+        provider: 'GOOGLE',
+        googleId: 'gid123',
       });
 
+      const result = await service.googleAuth({ idToken: 'valid-google-id-token' });
+
       expect(result).toHaveProperty('accessToken');
+      expect(mockPrisma.user.update).toHaveBeenCalled();
+    });
+
+    it('should reject invalid Google token', async () => {
+      mockVerifyIdToken.mockRejectedValue(new Error('Invalid token'));
+
+      await expect(service.googleAuth({ idToken: 'invalid-token' })).rejects.toThrow(
+        'Token Google invalide ou expiré',
+      );
+    });
+
+    it('should throw if idToken is missing', async () => {
+      await expect(service.googleAuth({ idToken: '' })).rejects.toThrow();
     });
   });
 });

@@ -1,8 +1,31 @@
-import { Controller, Post, Body, Headers, Logger, HttpCode, RawBodyRequest, Req, BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Headers,
+  Logger,
+  HttpCode,
+  RawBodyRequest,
+  Req,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { Request } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { verifyFedapaySignature } from './fedapay-signature';
+
+interface FedapayEntity {
+  id: string | number;
+  amount?: number;
+  metadata?: Record<string, string>;
+  [key: string]: unknown;
+}
+
+interface FedapayWebhookBody {
+  entity?: FedapayEntity;
+  event?: string;
+}
 
 /**
  * Webhook pour recevoir les confirmations de paiement.
@@ -20,15 +43,16 @@ export class PaymentWebhookController {
   @Post('webhook')
   @HttpCode(200)
   async handleWebhook(
-    @Body() body: any,
+    @Body() body: FedapayWebhookBody,
     @Headers('x-fedapay-signature') fedapaySignature?: string,
     @Req() req?: RawBodyRequest<Request>,
   ) {
     this.logger.log(`Webhook reçu: ${JSON.stringify(body).substring(0, 300)}`);
 
     if (fedapaySignature || body?.entity) {
-      const secret = this.configService.get('FEDAPAY_WEBHOOK_SECRET')
-        || this.configService.get('FEDAPAY_SECRET_KEY');
+      const secret =
+        this.configService.get('FEDAPAY_WEBHOOK_SECRET') ||
+        this.configService.get('FEDAPAY_SECRET_KEY');
       if (!secret) {
         this.logger.error('FEDAPAY_WEBHOOK_SECRET non configuré — webhook rejeté par sécurité');
         throw new BadRequestException('Webhook secret not configured');
@@ -48,7 +72,7 @@ export class PaymentWebhookController {
 
   /* ═══════════════════════════ FEDAPAY ═══════════════════════════ */
 
-  private async handleFedapayWebhook(body: any) {
+  private async handleFedapayWebhook(body: FedapayWebhookBody) {
     const entity = body?.entity;
     const eventType = body?.event;
 
@@ -71,14 +95,15 @@ export class PaymentWebhookController {
       } else {
         this.logger.log(`FedaPay event non géré: ${eventType}`);
       }
-    } catch (error: any) {
-      this.logger.error(`Erreur traitement webhook FedaPay: ${error.message}`, error.stack);
+    } catch (error: unknown) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      this.logger.error(`Erreur traitement webhook FedaPay: ${err.message}`, err.stack);
     }
 
     return { received: true };
   }
 
-  private async handleTransactionApproved(entity: any) {
+  private async handleTransactionApproved(entity: FedapayEntity) {
     const metadata = entity.metadata || {};
     const userId = metadata.userId;
     const type = metadata.type;
@@ -136,10 +161,53 @@ export class PaymentWebhookController {
       }
 
       this.logger.log(`Compte ${userId} activé via FedaPay (TX: ${providerTxId})`);
+    } else if (type === 'tier_upgrade') {
+      const targetTier = metadata.targetTier;
+      if (!targetTier) {
+        this.logger.warn(`tier_upgrade sans targetTier dans metadata (TX: ${providerTxId})`);
+        return;
+      }
+
+      if (existing) {
+        await this.prisma.$transaction([
+          this.prisma.user.update({
+            where: { id: userId },
+            data: { tier: targetTier as any },
+          }),
+          this.prisma.transaction.update({
+            where: { id: existing.id },
+            data: {
+              status: 'COMPLETED',
+              description: `Upgrade vers ${targetTier} (FedaPay #${providerTxId})`,
+            },
+          }),
+        ]);
+      } else {
+        await this.prisma.$transaction([
+          this.prisma.user.update({
+            where: { id: userId },
+            data: { tier: targetTier as any },
+          }),
+          this.prisma.transaction.create({
+            data: {
+              userId,
+              type: 'TIER_UPGRADE',
+              status: 'COMPLETED',
+              amount: entity.amount || 0,
+              description: `Upgrade vers ${targetTier} (FedaPay #${providerTxId})`,
+              metadata: { providerTransactionId: providerTxId, targetTier },
+            },
+          }),
+        ]);
+      }
+
+      this.logger.log(
+        `Utilisateur ${userId} upgradé vers ${targetTier} via FedaPay (TX: ${providerTxId})`,
+      );
     }
   }
 
-  private async handlePayoutCompleted(entity: any) {
+  private async handlePayoutCompleted(entity: FedapayEntity) {
     const metadata = entity.metadata || {};
     const withdrawalId = metadata.withdrawalId;
 
@@ -169,7 +237,7 @@ export class PaymentWebhookController {
     this.logger.log(`Retrait ${withdrawalId} complété via FedaPay (Payout: ${providerTxId})`);
   }
 
-  private async handleTransactionFailed(entity: any) {
+  private async handleTransactionFailed(entity: FedapayEntity) {
     const metadata = entity.metadata || {};
     const userId = metadata.userId;
     const providerTxId = String(entity.id);
@@ -187,7 +255,7 @@ export class PaymentWebhookController {
     }
   }
 
-  private async handlePayoutFailed(entity: any) {
+  private async handlePayoutFailed(entity: FedapayEntity) {
     const metadata = entity.metadata || {};
     const withdrawalId = metadata.withdrawalId;
     const userId = metadata.userId;
@@ -197,10 +265,16 @@ export class PaymentWebhookController {
     const withdrawal = await this.prisma.withdrawal.findUnique({ where: { id: withdrawalId } });
     if (!withdrawal || withdrawal.status === 'FAILED') return;
 
+    // withdrawal.amount stores NET; find GROSS from the transaction record
+    const originalTx = await this.prisma.transaction.findFirst({
+      where: { type: 'WITHDRAWAL', metadata: { path: ['withdrawalId'], equals: withdrawalId } },
+    });
+    const grossAmount = originalTx ? originalTx.amount : withdrawal.amount;
+
     await this.prisma.$transaction([
       this.prisma.wallet.update({
         where: { userId },
-        data: { balance: { increment: withdrawal.amount } },
+        data: { balance: { increment: grossAmount } },
       }),
       this.prisma.withdrawal.update({
         where: { id: withdrawalId },
@@ -217,6 +291,8 @@ export class PaymentWebhookController {
       }),
     ]);
 
-    this.logger.log(`Payout FedaPay ${withdrawalId} échoué — wallet de ${userId} remboursé de ${withdrawal.amount} FCFA`);
+    this.logger.log(
+      `Payout FedaPay ${withdrawalId} échoué — wallet de ${userId} remboursé de ${grossAmount} FCFA`,
+    );
   }
 }

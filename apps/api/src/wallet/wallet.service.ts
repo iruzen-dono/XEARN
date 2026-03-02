@@ -17,18 +17,24 @@ export class WalletService {
   // ── Fee rates by tier (percentage of withdrawal amount) ──
   private getWithdrawalFeePercent(tier: string): number {
     switch (tier) {
-      case 'VIP':     return 2;
-      case 'PREMIUM': return 5;
-      default:        return 10; // NORMAL
+      case 'VIP':
+        return 2;
+      case 'PREMIUM':
+        return 5;
+      default:
+        return 10; // NORMAL
     }
   }
 
   // ── Tier upgrade prices ──
   private getTierUpgradePrice(targetTier: string): number {
     switch (targetTier) {
-      case 'PREMIUM': return this.configService.get<number>('PREMIUM_PRICE_FCFA') || 10000;
-      case 'VIP':     return this.configService.get<number>('VIP_PRICE_FCFA') || 25000;
-      default: return 0;
+      case 'PREMIUM':
+        return this.configService.get<number>('PREMIUM_PRICE_FCFA') || 10000;
+      case 'VIP':
+        return this.configService.get<number>('VIP_PRICE_FCFA') || 25000;
+      default:
+        return 0;
     }
   }
 
@@ -115,7 +121,9 @@ export class WalletService {
       // Notification d'activation
       try {
         await this.notificationsService.notifyAccountActivated(userId);
-      } catch (err) { /* ignore */ }
+      } catch (err) {
+        /* ignore */
+      }
       return { success: true, message: 'Compte activé avec succès', status: 'completed' };
     }
 
@@ -159,7 +167,7 @@ export class WalletService {
     }
     // Calculate withdrawal fee based on tier
     const feePercent = this.getWithdrawalFeePercent(user.tier);
-    const feeAmount = Math.round(amount * feePercent / 100);
+    const feeAmount = Math.round((amount * feePercent) / 100);
     const netAmount = amount - feeAmount;
     const provider = this.paymentService.getProvider();
 
@@ -205,7 +213,7 @@ export class WalletService {
     // Lancer le décaissement réel (hors transaction DB)
     try {
       const disbursement = await provider.disburse({
-        amount,
+        amount: netAmount,
         method,
         accountInfo,
         recipientName: `${user.firstName} ${user.lastName}`,
@@ -214,8 +222,18 @@ export class WalletService {
 
       if (disbursement.providerTransactionId) {
         await this.prisma.transaction.updateMany({
-          where: { userId, type: 'WITHDRAWAL', status: 'PENDING', metadata: { path: ['withdrawalId'], equals: result.id } },
-          data: { metadata: { withdrawalId: result.id, providerTransactionId: disbursement.providerTransactionId } },
+          where: {
+            userId,
+            type: 'WITHDRAWAL',
+            status: 'PENDING',
+            metadata: { path: ['withdrawalId'], equals: result.id },
+          },
+          data: {
+            metadata: {
+              withdrawalId: result.id,
+              providerTransactionId: disbursement.providerTransactionId,
+            },
+          },
         });
       }
 
@@ -227,7 +245,12 @@ export class WalletService {
             data: { status: 'COMPLETED', processedAt: new Date() },
           }),
           this.prisma.transaction.updateMany({
-            where: { userId, type: 'WITHDRAWAL', status: 'PENDING', metadata: { path: ['withdrawalId'], equals: result.id } },
+            where: {
+              userId,
+              type: 'WITHDRAWAL',
+              status: 'PENDING',
+              metadata: { path: ['withdrawalId'], equals: result.id },
+            },
             data: { status: 'COMPLETED' },
           }),
         ]);
@@ -262,7 +285,14 @@ export class WalletService {
 
   // Admin: stats globales
   async getGlobalStats() {
-    const [totalBalance, totalWithdrawals, pendingWithdrawals, completedWithdrawals, totalRevenue, totalTransactions] = await Promise.all([
+    const [
+      totalBalance,
+      totalWithdrawals,
+      pendingWithdrawals,
+      completedWithdrawals,
+      totalRevenue,
+      totalTransactions,
+    ] = await Promise.all([
       this.prisma.wallet.aggregate({ _sum: { balance: true } }),
       this.prisma.withdrawal.aggregate({
         where: { status: 'COMPLETED' },
@@ -317,24 +347,39 @@ export class WalletService {
         data: { status: 'COMPLETED', processedAt: new Date() },
       }),
       this.prisma.transaction.updateMany({
-        where: { metadata: { path: ['withdrawalId'], equals: withdrawalId }, type: 'WITHDRAWAL', status: 'PENDING' },
+        where: {
+          metadata: { path: ['withdrawalId'], equals: withdrawalId },
+          type: 'WITHDRAWAL',
+          status: 'PENDING',
+        },
         data: { status: 'COMPLETED' },
       }),
     ]);
 
     // Notification
     try {
-      await this.notificationsService.notifyWithdrawalApproved(withdrawal.userId, Number(withdrawal.amount));
-    } catch (err) { /* ignore */ }
+      await this.notificationsService.notifyWithdrawalApproved(
+        withdrawal.userId,
+        Number(withdrawal.amount),
+      );
+    } catch (err) {
+      /* ignore */
+    }
 
     return result;
   }
 
-  // Admin: rejeter un retrait (rembourser)
+  // Admin: rejeter un retrait (rembourser le montant brut débité)
   async rejectWithdrawal(withdrawalId: string) {
     const withdrawal = await this.prisma.withdrawal.findUnique({ where: { id: withdrawalId } });
     if (!withdrawal) throw new BadRequestException('Retrait introuvable');
     if (withdrawal.status !== 'PENDING') throw new BadRequestException('Retrait déjà traité');
+
+    // withdrawal.amount stores the NET amount; find the original GROSS from the transaction
+    const originalTx = await this.prisma.transaction.findFirst({
+      where: { type: 'WITHDRAWAL', metadata: { path: ['withdrawalId'], equals: withdrawalId } },
+    });
+    const grossAmount = originalTx ? originalTx.amount : withdrawal.amount;
 
     const result = await this.prisma.$transaction([
       this.prisma.withdrawal.update({
@@ -343,18 +388,27 @@ export class WalletService {
       }),
       this.prisma.wallet.update({
         where: { userId: withdrawal.userId },
-        data: { balance: { increment: withdrawal.amount } },
+        data: { balance: { increment: grossAmount } },
       }),
       this.prisma.transaction.updateMany({
-        where: { metadata: { path: ['withdrawalId'], equals: withdrawalId }, type: 'WITHDRAWAL', status: 'PENDING' },
+        where: {
+          metadata: { path: ['withdrawalId'], equals: withdrawalId },
+          type: 'WITHDRAWAL',
+          status: 'PENDING',
+        },
         data: { status: 'FAILED' },
       }),
     ]);
 
     // Notification
     try {
-      await this.notificationsService.notifyWithdrawalRejected(withdrawal.userId, Number(withdrawal.amount));
-    } catch (err) { /* ignore */ }
+      await this.notificationsService.notifyWithdrawalRejected(
+        withdrawal.userId,
+        Number(withdrawal.amount),
+      );
+    } catch (err) {
+      /* ignore */
+    }
 
     return result;
   }
@@ -368,12 +422,15 @@ export class WalletService {
       include: { wallet: true },
     });
     if (!user) throw new BadRequestException('Utilisateur introuvable');
-    if (user.status !== 'ACTIVATED') throw new BadRequestException('Compte non activé — activez d\'abord votre compte');
+    if (user.status !== 'ACTIVATED')
+      throw new BadRequestException("Compte non activé — activez d'abord votre compte");
 
     const currentIdx = this.TIER_ORDER.indexOf(user.tier as any);
     const targetIdx = this.TIER_ORDER.indexOf(targetTier);
     if (targetIdx <= currentIdx) {
-      throw new BadRequestException(`Vous êtes déjà ${user.tier} — impossible de passer à ${targetTier}`);
+      throw new BadRequestException(
+        `Vous êtes déjà ${user.tier} — impossible de passer à ${targetTier}`,
+      );
     }
 
     const price = this.getTierUpgradePrice(targetTier);
@@ -405,7 +462,12 @@ export class WalletService {
           },
         }),
       ]);
-      return { success: true, message: `Félicitations ! Vous êtes maintenant ${targetTier}`, status: 'completed', tier: targetTier };
+      return {
+        success: true,
+        message: `Félicitations ! Vous êtes maintenant ${targetTier}`,
+        status: 'completed',
+        tier: targetTier,
+      };
     }
 
     if (result.status === 'pending' && result.paymentUrl) {
@@ -440,9 +502,9 @@ export class WalletService {
       tier: user.tier,
       feePercent,
       tiers: {
-        NORMAL:  { feePercent: 10 },
+        NORMAL: { feePercent: 10 },
         PREMIUM: { feePercent: 5 },
-        VIP:     { feePercent: 2 },
+        VIP: { feePercent: 2 },
       },
     };
   }
@@ -451,7 +513,7 @@ export class WalletService {
   getTierPricing() {
     return {
       PREMIUM: { price: this.configService.get<number>('PREMIUM_PRICE_FCFA') || 10000 },
-      VIP:     { price: this.configService.get<number>('VIP_PRICE_FCFA') || 25000 },
+      VIP: { price: this.configService.get<number>('VIP_PRICE_FCFA') || 25000 },
     };
   }
 }

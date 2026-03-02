@@ -2,20 +2,31 @@
 
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Wallet, Users, ListTodo, TrendingUp, Clock, Zap, ArrowUpRight, ArrowDownRight, Loader2 } from 'lucide-react';
+import {
+  Wallet,
+  Users,
+  ListTodo,
+  TrendingUp,
+  Clock,
+  Zap,
+  ArrowUpRight,
+  ArrowDownRight,
+  Loader2,
+} from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { useToast } from '@/lib/toast';
 import { walletApi, tasksApi, referralsApi } from '@/lib/api';
+import type { WalletOverview, Transaction } from '@/types';
 import { MotionDiv, AnimatedCounter, staggerContainer, staggerItem } from '@/components/ui';
 import { PageSkeleton } from '@/components/ui/Skeleton';
 
 export default function DashboardPage() {
   const { user, token, refreshUser } = useAuth();
   const toast = useToast();
-  const [wallet, setWallet] = useState<any>(null);
+  const [wallet, setWallet] = useState<WalletOverview | null>(null);
   const [taskCount, setTaskCount] = useState(0);
   const [referralCount, setReferralCount] = useState(0);
-  const [transactions, setTransactions] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [activating, setActivating] = useState(false);
 
@@ -25,13 +36,15 @@ export default function DashboardPage() {
     const fetchData = async () => {
       try {
         const [w, completions, refs, txs] = await Promise.all([
-          walletApi.get(token) as any,
-          tasksApi.getMyCompletions(token) as any,
-          referralsApi.getTree(token).catch(() => ({ level1: [], level2: [] })) as any,
-          walletApi.getTransactions(token, 1) as any,
+          walletApi.get(token),
+          tasksApi.getMyCompletions(token),
+          referralsApi.getTree(token).catch(() => ({ level1: [], level2: [], level3: [] })),
+          walletApi.getTransactions(token, 1),
         ]);
         setWallet(w);
-        setTaskCount(Array.isArray(completions) ? completions.length : 0);
+        setTaskCount(
+          Array.isArray(completions) ? completions.length : (completions?.completions?.length ?? 0),
+        );
         setReferralCount((refs?.level1?.length || 0) + (refs?.level2?.length || 0));
         setTransactions(txs?.transactions?.slice(0, 5) || []);
       } catch (err) {
@@ -43,7 +56,8 @@ export default function DashboardPage() {
     };
 
     fetchData();
-  }, [token, toast]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
   const handleActivate = async () => {
     if (!token) return;
@@ -55,24 +69,25 @@ export default function DashboardPage() {
         return;
       }
       await refreshUser();
-      const w = await walletApi.get(token) as any;
+      const w = await walletApi.get(token);
       setWallet(w);
       toast.success('Compte activé avec succès !');
-    } catch (err: any) {
-      toast.error(err.message || 'Erreur lors de l\'activation');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Erreur lors de l'activation";
+      toast.error(message);
     } finally {
       setActivating(false);
     }
   };
 
-  const fmt = (n: any) => Number(n || 0).toLocaleString('fr-FR');
+  const fmt = (n: number | string | undefined) => Number(n || 0).toLocaleString('fr-FR');
 
   if (loading) return <PageSkeleton />;
 
   const statCards = [
     {
       label: 'Solde',
-      value: Number(wallet?.balance || 0),
+      value: Number(wallet?.wallet?.balance || 0),
       suffix: ' FCFA',
       sub: 'Portefeuille actuel',
       icon: <Wallet className="w-5 h-5" />,
@@ -81,7 +96,7 @@ export default function DashboardPage() {
     },
     {
       label: 'Total gagné',
-      value: Number(wallet?.totalEarned || 0),
+      value: Number(wallet?.wallet?.totalEarned || 0),
       suffix: ' FCFA',
       sub: "Depuis l'inscription",
       icon: <TrendingUp className="w-5 h-5" />,
@@ -115,11 +130,13 @@ export default function DashboardPage() {
         <div className="flex items-center gap-3">
           <h1 className="heading-lg">Tableau de bord</h1>
           {user?.tier && user.tier !== 'NORMAL' && (
-            <span className={`px-2 py-1 rounded-lg text-xs font-bold uppercase ${
-              user.tier === 'VIP'
-                ? 'bg-gradient-to-r from-yellow-500/20 to-amber-500/20 text-amber-400 border border-amber-500/30'
-                : 'bg-gradient-to-r from-purple-500/20 to-indigo-500/20 text-purple-400 border border-purple-500/30'
-            }`}>
+            <span
+              className={`px-2 py-1 rounded-lg text-xs font-bold uppercase ${
+                user.tier === 'VIP'
+                  ? 'bg-gradient-to-r from-yellow-500/20 to-amber-500/20 text-amber-400 border border-amber-500/30'
+                  : 'bg-gradient-to-r from-purple-500/20 to-indigo-500/20 text-purple-400 border border-purple-500/30'
+              }`}
+            >
               {user.tier}
             </span>
           )}
@@ -139,7 +156,9 @@ export default function DashboardPage() {
             <div className="card-hover group">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-sm font-medium text-dark-400">{s.label}</span>
-                <div className={`p-2 rounded-xl bg-gradient-to-br ${s.color} ${s.iconColor} group-hover:scale-110 transition-transform`}>
+                <div
+                  className={`p-2 rounded-xl bg-gradient-to-br ${s.color} ${s.iconColor} group-hover:scale-110 transition-transform`}
+                >
                   {s.icon}
                 </div>
               </div>
@@ -166,8 +185,16 @@ export default function DashboardPage() {
                   Activez votre compte pour débloquer les retraits et le parrainage.
                 </p>
               </div>
-              <button onClick={handleActivate} disabled={activating} className="btn-primary btn-sm whitespace-nowrap">
-                {activating ? <><Loader2 className="w-4 h-4 animate-spin" /> Activation...</> : (
+              <button
+                onClick={handleActivate}
+                disabled={activating}
+                className="btn-primary btn-sm whitespace-nowrap"
+              >
+                {activating ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" /> Activation...
+                  </>
+                ) : (
                   <>
                     <Zap className="w-4 h-4" /> Activer (4 000 FCFA)
                   </>
@@ -182,7 +209,9 @@ export default function DashboardPage() {
         <MotionDiv preset="fadeUp" delay={0.2}>
           <div className="card flex items-center gap-3">
             <div className="w-2.5 h-2.5 bg-success-400 rounded-full" />
-            <span className="text-success-400 text-sm font-medium">Compte activé — Tous les services sont disponibles</span>
+            <span className="text-success-400 text-sm font-medium">
+              Compte activé — Tous les services sont disponibles
+            </span>
           </div>
         </MotionDiv>
       )}
@@ -197,11 +226,13 @@ export default function DashboardPage() {
                 <Clock className="w-8 h-8" />
               </div>
               <h3 className="text-base font-semibold mb-1">Aucune activité</h3>
-              <p className="text-dark-400 text-sm max-w-xs">Complétez des tâches pour voir votre activité ici !</p>
+              <p className="text-dark-400 text-sm max-w-xs">
+                Complétez des tâches pour voir votre activité ici !
+              </p>
             </div>
           ) : (
             <div className="space-y-1">
-              {transactions.map((tx: any, i: number) => {
+              {transactions.map((tx, i: number) => {
                 const isWithdrawal = tx.type === 'WITHDRAWAL';
                 return (
                   <motion.div
@@ -212,7 +243,9 @@ export default function DashboardPage() {
                     className="flex items-center justify-between py-3 border-b border-white/[0.04] last:border-0 group"
                   >
                     <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-lg ${isWithdrawal ? 'bg-danger-500/10' : 'bg-success-500/10'}`}>
+                      <div
+                        className={`p-2 rounded-lg ${isWithdrawal ? 'bg-danger-500/10' : 'bg-success-500/10'}`}
+                      >
                         {isWithdrawal ? (
                           <ArrowUpRight className="w-4 h-4 text-danger-400" />
                         ) : (
@@ -220,12 +253,19 @@ export default function DashboardPage() {
                         )}
                       </div>
                       <div>
-                        <div className="text-sm font-medium text-white">{tx.description || tx.type}</div>
-                        <div className="text-xs text-dark-500">{new Date(tx.createdAt).toLocaleDateString('fr-FR')}</div>
+                        <div className="text-sm font-medium text-white">
+                          {tx.description || tx.type}
+                        </div>
+                        <div className="text-xs text-dark-500">
+                          {new Date(tx.createdAt).toLocaleDateString('fr-FR')}
+                        </div>
                       </div>
                     </div>
-                    <span className={`text-sm font-semibold ${isWithdrawal ? 'text-danger-400' : 'text-success-400'}`}>
-                      {isWithdrawal ? '-' : '+'}{fmt(tx.amount)} FCFA
+                    <span
+                      className={`text-sm font-semibold ${isWithdrawal ? 'text-danger-400' : 'text-success-400'}`}
+                    >
+                      {isWithdrawal ? '-' : '+'}
+                      {fmt(tx.amount)} FCFA
                     </span>
                   </motion.div>
                 );

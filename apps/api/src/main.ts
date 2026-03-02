@@ -15,7 +15,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     logger: new StructuredLogger(),
   });
-  const logger = new Logger('HTTP');
+  const httpLogger = new Logger('HTTP');
 
   const configService = app.get(ConfigService);
 
@@ -39,7 +39,9 @@ async function bootstrap() {
 
     res.on('finish', () => {
       const duration = Date.now() - start;
-      logger.log(`${req.method} ${req.originalUrl} ${res.statusCode} ${duration}ms reqId=${requestId}`);
+      httpLogger.log(
+        `${req.method} ${req.originalUrl} ${res.statusCode} ${duration}ms reqId=${requestId}`,
+      );
     });
 
     next();
@@ -72,6 +74,15 @@ async function bootstrap() {
       },
     }),
   );
+
+  // Permissions-Policy — désactiver les fonctionnalités sensibles non utilisées
+  app.use((_req: Request, res: Response, next: NextFunction) => {
+    res.setHeader(
+      'Permissions-Policy',
+      'camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()',
+    );
+    next();
+  });
 
   // Validation globale — rejette les champs inconnus, transforme les types
   app.useGlobalPipes(
@@ -152,7 +163,8 @@ async function bootstrap() {
 
   const port = configService.get<number>('API_PORT') || 4000;
 
+  const logger = new Logger('Bootstrap');
   await app.listen(port);
-  console.log(`🚀 XEARN API running on http://localhost:${port}`);
+  logger.log(`🚀 XEARN API running on http://localhost:${port}`);
 }
 bootstrap();

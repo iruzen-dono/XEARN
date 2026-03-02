@@ -1,6 +1,7 @@
 import { Controller, Get, Query, UseGuards, Request } from '@nestjs/common';
 import { ReferralsService } from './referrals.service';
 import { JwtAuthGuard } from '../auth/guards';
+import { JwtRequest } from '../common/types';
 
 @Controller('referrals')
 export class ReferralsController {
@@ -8,14 +9,14 @@ export class ReferralsController {
 
   @UseGuards(JwtAuthGuard)
   @Get('tree')
-  async getReferralTree(@Request() req: any) {
+  async getReferralTree(@Request() req: JwtRequest) {
     return this.referralsService.getReferralTree(req.user.id);
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('commissions')
   async getCommissions(
-    @Request() req: any,
+    @Request() req: JwtRequest,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
@@ -28,7 +29,7 @@ export class ReferralsController {
 
   @UseGuards(JwtAuthGuard)
   @Get('stats')
-  async getStats(@Request() req: any) {
+  async getStats(@Request() req: JwtRequest) {
     return this.referralsService.getStats(req.user.id);
   }
 }

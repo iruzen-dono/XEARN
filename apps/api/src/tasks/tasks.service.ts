@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../prisma/prisma.service';
 import { ReferralsService } from '../referrals/referrals.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { GamificationService } from '../gamification/gamification.service';
 import { Decimal } from '@prisma/client/runtime/library';
 
 // Durée minimum en secondes par type de tâche
@@ -21,6 +22,7 @@ export class TasksService {
     private prisma: PrismaService,
     private referralsService: ReferralsService,
     private notificationsService: NotificationsService,
+    private gamificationService: GamificationService,
   ) {}
 
   private readonly TIER_ORDER = ['NORMAL', 'PREMIUM', 'VIP'] as const;
@@ -31,7 +33,10 @@ export class TasksService {
 
   async findAll(userId: string, page = 1, limit = 20) {
     // Fetch user tier to filter visible tasks
-    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { tier: true } });
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { tier: true },
+    });
     const userTier = user?.tier || 'NORMAL';
     const accessibleTiers = this.TIER_ORDER.slice(0, this.TIER_ORDER.indexOf(userTier as any) + 1);
 
@@ -79,7 +84,9 @@ export class TasksService {
     // Vérifier que l'utilisateur est activé
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user || user.status !== 'ACTIVATED') {
-      throw new BadRequestException('Compte non activé — activez votre compte pour gagner des récompenses');
+      throw new BadRequestException(
+        'Compte non activé — activez votre compte pour gagner des récompenses',
+      );
     }
 
     // Vérifier le tier requis
@@ -87,7 +94,7 @@ export class TasksService {
       throw new BadRequestException(`Cette tâche nécessite le niveau ${task.requiredTier}`);
     }
 
-    // Vérifier si déjà complétée
+    // Vérifier si déjà complétée (preliminary check — authoritative check inside $transaction)
     const existing = await this.prisma.taskCompletion.findUnique({
       where: { userId_taskId: { userId, taskId } },
     });
@@ -98,7 +105,7 @@ export class TasksService {
       where: { userId_taskId: { userId, taskId } },
     });
     if (!session) {
-      throw new BadRequestException('Vous devez d\'abord démarrer la tâche');
+      throw new BadRequestException("Vous devez d'abord démarrer la tâche");
     }
     if (session.completed) {
       throw new BadRequestException('Session déjà utilisée');
@@ -132,52 +139,67 @@ export class TasksService {
       }
     }
 
-    // Vérifier max completions
+    // Preliminary max completions check (authoritative re-check inside $transaction)
     if (task.maxCompletions && task.completionCount >= task.maxCompletions) {
       throw new BadRequestException('Nombre maximum de complétions atteint');
     }
 
     // Transaction atomique : compléter la tâche + créditer le wallet
-    const result = await this.prisma.$transaction(async (tx) => {
-      // Marquer la session comme utilisée
-      await tx.taskSession.update({
-        where: { userId_taskId: { userId, taskId } },
-        data: { completed: true },
-      });
+    let result;
+    try {
+      result = await this.prisma.$transaction(async (tx) => {
+        // Re-check maxCompletions inside transaction (authoritative)
+        const freshTask = await tx.task.findUniqueOrThrow({ where: { id: taskId } });
+        if (freshTask.maxCompletions && freshTask.completionCount >= freshTask.maxCompletions) {
+          throw new BadRequestException('Nombre maximum de complétions atteint');
+        }
 
-      // Créer la complétion
-      const completion = await tx.taskCompletion.create({
-        data: { userId, taskId, earned: task.reward },
-      });
+        // Marquer la session comme utilisée
+        await tx.taskSession.update({
+          where: { userId_taskId: { userId, taskId } },
+          data: { completed: true },
+        });
 
-      // Incrémenter le compteur de la tâche
-      await tx.task.update({
-        where: { id: taskId },
-        data: { completionCount: { increment: 1 } },
-      });
+        // Créer la complétion (unique constraint handles concurrent duplicates)
+        const completion = await tx.taskCompletion.create({
+          data: { userId, taskId, earned: task.reward },
+        });
 
-      // Créditer le wallet
-      await tx.wallet.update({
-        where: { userId },
-        data: {
-          balance: { increment: task.reward },
-          totalEarned: { increment: task.reward },
-        },
-      });
+        // Incrémenter le compteur de la tâche
+        await tx.task.update({
+          where: { id: taskId },
+          data: { completionCount: { increment: 1 } },
+        });
 
-      // Créer la transaction
-      await tx.transaction.create({
-        data: {
-          userId,
-          type: 'TASK_EARNING',
-          status: 'COMPLETED',
-          amount: task.reward,
-          description: `Gain tâche: ${task.title}`,
-        },
-      });
+        // Créditer le wallet
+        await tx.wallet.update({
+          where: { userId },
+          data: {
+            balance: { increment: task.reward },
+            totalEarned: { increment: task.reward },
+          },
+        });
 
-      return completion;
-    });
+        // Créer la transaction
+        await tx.transaction.create({
+          data: {
+            userId,
+            type: 'TASK_EARNING',
+            status: 'COMPLETED',
+            amount: task.reward,
+            description: `Gain tâche: ${task.title}`,
+          },
+        });
+
+        return completion;
+      });
+    } catch (error: unknown) {
+      // Handle Prisma unique constraint violation (P2002) — concurrent duplicate completion
+      if (error instanceof Error && 'code' in error && (error as any).code === 'P2002') {
+        throw new BadRequestException('Tâche déjà complétée');
+      }
+      throw error;
+    }
 
     // Distribuer les commissions de parrainage (hors transaction pour ne pas bloquer)
     try {
@@ -196,6 +218,15 @@ export class TasksService {
       console.error('Erreur notification:', err);
     }
 
+    // Gamification: streak + badges
+    try {
+      await this.gamificationService.recordActivity(userId);
+      await this.gamificationService.checkTaskBadges(userId);
+      await this.gamificationService.checkEarningsBadges(userId);
+    } catch (err) {
+      console.error('Erreur gamification:', err);
+    }
+
     return result;
   }
 
@@ -207,7 +238,9 @@ export class TasksService {
     // Vérifier que l'utilisateur est activé
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user || user.status !== 'ACTIVATED') {
-      throw new BadRequestException('Compte non activé — activez votre compte pour gagner des récompenses');
+      throw new BadRequestException(
+        'Compte non activé — activez votre compte pour gagner des récompenses',
+      );
     }
 
     // Vérifier le tier requis
@@ -264,16 +297,19 @@ export class TasksService {
     });
   }
 
-  async updateTask(taskId: string, data: {
-    title?: string;
-    description?: string;
-    type?: 'VIDEO_AD' | 'CLICK_AD' | 'SURVEY' | 'SPONSORED';
-    reward?: number;
-    mediaUrl?: string;
-    externalUrl?: string;
-    maxCompletions?: number;
-    requiredTier?: 'NORMAL' | 'PREMIUM' | 'VIP';
-  }) {
+  async updateTask(
+    taskId: string,
+    data: {
+      title?: string;
+      description?: string;
+      type?: 'VIDEO_AD' | 'CLICK_AD' | 'SURVEY' | 'SPONSORED';
+      reward?: number;
+      mediaUrl?: string;
+      externalUrl?: string;
+      maxCompletions?: number;
+      requiredTier?: 'NORMAL' | 'PREMIUM' | 'VIP';
+    },
+  ) {
     const task = await this.prisma.task.findUnique({ where: { id: taskId } });
     if (!task) throw new NotFoundException('Tâche introuvable');
     return this.prisma.task.update({ where: { id: taskId }, data });

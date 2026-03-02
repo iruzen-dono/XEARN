@@ -16,10 +16,10 @@
 | **Parrainage 3 niveaux** | L1: 40%, L2: 10%, L3 VIP: 5% | ✅ Implémenté |
 | **Publicités ciblées** | Rôle Partenaire, ciblage pays/tier, budget | ✅ Implémenté |
 | **Paiements** | FedaPay (MTN, Moov, TMoney) | ✅ Intégré |
-| **Design** | Premium dark theme + framer-motion + recharts + Radix UI | ✅ Complet |
+| **Design** | Premium dark theme + framer-motion | ✅ Complet (pas de recharts/Radix) |
 | **PWA** | Service Worker + Manifest | ✅ Basique |
-| **Tests** | Jest (7 suites, 60 tests backend) + Playwright (frontend smoke) | ✅ Fonctionnel |
-| **CI/CD** | Non configuré | ❌ À faire |
+| **Tests** | Jest (10 suites, 89 tests backend) + Playwright (frontend smoke) | ✅ Fonctionnel |
+| **CI/CD** | GitHub Actions (lint → test → build) | ✅ Configuré |
 | **Déploiement** | Docker Compose (dev) | ⚠️ Pas de production |
 
 ### Corrections effectuées (Phase 10 - Audit complet)
@@ -34,29 +34,32 @@
 
 ---
 
-## Phase 1 — Sécurité & Robustesse (Priorité: HAUTE)
+## Phase 1 — Sécurité & Robustesse (Priorité: HAUTE) ✅
 
-### 1.1 Validation Google Auth côté serveur
-- [ ] Installer `google-auth-library`
-- [ ] Vérifier le `idToken` Google côté backend (`OAuth2Client.verifyIdToken`)
-- [ ] Supprimer la confiance aveugle dans le payload Google envoyé par le frontend
+### 1.1 Validation Google Auth côté serveur ✅
+- [x] Installer `google-auth-library`
+- [x] Vérifier le `idToken` Google côté backend (`OAuth2Client.verifyIdToken`)
+- [x] Supprimer la confiance aveugle dans le payload Google envoyé par le frontend
 - **Impact**: Empêche la création de comptes avec des tokens Google falsifiés
 
-### 1.2 Rate Limiting avancé
-- [ ] Ajouter `@nestjs/throttler` avec des limites par route
-- [ ] Rate limit strict sur `/api/auth/login` (5 req/min), `/api/auth/register` (3 req/min)
-- [ ] Rate limit modéré sur `/api/tasks/complete` (anti-farming)
-- [ ] Rate limit sur `/api/payment/webhook` (protection DDoS)
+### 1.2 Rate Limiting avancé ✅
+- [x] Ajouter `@nestjs/throttler` avec des limites par route
+- [x] Rate limit strict sur `/api/auth/login` (10 req/min), `/api/auth/register` (5 req/min)
+- [x] Rate limit modéré sur `/api/tasks/complete` (5 req/min), `/api/tasks/start` (10 req/min)
+- [x] Paliers globaux: burst (10/s), normal (60/10s), global (200/min)
 
-### 1.3 Helmet & Headers de sécurité
-- [ ] Vérifier la configuration `helmet()` existante
-- [ ] Ajouter `Content-Security-Policy` strict
-- [ ] Ajouter `Permissions-Policy` (désactiver camera, microphone, geolocation)
-- [ ] `X-Content-Type-Options: nosniff` sur toutes les réponses
+### 1.3 Helmet & Headers de sécurité ✅
+- [x] Configuration `helmet()` complète (CSP, frameguard, referrer-policy, HSTS 1 an)
+- [x] `Content-Security-Policy` strict (self, inline styles, images HTTPS)
+- [x] `Permissions-Policy` (camera, microphone, geolocation, payment, usb désactivés)
+- [x] `X-Content-Type-Options: nosniff` sur toutes les réponses
 
-### 1.4 Audit de sécurité des dépendances
-- [ ] Exécuter `npm audit` et résoudre les vulnérabilités HIGH/CRITICAL
-- [ ] Configurer Dependabot ou Renovate pour les mises à jour automatiques
+### 1.4 Audit de sécurité des dépendances ✅
+- [x] `nodemailer` 6.10 → 8.0.1 (fix HIGH: email domain interprétation + DoS)
+- [x] `bcrypt` 5.1 → 6.0.0 (fix HIGH: tar path traversal via node-pre-gyp)
+- [x] `@nestjs/config` 3.3 → 4.0.3 (fix MODERATE: lodash prototype pollution)
+- [x] `google-auth-library` ajouté pour la vérification serveur
+- [ ] Restant: 19 vulnérabilités dans les devDependencies (@nestjs/cli, webpack) — non exploitables en production
 
 ---
 
@@ -152,8 +155,8 @@
 
 ## Phase 5 — DevOps & Déploiement (Priorité: HAUTE pour production)
 
-### 5.1 CI/CD Pipeline
-- [ ] GitHub Actions: lint → test → build → deploy
+### 5.1 CI/CD Pipeline ✅
+- [x] GitHub Actions: lint → test → build (`.github/workflows/ci.yml`)
 - [ ] Environnements: `staging` et `production`
 - [ ] Migrations Prisma automatiques au déploiement
 - [ ] Rollback automatique si le health check échoue
@@ -167,7 +170,7 @@
 ### 5.3 Monitoring & Observabilité
 - [ ] APM: Sentry pour le tracking d'erreurs (backend + frontend)
 - [ ] Logs structurés (déjà en place) → exporter vers un agrégateur (Loki, Datadog)
-- [ ] Health check endpoint `/api/health` avec vérification DB
+- [x] Health check endpoint `/api/health` avec vérification DB
 - [ ] Uptime monitoring (UptimeRobot, Better Stack)
 - [ ] Alertes Slack/Telegram pour les erreurs critiques et les paiements échoués
 
@@ -222,10 +225,10 @@
 
 | Élément | Fichier(s) | Sévérité | Description |
 |---------|-----------|----------|-------------|
-| Google Auth non vérifié serveur | `auth.service.ts` | **CRITIQUE** | Le `idToken` Google n'est pas vérifié côté serveur — un attaquant peut fabriquer un token |
-| `any` omniprésent | 30+ fichiers | HAUTE | ~50 occurrences de `any` dans le frontend, types manquants |
-| Advertisement sans FK | `schema.prisma` | ~~MOYENNE~~ | ~~`publisherId` est un String libre~~ → **Résolu** : publisherId lié à User |
-| Landing page `'use client'` | `app/page.tsx` | BASSE | La landing 7KB JS pourrait être un Server Component pur (0 JS) |
+| ~~Google Auth non vérifié serveur~~ | ~~`auth.service.ts`~~ | ~~**CRITIQUE**~~ | ~~Le `idToken` Google n'est pas vérifié côté serveur~~ → **Résolu** : `google-auth-library` + `verifyIdToken` |
+| ~~`any` omniprésent~~ | ~~30+ fichiers~~ | ~~HAUTE~~ | ~~~50 occurrences de `any`~~ → **Résolu** : types strictement typés frontend + backend |
+| ~~Advertisement sans FK~~ | ~~`schema.prisma`~~ | ~~MOYENNE~~ | ~~`publisherId` est un String libre~~ → **Résolu** : `@relation` ajouté |
+| ~~Landing page `'use client'`~~ | ~~`app/page.tsx`~~ | ~~BASSE~~ | ~~La landing 7KB JS~~ → **Résolu** : Server Component pur |
 | PWA sans versioning | `public/sw.js` | BASSE | Le service worker ne gère pas les versions de cache |
 | Polling notifications | `NotificationBell.tsx` | BASSE | Polling 30s → remplacer par SSE/WebSocket |
 

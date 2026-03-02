@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { Prisma } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -17,9 +18,9 @@ export class UsersService {
   async findAll(page = 1, limit = 20, search?: string, status?: string) {
     const skip = (page - 1) * limit;
 
-    const where: any = {};
+    const where: Prisma.UserWhereInput = {};
     if (status && status !== 'ALL') {
-      where.status = status;
+      where.status = status as Prisma.EnumAccountStatusFilter;
     }
     if (search) {
       where.OR = [
@@ -73,7 +74,8 @@ export class UsersService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new BadRequestException('Utilisateur introuvable');
     if (user.role === 'ADMIN') throw new BadRequestException('Impossible de suspendre un admin');
-    if (userId === requestingAdminId) throw new BadRequestException('Impossible de vous suspendre vous-même');
+    if (userId === requestingAdminId)
+      throw new BadRequestException('Impossible de vous suspendre vous-même');
     if (user.status === 'SUSPENDED') throw new BadRequestException('Utilisateur déjà suspendu');
     return this.prisma.user.update({
       where: { id: userId },
@@ -85,7 +87,8 @@ export class UsersService {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new BadRequestException('Utilisateur introuvable');
     if (user.role === 'ADMIN') throw new BadRequestException('Impossible de bannir un admin');
-    if (userId === requestingAdminId) throw new BadRequestException('Impossible de vous bannir vous-même');
+    if (userId === requestingAdminId)
+      throw new BadRequestException('Impossible de vous bannir vous-même');
     if (user.status === 'BANNED') throw new BadRequestException('Utilisateur déjà banni');
     return this.prisma.user.update({
       where: { id: userId },
@@ -94,13 +97,14 @@ export class UsersService {
   }
 
   async getStats() {
-    const [totalUsers, activeUsers, totalActivated, suspendedUsers, bannedUsers] = await Promise.all([
-      this.prisma.user.count(),
-      this.prisma.user.count({ where: { status: 'ACTIVATED' } }),
-      this.prisma.user.count({ where: { status: { not: 'FREE' } } }),
-      this.prisma.user.count({ where: { status: 'SUSPENDED' } }),
-      this.prisma.user.count({ where: { status: 'BANNED' } }),
-    ]);
+    const [totalUsers, activeUsers, totalActivated, suspendedUsers, bannedUsers] =
+      await Promise.all([
+        this.prisma.user.count(),
+        this.prisma.user.count({ where: { status: 'ACTIVATED' } }),
+        this.prisma.user.count({ where: { status: { not: 'FREE' } } }),
+        this.prisma.user.count({ where: { status: 'SUSPENDED' } }),
+        this.prisma.user.count({ where: { status: 'BANNED' } }),
+      ]);
 
     return { totalUsers, activeUsers, totalActivated, suspendedUsers, bannedUsers };
   }
@@ -137,7 +141,7 @@ export class UsersService {
     });
 
     // Revenus des 30 derniers jours (activations)
-    const revenue = await this.prisma.$queryRaw<{ date: string; total: any }[]>`
+    const revenue = await this.prisma.$queryRaw<{ date: string; total: number | bigint }[]>`
       SELECT DATE("createdAt") as date, SUM(amount) as total
       FROM transactions
       WHERE type = 'ACTIVATION' AND status = 'COMPLETED' AND "createdAt" >= ${thirtyDaysAgo}
@@ -167,12 +171,21 @@ export class UsersService {
         referrals: r._count.referrals,
       })),
       revenue: revenue.map((r) => ({ date: r.date, total: Number(r.total) })),
-      tasksByType: tasksByType.map((t) => ({ type: t.type, count: (t._count as any)?._all ?? t._count })),
+      tasksByType: tasksByType.map((t) => ({
+        type: t.type,
+        count:
+          typeof t._count === 'number'
+            ? t._count
+            : ((t._count as Record<string, number>)?._all ?? 0),
+      })),
       topTasks,
     };
   }
 
-  async updateProfile(userId: string, data: { firstName?: string; lastName?: string; phone?: string }) {
+  async updateProfile(
+    userId: string,
+    data: { firstName?: string; lastName?: string; phone?: string },
+  ) {
     // Si un phone est fourni, vérifier qu'il n'est pas déjà pris
     if (data.phone) {
       const existing = await this.prisma.user.findUnique({ where: { phone: data.phone } });
@@ -181,8 +194,9 @@ export class UsersService {
       }
     }
 
-    const updateData: any = {};
-    if (data.firstName !== undefined && data.firstName !== '') updateData.firstName = data.firstName;
+    const updateData: Prisma.UserUpdateInput = {};
+    if (data.firstName !== undefined && data.firstName !== '')
+      updateData.firstName = data.firstName;
     if (data.lastName !== undefined && data.lastName !== '') updateData.lastName = data.lastName;
     if (data.phone !== undefined) updateData.phone = data.phone || null;
 
@@ -201,7 +215,9 @@ export class UsersService {
     if (!user) throw new BadRequestException('Utilisateur introuvable');
 
     if (!user.password) {
-      throw new BadRequestException('Votre compte utilise Google. Impossible de changer le mot de passe.');
+      throw new BadRequestException(
+        'Votre compte utilise Google. Impossible de changer le mot de passe.',
+      );
     }
 
     const isValid = await bcrypt.compare(currentPassword, user.password);
@@ -213,7 +229,7 @@ export class UsersService {
 
     await this.prisma.user.update({
       where: { id: userId },
-      data: { password: hashedPassword },
+      data: { password: hashedPassword, tokenVersion: { increment: 1 } },
     });
 
     return { message: 'Mot de passe modifié avec succès' };

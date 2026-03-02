@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-test-build:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: xearn
+          POSTGRES_PASSWORD: xearn_test
+          POSTGRES_DB: xearn_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U xearn"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://xearn:xearn_test@localhost:5432/xearn_test
+      JWT_SECRET: ci-test-secret-key
+      JWT_REFRESH_SECRET: ci-test-refresh-secret
+      API_PORT: 4000
+      NODE_ENV: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install API dependencies
+        run: npm ci
+        working-directory: apps/api
+
+      - name: Install Web dependencies
+        run: npm ci
+        working-directory: apps/web
+
+      # --- API ---
+      - name: Generate Prisma client
+        run: npx prisma generate
+        working-directory: apps/api
+
+      - name: Run Prisma migrations
+        run: npx prisma migrate deploy
+        working-directory: apps/api
+
+      - name: Lint API (TypeScript)
+        run: npx tsc --noEmit
+        working-directory: apps/api
+
+      - name: Test API
+        run: npx jest --forceExit --ci --coverage
+        working-directory: apps/api
+
+      # --- Web ---
+      - name: Lint Web (TypeScript)
+        run: npx tsc --noEmit
+        working-directory: apps/web
+
+      - name: Build Web
+        run: npx next build
+        working-directory: apps/web

@@ -1,7 +1,17 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Plus, Loader2, Pause, Play, Trash2, ChevronLeft, ChevronRight, X, Pencil } from 'lucide-react';
+import {
+  Plus,
+  Loader2,
+  Pause,
+  Play,
+  Trash2,
+  ChevronLeft,
+  ChevronRight,
+  X,
+  Pencil,
+} from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { useToast } from '@/lib/toast';
 import { adminApi } from '@/lib/api';
@@ -34,7 +44,13 @@ export default function AdminTasksPage() {
   const [editingTask, setEditingTask] = useState<any>(null);
   const [saving, setSaving] = useState(false);
   const [editForm, setEditForm] = useState({
-    title: '', description: '', type: 'VIDEO_AD', reward: '', maxCompletions: '', mediaUrl: '', externalUrl: '',
+    title: '',
+    description: '',
+    type: 'VIDEO_AD',
+    reward: '',
+    maxCompletions: '',
+    mediaUrl: '',
+    externalUrl: '',
   });
 
   const [title, setTitle] = useState('');
@@ -49,7 +65,7 @@ export default function AdminTasksPage() {
     if (!token) return;
     setLoading(true);
     try {
-      const data = await adminApi.getAllTasks(token, page) as any;
+      const data = (await adminApi.getAllTasks(token, page)) as any;
       setTasks(data.tasks || []);
       setTotal(data.total || 0);
     } catch (err) {
@@ -59,7 +75,9 @@ export default function AdminTasksPage() {
     }
   }, [token, page]);
 
-  useEffect(() => { fetchTasks(); }, [fetchTasks]);
+  useEffect(() => {
+    fetchTasks();
+  }, [fetchTasks]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,14 +87,19 @@ export default function AdminTasksPage() {
       await adminApi.createTask(token, {
         title,
         description: description || undefined,
-        type,
+        type: type as import('@/types').TaskType,
         reward: parseFloat(reward),
         maxCompletions: maxCompletions ? parseInt(maxCompletions) : undefined,
         mediaUrl: mediaUrl || undefined,
         externalUrl: externalUrl || undefined,
       });
-      setTitle(''); setDescription(''); setType('VIDEO_AD'); setReward('');
-      setMaxCompletions(''); setMediaUrl(''); setExternalUrl('');
+      setTitle('');
+      setDescription('');
+      setType('VIDEO_AD');
+      setReward('');
+      setMaxCompletions('');
+      setMediaUrl('');
+      setExternalUrl('');
       setShowCreate(false);
       await fetchTasks();
     } catch (err: any) {
@@ -133,7 +156,7 @@ export default function AdminTasksPage() {
       await adminApi.updateTask(token, editingTask.id, {
         title: editForm.title,
         description: editForm.description || undefined,
-        type: editForm.type,
+        type: editForm.type as import('@/types').TaskType,
         reward: parseFloat(editForm.reward),
         maxCompletions: editForm.maxCompletions ? parseInt(editForm.maxCompletions) : undefined,
         mediaUrl: editForm.mediaUrl || undefined,
@@ -155,7 +178,10 @@ export default function AdminTasksPage() {
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <h1 className="text-3xl font-bold">Gestion des tâches</h1>
-        <button onClick={() => setShowCreate(!showCreate)} className="btn-primary flex items-center gap-2 text-sm">
+        <button
+          onClick={() => setShowCreate(!showCreate)}
+          className="btn-primary flex items-center gap-2 text-sm"
+        >
           {showCreate ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
           {showCreate ? 'Annuler' : 'Nouvelle tâche'}
         </button>
@@ -168,62 +194,108 @@ export default function AdminTasksPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm text-dark-400 mb-1">Titre *</label>
-                <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} required
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  required
                   className="w-full px-4 py-2.5 bg-dark-800 border border-dark-700 rounded-xl text-sm focus:border-primary-500 focus:outline-none"
-                  placeholder="Regarder une vidéo..." />
+                  placeholder="Regarder une vidéo..."
+                />
               </div>
               <div>
                 <label className="block text-sm text-dark-400 mb-1">Type *</label>
-                <select value={type} onChange={(e) => setType(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-dark-800 border border-dark-700 rounded-xl text-sm focus:border-primary-500 focus:outline-none">
-                  {taskTypes.map((t) => <option key={t} value={t}>{t.replace('_', ' ')}</option>)}
+                <select
+                  value={type}
+                  onChange={(e) => setType(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-dark-800 border border-dark-700 rounded-xl text-sm focus:border-primary-500 focus:outline-none"
+                >
+                  {taskTypes.map((t) => (
+                    <option key={t} value={t}>
+                      {t.replace('_', ' ')}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
                 <label className="block text-sm text-dark-400 mb-1">Récompense (FCFA) *</label>
-                <input type="number" value={reward} onChange={(e) => setReward(e.target.value)} required min="1"
+                <input
+                  type="number"
+                  value={reward}
+                  onChange={(e) => setReward(e.target.value)}
+                  required
+                  min="1"
                   className="w-full px-4 py-2.5 bg-dark-800 border border-dark-700 rounded-xl text-sm focus:border-primary-500 focus:outline-none"
-                  placeholder="50" />
+                  placeholder="50"
+                />
               </div>
               <div>
                 <label className="block text-sm text-dark-400 mb-1">Max complétions</label>
-                <input type="number" value={maxCompletions} onChange={(e) => setMaxCompletions(e.target.value)}
+                <input
+                  type="number"
+                  value={maxCompletions}
+                  onChange={(e) => setMaxCompletions(e.target.value)}
                   className="w-full px-4 py-2.5 bg-dark-800 border border-dark-700 rounded-xl text-sm focus:border-primary-500 focus:outline-none"
-                  placeholder="Illimité" />
+                  placeholder="Illimité"
+                />
               </div>
             </div>
             <div>
               <label className="block text-sm text-dark-400 mb-1">Description</label>
-              <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2}
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={2}
                 className="w-full px-4 py-2.5 bg-dark-800 border border-dark-700 rounded-xl text-sm focus:border-primary-500 focus:outline-none resize-none"
-                placeholder="Description optionnelle..." />
+                placeholder="Description optionnelle..."
+              />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm text-dark-400 mb-1">URL média</label>
-                <input type="url" value={mediaUrl} onChange={(e) => setMediaUrl(e.target.value)}
+                <input
+                  type="url"
+                  value={mediaUrl}
+                  onChange={(e) => setMediaUrl(e.target.value)}
                   className="w-full px-4 py-2.5 bg-dark-800 border border-dark-700 rounded-xl text-sm focus:border-primary-500 focus:outline-none"
-                  placeholder="https://youtube.com/..." />
+                  placeholder="https://youtube.com/..."
+                />
               </div>
               <div>
                 <label className="block text-sm text-dark-400 mb-1">URL externe</label>
-                <input type="url" value={externalUrl} onChange={(e) => setExternalUrl(e.target.value)}
+                <input
+                  type="url"
+                  value={externalUrl}
+                  onChange={(e) => setExternalUrl(e.target.value)}
                   className="w-full px-4 py-2.5 bg-dark-800 border border-dark-700 rounded-xl text-sm focus:border-primary-500 focus:outline-none"
-                  placeholder="https://..." />
+                  placeholder="https://..."
+                />
               </div>
             </div>
-            <button type="submit" disabled={creating} className="btn-primary flex items-center gap-2">
-              {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+            <button
+              type="submit"
+              disabled={creating}
+              className="btn-primary flex items-center gap-2"
+            >
+              {creating ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Plus className="w-4 h-4" />
+              )}
               Créer la tâche
             </button>
           </form>
         </div>
       )}
 
-      <div className="text-dark-400 text-sm mb-4">{total} tâche{total > 1 ? 's' : ''}</div>
+      <div className="text-dark-400 text-sm mb-4">
+        {total} tâche{total > 1 ? 's' : ''}
+      </div>
 
       {loading ? (
-        <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary-400" /></div>
+        <div className="flex justify-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-primary-400" />
+        </div>
       ) : tasks.length === 0 ? (
         <div className="card text-center text-dark-400 py-12">Aucune tâche créée</div>
       ) : (
@@ -234,37 +306,62 @@ export default function AdminTasksPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className="font-semibold truncate">{task.title}</h3>
-                    <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${statusColors[task.status] || ''}`}>
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${statusColors[task.status] || ''}`}
+                    >
                       {statusLabels[task.status] || task.status}
                     </span>
                   </div>
                   <div className="text-dark-500 text-xs flex flex-wrap gap-3">
                     <span>{task.type.replace('_', ' ')}</span>
                     <span>{Number(task.reward)} FCFA</span>
-                    <span>{task.completionCount}{task.maxCompletions ? `/${task.maxCompletions}` : ''} complétions</span>
+                    <span>
+                      {task.completionCount}
+                      {task.maxCompletions ? `/${task.maxCompletions}` : ''} complétions
+                    </span>
                     <span>{new Date(task.createdAt).toLocaleDateString('fr-FR')}</span>
                   </div>
-                  {task.description && <div className="text-dark-400 text-xs mt-1 truncate">{task.description}</div>}
+                  {task.description && (
+                    <div className="text-dark-400 text-xs mt-1 truncate">{task.description}</div>
+                  )}
                 </div>
                 <div className="flex gap-2 shrink-0">
                   {actionLoading === task.id ? (
                     <Loader2 className="w-4 h-4 animate-spin text-dark-400" />
                   ) : (
                     <>
-                      <button onClick={() => openEdit(task)} title="Modifier" aria-label="Modifier la tâche"
-                        className="p-2 rounded-lg text-primary-400 hover:bg-primary-500/10 transition-colors">
+                      <button
+                        onClick={() => openEdit(task)}
+                        title="Modifier"
+                        aria-label="Modifier la tâche"
+                        className="p-2 rounded-lg text-primary-400 hover:bg-primary-500/10 transition-colors"
+                      >
                         <Pencil className="w-4 h-4" />
                       </button>
-                      <button onClick={() => handleToggle(task.id)}
+                      <button
+                        onClick={() => handleToggle(task.id)}
                         title={task.status === 'ACTIVE' ? 'Mettre en pause' : 'Activer'}
-                        aria-label={task.status === 'ACTIVE' ? 'Mettre en pause la tâche' : 'Activer la tâche'}
+                        aria-label={
+                          task.status === 'ACTIVE' ? 'Mettre en pause la tâche' : 'Activer la tâche'
+                        }
                         className={`p-2 rounded-lg transition-colors ${
-                          task.status === 'ACTIVE' ? 'text-yellow-400 hover:bg-yellow-500/10' : 'text-green-400 hover:bg-green-500/10'
-                        }`}>
-                        {task.status === 'ACTIVE' ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                          task.status === 'ACTIVE'
+                            ? 'text-yellow-400 hover:bg-yellow-500/10'
+                            : 'text-green-400 hover:bg-green-500/10'
+                        }`}
+                      >
+                        {task.status === 'ACTIVE' ? (
+                          <Pause className="w-4 h-4" />
+                        ) : (
+                          <Play className="w-4 h-4" />
+                        )}
                       </button>
-                      <button onClick={() => handleDelete(task.id)} title="Supprimer" aria-label="Supprimer la tâche"
-                        className="p-2 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors">
+                      <button
+                        onClick={() => handleDelete(task.id)}
+                        title="Supprimer"
+                        aria-label="Supprimer la tâche"
+                        className="p-2 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors"
+                      >
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </>
@@ -276,15 +373,23 @@ export default function AdminTasksPage() {
 
           {totalPages > 1 && (
             <div className="flex items-center justify-center gap-4 mt-6">
-              <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
                 aria-label="Page précédente"
-                className="p-2 rounded-lg bg-dark-800 text-dark-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed">
+                className="p-2 rounded-lg bg-dark-800 text-dark-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+              >
                 <ChevronLeft className="w-5 h-5" />
               </button>
-              <span className="text-sm text-dark-400">Page {page} / {totalPages}</span>
-              <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+              <span className="text-sm text-dark-400">
+                Page {page} / {totalPages}
+              </span>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
                 aria-label="Page suivante"
-                className="p-2 rounded-lg bg-dark-800 text-dark-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed">
+                className="p-2 rounded-lg bg-dark-800 text-dark-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+              >
                 <ChevronRight className="w-5 h-5" />
               </button>
             </div>
@@ -294,11 +399,20 @@ export default function AdminTasksPage() {
 
       {/* Edit modal */}
       {editingTask && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setEditingTask(null)}>
-          <div className="card max-w-lg w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          onClick={() => setEditingTask(null)}
+        >
+          <div
+            className="card max-w-lg w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold">Modifier la tâche</h2>
-              <button onClick={() => setEditingTask(null)} className="p-1 rounded-lg hover:bg-dark-700 text-dark-400">
+              <button
+                onClick={() => setEditingTask(null)}
+                className="p-1 rounded-lg hover:bg-dark-700 text-dark-400"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -306,51 +420,99 @@ export default function AdminTasksPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm text-dark-400 mb-1">Titre *</label>
-                  <input type="text" value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} required
-                    className="w-full px-4 py-2.5 bg-dark-800 border border-dark-700 rounded-xl text-sm focus:border-primary-500 focus:outline-none" />
+                  <input
+                    type="text"
+                    value={editForm.title}
+                    onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                    required
+                    className="w-full px-4 py-2.5 bg-dark-800 border border-dark-700 rounded-xl text-sm focus:border-primary-500 focus:outline-none"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm text-dark-400 mb-1">Type *</label>
-                  <select value={editForm.type} onChange={(e) => setEditForm({ ...editForm, type: e.target.value })}
-                    className="w-full px-4 py-2.5 bg-dark-800 border border-dark-700 rounded-xl text-sm focus:border-primary-500 focus:outline-none">
-                    {taskTypes.map((t) => <option key={t} value={t}>{t.replace('_', ' ')}</option>)}
+                  <select
+                    value={editForm.type}
+                    onChange={(e) => setEditForm({ ...editForm, type: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-dark-800 border border-dark-700 rounded-xl text-sm focus:border-primary-500 focus:outline-none"
+                  >
+                    {taskTypes.map((t) => (
+                      <option key={t} value={t}>
+                        {t.replace('_', ' ')}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>
                   <label className="block text-sm text-dark-400 mb-1">Récompense (FCFA) *</label>
-                  <input type="number" value={editForm.reward} onChange={(e) => setEditForm({ ...editForm, reward: e.target.value })} required min="1"
-                    className="w-full px-4 py-2.5 bg-dark-800 border border-dark-700 rounded-xl text-sm focus:border-primary-500 focus:outline-none" />
+                  <input
+                    type="number"
+                    value={editForm.reward}
+                    onChange={(e) => setEditForm({ ...editForm, reward: e.target.value })}
+                    required
+                    min="1"
+                    className="w-full px-4 py-2.5 bg-dark-800 border border-dark-700 rounded-xl text-sm focus:border-primary-500 focus:outline-none"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm text-dark-400 mb-1">Max complétions</label>
-                  <input type="number" value={editForm.maxCompletions} onChange={(e) => setEditForm({ ...editForm, maxCompletions: e.target.value })}
+                  <input
+                    type="number"
+                    value={editForm.maxCompletions}
+                    onChange={(e) => setEditForm({ ...editForm, maxCompletions: e.target.value })}
                     className="w-full px-4 py-2.5 bg-dark-800 border border-dark-700 rounded-xl text-sm focus:border-primary-500 focus:outline-none"
-                    placeholder="Illimité" />
+                    placeholder="Illimité"
+                  />
                 </div>
               </div>
               <div>
                 <label className="block text-sm text-dark-400 mb-1">Description</label>
-                <textarea value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} rows={2}
-                  className="w-full px-4 py-2.5 bg-dark-800 border border-dark-700 rounded-xl text-sm focus:border-primary-500 focus:outline-none resize-none" />
+                <textarea
+                  value={editForm.description}
+                  onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
+                  rows={2}
+                  className="w-full px-4 py-2.5 bg-dark-800 border border-dark-700 rounded-xl text-sm focus:border-primary-500 focus:outline-none resize-none"
+                />
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm text-dark-400 mb-1">URL média</label>
-                  <input type="url" value={editForm.mediaUrl} onChange={(e) => setEditForm({ ...editForm, mediaUrl: e.target.value })}
-                    className="w-full px-4 py-2.5 bg-dark-800 border border-dark-700 rounded-xl text-sm focus:border-primary-500 focus:outline-none" />
+                  <input
+                    type="url"
+                    value={editForm.mediaUrl}
+                    onChange={(e) => setEditForm({ ...editForm, mediaUrl: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-dark-800 border border-dark-700 rounded-xl text-sm focus:border-primary-500 focus:outline-none"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm text-dark-400 mb-1">URL externe</label>
-                  <input type="url" value={editForm.externalUrl} onChange={(e) => setEditForm({ ...editForm, externalUrl: e.target.value })}
-                    className="w-full px-4 py-2.5 bg-dark-800 border border-dark-700 rounded-xl text-sm focus:border-primary-500 focus:outline-none" />
+                  <input
+                    type="url"
+                    value={editForm.externalUrl}
+                    onChange={(e) => setEditForm({ ...editForm, externalUrl: e.target.value })}
+                    className="w-full px-4 py-2.5 bg-dark-800 border border-dark-700 rounded-xl text-sm focus:border-primary-500 focus:outline-none"
+                  />
                 </div>
               </div>
               <div className="flex gap-3">
-                <button type="submit" disabled={saving} className="btn-primary flex items-center gap-2">
-                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Pencil className="w-4 h-4" />}
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="btn-primary flex items-center gap-2"
+                >
+                  {saving ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Pencil className="w-4 h-4" />
+                  )}
                   Enregistrer
                 </button>
-                <button type="button" onClick={() => setEditingTask(null)} className="btn-secondary">Annuler</button>
+                <button
+                  type="button"
+                  onClick={() => setEditingTask(null)}
+                  className="btn-secondary"
+                >
+                  Annuler
+                </button>
               </div>
             </form>
           </div>

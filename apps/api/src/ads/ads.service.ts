@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-  ForbiddenException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateAdDto, UpdateAdDto } from './dto/ads.dto';
 
@@ -21,7 +17,7 @@ export class AdsService {
         targetUrl: dto.targetUrl,
         expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : undefined,
         targetCountries: dto.targetCountries || [],
-        targetTiers: (dto.targetTiers as any) || [],
+        targetTiers: (dto.targetTiers || []) as import('@prisma/client').AccountTier[],
         budget: dto.budget,
       },
     });
@@ -32,39 +28,45 @@ export class AdsService {
     const take = Math.min(limit, 50);
     const skip = (page - 1) * take;
 
-    const baseWhere: any = {
-      status: 'ACTIVE',
+    const where: any = {
+      status: 'ACTIVE' as const,
       OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
     };
 
-    const [allAds, total] = await this.prisma.$transaction([
+    // Filter by tier at DB level using Prisma array operators
+    if (userTier) {
+      where.AND = [
+        ...(where.AND || []),
+        {
+          OR: [{ targetTiers: { isEmpty: true } }, { targetTiers: { has: userTier } }],
+        },
+      ];
+    }
+
+    // Filter by country at DB level
+    if (userCountry) {
+      where.AND = [
+        ...(where.AND || []),
+        {
+          OR: [{ targetCountries: { isEmpty: true } }, { targetCountries: { has: userCountry } }],
+        },
+      ];
+    }
+
+    const [ads, total] = await this.prisma.$transaction([
       this.prisma.advertisement.findMany({
-        where: baseWhere,
+        where,
         orderBy: { createdAt: 'desc' },
+        skip,
+        take,
       }),
-      this.prisma.advertisement.count({ where: baseWhere }),
+      this.prisma.advertisement.count({ where }),
     ]);
 
-    // Filter by targeting in-memory (Prisma doesn't support array-contains-any natively for enums)
-    let filtered = allAds;
-    if (userTier) {
-      filtered = filtered.filter((ad) =>
-        ad.targetTiers.length === 0 || ad.targetTiers.includes(userTier as any),
-      );
-    }
-    if (userCountry) {
-      filtered = filtered.filter((ad) =>
-        ad.targetCountries.length === 0 || ad.targetCountries.includes(userCountry),
-      );
-    }
+    // Filter out over-budget ads (small post-filter)
+    const filtered = ads.filter((ad) => !ad.budget || Number(ad.spent) < Number(ad.budget));
 
-    // Also filter ads that have exceeded their budget
-    filtered = filtered.filter((ad) =>
-      !ad.budget || Number(ad.spent) < Number(ad.budget),
-    );
-
-    const paginated = filtered.slice(skip, skip + take);
-    return { ads: paginated, total: filtered.length, page, pages: Math.ceil(filtered.length / take) };
+    return { ads: filtered, total, page, pages: Math.ceil(total / take) };
   }
 
   /** List ads by publisher */
@@ -101,13 +103,13 @@ export class AdsService {
     }
 
     // Non-admin publishers cannot change status directly
-    const { status, ...rest } = dto;
-    const data: any = { ...rest };
+    const { status: _status, ...rest } = dto;
+    const data: Record<string, unknown> = { ...rest };
     if (dto.expiresAt) data.expiresAt = new Date(dto.expiresAt);
     if (dto.targetCountries !== undefined) data.targetCountries = dto.targetCountries;
     if (dto.targetTiers !== undefined) data.targetTiers = dto.targetTiers;
     if (dto.budget !== undefined) data.budget = dto.budget;
-    if (isAdmin && status) data.status = status;
+    if (isAdmin && dto.status) data.status = dto.status;
 
     return this.prisma.advertisement.update({ where: { id }, data });
   }
@@ -127,7 +129,9 @@ export class AdsService {
   async adminFindAll(page = 1, status?: string) {
     const take = 20;
     const skip = (page - 1) * take;
-    const where = status ? { status: status as any } : {};
+    const where = status
+      ? { status: status as 'PENDING' | 'ACTIVE' | 'PAUSED' | 'EXPIRED' | 'REJECTED' }
+      : {};
 
     const [ads, total] = await this.prisma.$transaction([
       this.prisma.advertisement.findMany({
@@ -167,5 +171,29 @@ export class AdsService {
       where: { id },
       data: { status: 'PAUSED' },
     });
+  }
+
+  /** Get publisher stats for their ads */
+  async getPublisherStats(publisherId: string) {
+    const ads = await this.prisma.advertisement.findMany({
+      where: { publisherId },
+    });
+
+    const totalAds = ads.length;
+    const activeAds = ads.filter((a) => a.status === 'ACTIVE').length;
+    const totalSpent = ads.reduce((sum, a) => sum + Number(a.spent), 0);
+    const totalBudget = ads.reduce((sum, a) => sum + (a.budget ? Number(a.budget) : 0), 0);
+
+    return {
+      totalAds,
+      activeAds,
+      totalSpent: totalSpent.toFixed(2),
+      totalBudget: totalBudget.toFixed(2),
+      ads: ads.map((ad) => ({
+        ...ad,
+        spent: Number(ad.spent).toFixed(2),
+        budget: ad.budget ? Number(ad.budget).toFixed(2) : null,
+      })),
+    };
   }
 }

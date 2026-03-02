@@ -3,8 +3,23 @@ import { Throttle } from '@nestjs/throttler';
 import { Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
-import { RegisterDto, LoginDto, RefreshTokenDto, ResendVerificationDto, GoogleAuthDto, ForgotPasswordDto, ResetPasswordDto } from './dto/auth.dto';
+import {
+  RegisterDto,
+  LoginDto,
+  RefreshTokenDto,
+  ResendVerificationDto,
+  GoogleAuthDto,
+  ForgotPasswordDto,
+  ResetPasswordDto,
+} from './dto/auth.dto';
 import { clearAuthCookies, setAuthCookies } from './auth.cookies';
+
+/** Shape returned by auth methods that include tokens */
+interface AuthTokenResult {
+  accessToken?: string;
+  refreshToken?: string;
+  [key: string]: unknown;
+}
 
 @Controller('auth')
 export class AuthController {
@@ -16,14 +31,18 @@ export class AuthController {
   // 5 tentatives par minute pour register
   @Throttle({ default: { ttl: 60000, limit: 5 } })
   @Post('register')
-  async register(@Body() dto: RegisterDto, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
+  async register(
+    @Body() dto: RegisterDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip;
     const userAgent = req.headers['user-agent'];
-    const result = await this.authService.register(dto, { ip, userAgent });
-    if ((result as any)?.accessToken && (result as any)?.refreshToken) {
+    const result = (await this.authService.register(dto, { ip, userAgent })) as AuthTokenResult;
+    if (result?.accessToken && result?.refreshToken) {
       setAuthCookies(res, this.configService, {
-        accessToken: (result as any).accessToken,
-        refreshToken: (result as any).refreshToken,
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
       });
     }
     return this.filterAuthResponse(result);
@@ -33,14 +52,18 @@ export class AuthController {
   @Throttle({ default: { ttl: 60000, limit: 10 } })
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  async login(@Body() dto: LoginDto, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
+  async login(
+    @Body() dto: LoginDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip;
     const userAgent = req.headers['user-agent'];
-    const result = await this.authService.login(dto, { ip, userAgent });
-    if ((result as any)?.accessToken && (result as any)?.refreshToken) {
+    const result = (await this.authService.login(dto, { ip, userAgent })) as AuthTokenResult;
+    if (result?.accessToken && result?.refreshToken) {
       setAuthCookies(res, this.configService, {
-        accessToken: (result as any).accessToken,
-        refreshToken: (result as any).refreshToken,
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
       });
     }
     return this.filterAuthResponse(result);
@@ -50,14 +73,18 @@ export class AuthController {
   @Throttle({ default: { ttl: 60000, limit: 15 } })
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
-  async refreshToken(@Body() dto: RefreshTokenDto, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    const tokenFromCookie = (req as any)?.cookies?.refreshToken as string | undefined;
+  async refreshToken(
+    @Body() dto: RefreshTokenDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const tokenFromCookie = req?.cookies?.refreshToken as string | undefined;
     const refreshToken = dto.refreshToken || tokenFromCookie || '';
-    const result = await this.authService.refreshToken(refreshToken);
-    if ((result as any)?.accessToken && (result as any)?.refreshToken) {
+    const result = (await this.authService.refreshToken(refreshToken)) as AuthTokenResult;
+    if (result?.accessToken && result?.refreshToken) {
       setAuthCookies(res, this.configService, {
-        accessToken: (result as any).accessToken,
-        refreshToken: (result as any).refreshToken,
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
       });
     }
     return this.filterAuthResponse(result);
@@ -76,12 +103,16 @@ export class AuthController {
 
   @Throttle({ default: { ttl: 60000, limit: 10 } })
   @Post('google')
-  async googleAuth(@Body() dto: GoogleAuthDto, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    const result = await this.authService.googleAuth(dto);
-    if ((result as any)?.accessToken && (result as any)?.refreshToken) {
+  async googleAuth(
+    @Body() dto: GoogleAuthDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = (await this.authService.googleAuth(dto)) as AuthTokenResult;
+    if (result?.accessToken && result?.refreshToken) {
       setAuthCookies(res, this.configService, {
-        accessToken: (result as any).accessToken,
-        refreshToken: (result as any).refreshToken,
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
       });
     }
     // Return tokens in body — the NextAuth server-side callback needs them
@@ -111,7 +142,7 @@ export class AuthController {
     return { success: true };
   }
 
-  private filterAuthResponse(result: any) {
+  private filterAuthResponse(result: Record<string, unknown>) {
     if (result?.accessToken || result?.refreshToken) {
       const { accessToken, refreshToken, ...rest } = result;
       return rest;

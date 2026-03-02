@@ -5,22 +5,10 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useSession, signOut as nextAuthSignOut } from 'next-auth/react';
 import { authApi, usersApi } from './api';
 import { generateFingerprint } from './fingerprint';
+import type { User } from '@/types';
 
-// Types
-export interface User {
-  id: string;
-  email: string;
-  phone: string | null;
-  firstName: string;
-  lastName: string;
-  role: 'USER' | 'PARTNER' | 'ADMIN';
-  status: 'FREE' | 'ACTIVATED' | 'SUSPENDED' | 'BANNED';
-  tier: 'NORMAL' | 'PREMIUM' | 'VIP';
-  referralCode: string;
-  provider: 'LOCAL' | 'GOOGLE';
-  emailVerifiedAt: string | null;
-  createdAt: string;
-}
+// Re-export for backward compatibility
+export type { User };
 
 interface AuthContextType {
   user: User | null;
@@ -64,7 +52,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const restore = async () => {
       try {
-        const profile = await usersApi.getProfile(AUTH_SENTINEL, { skipAuthRedirect: true }) as User;
+        const profile = (await usersApi.getProfile(AUTH_SENTINEL, {
+          skipAuthRedirect: true,
+        })) as User;
         setUser(profile);
         setToken(AUTH_SENTINEL);
       } catch {
@@ -134,11 +124,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (sessionStatus === 'loading') return;
 
     const isProtected = pathname.startsWith('/dashboard') || pathname.startsWith('/admin');
-    const isAuthPage = pathname === '/login' || pathname === '/register' || pathname.startsWith('/verify-email');
+    const isAuthPage =
+      pathname === '/login' || pathname === '/register' || pathname.startsWith('/verify-email');
 
     if (isProtected && !token) {
       // Ne pas rediriger si une auth Google est en cours de sync
-      const googlePending = typeof window !== 'undefined' && sessionStorage.getItem('googleAuthPending');
+      const googlePending =
+        typeof window !== 'undefined' && sessionStorage.getItem('googleAuthPending');
       if (!googlePending) {
         router.replace('/login');
       }
@@ -155,7 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshUser = useCallback(async () => {
     try {
-      const profile = await usersApi.getProfile(AUTH_SENTINEL) as User;
+      const profile = (await usersApi.getProfile(AUTH_SENTINEL)) as User;
       setUser(profile);
       setToken(AUTH_SENTINEL);
     } catch {
@@ -164,33 +156,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
-    let fingerprint: string | undefined;
-    try { fingerprint = await generateFingerprint(); } catch { /* ignore */ }
-    const data = await authApi.login({ email, password, fingerprint }) as any;
-    setToken(AUTH_SENTINEL);
-    setUser(data.user);
-    router.push(data.user.role === 'ADMIN' ? '/admin' : '/dashboard');
-  }, [router]);
+  const login = useCallback(
+    async (email: string, password: string) => {
+      let fingerprint: string | undefined;
+      try {
+        fingerprint = await generateFingerprint();
+      } catch {
+        /* ignore */
+      }
+      const data = (await authApi.login({ email, password, fingerprint })) as any;
+      setToken(AUTH_SENTINEL);
+      setUser(data.user);
+      router.push(data.user.role === 'ADMIN' ? '/admin' : '/dashboard');
+    },
+    [router],
+  );
 
-  const register = useCallback(async (regData: RegisterData) => {
-    let fingerprint: string | undefined;
-    try { fingerprint = await generateFingerprint(); } catch { /* ignore */ }
-    const data = await authApi.register({ ...regData, fingerprint }) as any;
-    if (data?.requiresEmailVerification) {
-      router.push(`/verify-email/pending?email=${encodeURIComponent(regData.email)}`);
-      return { requiresEmailVerification: true, message: data.message };
-    }
-    setToken(AUTH_SENTINEL);
-    setUser(data.user);
-    router.push('/dashboard');
-    return {};
-  }, [router]);
+  const register = useCallback(
+    async (regData: RegisterData) => {
+      let fingerprint: string | undefined;
+      try {
+        fingerprint = await generateFingerprint();
+      } catch {
+        /* ignore */
+      }
+      const data = (await authApi.register({ ...regData, fingerprint })) as any;
+      if (data?.requiresEmailVerification) {
+        router.push(`/verify-email/pending?email=${encodeURIComponent(regData.email)}`);
+        return { requiresEmailVerification: true, message: data.message };
+      }
+      setToken(AUTH_SENTINEL);
+      setUser(data.user);
+      router.push('/dashboard');
+      return {};
+    },
+    [router],
+  );
 
   const logout = useCallback(async () => {
     try {
       await authApi.logout();
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
     setToken(null);
     setUser(null);
     await nextAuthSignOut({ redirect: false });

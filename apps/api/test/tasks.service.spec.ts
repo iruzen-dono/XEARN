@@ -4,6 +4,7 @@ import { TasksService } from '../src/tasks/tasks.service';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { ReferralsService } from '../src/referrals/referrals.service';
 import { NotificationsService } from '../src/notifications/notifications.service';
+import { GamificationService } from '../src/gamification/gamification.service';
 
 const mockPrisma = {
   task: {
@@ -38,6 +39,12 @@ const mockNotifications = {
   notifyTaskCompleted: jest.fn(),
 };
 
+const mockGamification = {
+  recordActivity: jest.fn().mockResolvedValue({ currentStreak: 1, newBadges: [] }),
+  checkTaskBadges: jest.fn().mockResolvedValue([]),
+  checkEarningsBadges: jest.fn().mockResolvedValue([]),
+};
+
 describe('TasksService', () => {
   let service: TasksService;
 
@@ -50,6 +57,7 @@ describe('TasksService', () => {
         { provide: PrismaService, useValue: mockPrisma },
         { provide: ReferralsService, useValue: mockReferrals },
         { provide: NotificationsService, useValue: mockNotifications },
+        { provide: GamificationService, useValue: mockGamification },
       ],
     }).compile();
 
@@ -100,23 +108,44 @@ describe('TasksService', () => {
     });
 
     it('should throw if user is not activated', async () => {
-      mockPrisma.task.findUnique.mockResolvedValue({ id: 't1', status: 'ACTIVE', requiredTier: 'NORMAL' });
+      mockPrisma.task.findUnique.mockResolvedValue({
+        id: 't1',
+        status: 'ACTIVE',
+        requiredTier: 'NORMAL',
+      });
       mockPrisma.user.findUnique.mockResolvedValue({ id: 'u1', status: 'FREE', tier: 'NORMAL' });
 
       await expect(service.completeTask('u1', 't1')).rejects.toThrow('Compte non activé');
     });
 
     it('should throw if task already completed by user', async () => {
-      mockPrisma.task.findUnique.mockResolvedValue({ id: 't1', status: 'ACTIVE', requiredTier: 'NORMAL' });
-      mockPrisma.user.findUnique.mockResolvedValue({ id: 'u1', status: 'ACTIVATED', tier: 'NORMAL' });
+      mockPrisma.task.findUnique.mockResolvedValue({
+        id: 't1',
+        status: 'ACTIVE',
+        requiredTier: 'NORMAL',
+      });
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: 'u1',
+        status: 'ACTIVATED',
+        tier: 'NORMAL',
+      });
       mockPrisma.taskCompletion.findUnique.mockResolvedValue({ id: 'tc1' });
 
       await expect(service.completeTask('u1', 't1')).rejects.toThrow('Tâche déjà complétée');
     });
 
     it('should throw if task was not started (no session)', async () => {
-      mockPrisma.task.findUnique.mockResolvedValue({ id: 't1', status: 'ACTIVE', type: 'VIDEO_AD', requiredTier: 'NORMAL' });
-      mockPrisma.user.findUnique.mockResolvedValue({ id: 'u1', status: 'ACTIVATED', tier: 'NORMAL' });
+      mockPrisma.task.findUnique.mockResolvedValue({
+        id: 't1',
+        status: 'ACTIVE',
+        type: 'VIDEO_AD',
+        requiredTier: 'NORMAL',
+      });
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: 'u1',
+        status: 'ACTIVATED',
+        tier: 'NORMAL',
+      });
       mockPrisma.taskCompletion.findUnique.mockResolvedValue(null);
       mockPrisma.taskSession.findUnique.mockResolvedValue(null);
 
@@ -125,12 +154,24 @@ describe('TasksService', () => {
 
     it('should throw if elapsed time is less than minimum', async () => {
       mockPrisma.task.findUnique.mockResolvedValue({
-        id: 't1', status: 'ACTIVE', type: 'VIDEO_AD', completionCount: 0, maxCompletions: 100, requiredTier: 'NORMAL',
+        id: 't1',
+        status: 'ACTIVE',
+        type: 'VIDEO_AD',
+        completionCount: 0,
+        maxCompletions: 100,
+        requiredTier: 'NORMAL',
       });
-      mockPrisma.user.findUnique.mockResolvedValue({ id: 'u1', status: 'ACTIVATED', tier: 'NORMAL' });
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: 'u1',
+        status: 'ACTIVATED',
+        tier: 'NORMAL',
+      });
       mockPrisma.taskCompletion.findUnique.mockResolvedValue(null);
       mockPrisma.taskSession.findUnique.mockResolvedValue({
-        userId: 'u1', taskId: 't1', startedAt: new Date(), completed: false,
+        userId: 'u1',
+        taskId: 't1',
+        startedAt: new Date(),
+        completed: false,
       });
       mockPrisma.taskCompletion.findFirst.mockResolvedValue(null);
 

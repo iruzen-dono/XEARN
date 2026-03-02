@@ -1,8 +1,16 @@
-import { IsEmail, IsOptional, IsString, IsUrl, MinLength, MaxLength, Matches } from 'class-validator';
+import {
+  IsEmail,
+  IsOptional,
+  IsString,
+  IsUrl,
+  MinLength,
+  MaxLength,
+  Matches,
+} from 'class-validator';
 import { Transform } from 'class-transformer';
 
 // Sanitize helper: trim + strip HTML tags
-const sanitize = (v: any) => (typeof v === 'string' ? v.trim().replace(/<[^>]*>/g, '') : v);
+const sanitize = (v: unknown) => (typeof v === 'string' ? v.trim().replace(/<[^>]*>/g, '') : v);
 
 export class RegisterDto {
   @IsOptional()
@@ -85,31 +93,15 @@ export class ResendVerificationDto {
 }
 
 export class GoogleAuthDto {
-  @IsEmail({}, { message: 'Adresse email invalide' })
-  @Transform(({ value }) => (typeof value === 'string' ? value.toLowerCase().trim() : value))
-  email: string;
-
-  @IsString()
+  @IsString({ message: 'idToken Google requis' })
   @MinLength(1)
-  googleId: string;
-
-  @IsString()
-  @MinLength(1)
-  @MaxLength(50)
-  @Transform(({ value }) => sanitize(value))
-  firstName: string;
-
-  @IsString()
-  @MinLength(1)
-  @MaxLength(50)
-  @Transform(({ value }) => sanitize(value))
-  lastName: string;
+  idToken: string;
 
   @IsOptional()
   @IsString()
-  @IsUrl({}, { message: 'URL d\'avatar invalide' })
+  @MaxLength(50)
   @Transform(({ value }) => sanitize(value))
-  avatarUrl?: string;
+  referralCode?: string;
 }
 
 export class ForgotPasswordDto {

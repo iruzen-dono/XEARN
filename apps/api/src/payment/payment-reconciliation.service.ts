@@ -19,6 +19,7 @@ export class PaymentReconciliationService {
   async reconcile() {
     await Promise.all([
       this.reconcileActivations(),
+      this.reconcileTierUpgrades(),
       this.reconcileWithdrawals(),
     ]);
   }
@@ -33,7 +34,9 @@ export class PaymentReconciliationService {
     const provider = this.paymentService.getProvider();
 
     for (const tx of pending) {
-      const providerTransactionId = (tx.metadata as any)?.providerTransactionId as string | undefined;
+      const providerTransactionId = (tx.metadata as any)?.providerTransactionId as
+        | string
+        | undefined;
       if (!providerTransactionId) continue;
 
       const status = await provider.checkStatus(providerTransactionId);
@@ -51,7 +54,9 @@ export class PaymentReconciliationService {
 
         try {
           await this.notificationsService.notifyAccountActivated(tx.userId);
-        } catch { /* ignore */ }
+        } catch {
+          /* ignore */
+        }
 
         this.logger.log(`Activation reconcilee: ${tx.id} (${providerTransactionId})`);
       } else if (status === 'failed') {
@@ -60,6 +65,47 @@ export class PaymentReconciliationService {
           data: { status: 'FAILED' },
         });
         this.logger.warn(`Activation echouee: ${tx.id} (${providerTransactionId})`);
+      }
+    }
+  }
+
+  private async reconcileTierUpgrades() {
+    const pending = await this.prisma.transaction.findMany({
+      where: { type: 'TIER_UPGRADE', status: 'PENDING' },
+    });
+
+    if (!pending.length) return;
+
+    const provider = this.paymentService.getProvider();
+
+    for (const tx of pending) {
+      const providerTransactionId = (tx.metadata as any)?.providerTransactionId as
+        | string
+        | undefined;
+      const targetTier = (tx.metadata as any)?.targetTier as string | undefined;
+      if (!providerTransactionId || !targetTier) continue;
+
+      const status = await provider.checkStatus(providerTransactionId);
+      if (status === 'completed') {
+        await this.prisma.$transaction([
+          this.prisma.user.update({
+            where: { id: tx.userId },
+            data: { tier: targetTier as any },
+          }),
+          this.prisma.transaction.update({
+            where: { id: tx.id },
+            data: { status: 'COMPLETED' },
+          }),
+        ]);
+        this.logger.log(
+          `Tier upgrade reconcilié: ${tx.id} (${providerTransactionId}) -> ${targetTier}`,
+        );
+      } else if (status === 'failed') {
+        await this.prisma.transaction.update({
+          where: { id: tx.id },
+          data: { status: 'FAILED' },
+        });
+        this.logger.warn(`Tier upgrade echoué: ${tx.id} (${providerTransactionId})`);
       }
     }
   }
@@ -82,7 +128,9 @@ export class PaymentReconciliationService {
         },
       });
 
-      const providerTransactionId = (tx?.metadata as any)?.providerTransactionId as string | undefined;
+      const providerTransactionId = (tx?.metadata as any)?.providerTransactionId as
+        | string
+        | undefined;
       if (!providerTransactionId) continue;
 
       const status = await provider.checkStatus(providerTransactionId);
@@ -93,17 +141,27 @@ export class PaymentReconciliationService {
             data: { status: 'COMPLETED', processedAt: new Date() },
           }),
           this.prisma.transaction.updateMany({
-            where: { metadata: { path: ['withdrawalId'], equals: withdrawal.id }, type: 'WITHDRAWAL' },
+            where: {
+              metadata: { path: ['withdrawalId'], equals: withdrawal.id },
+              type: 'WITHDRAWAL',
+            },
             data: { status: 'COMPLETED' },
           }),
         ]);
 
         try {
-          await this.notificationsService.notifyWithdrawalApproved(withdrawal.userId, Number(withdrawal.amount));
-        } catch { /* ignore */ }
+          await this.notificationsService.notifyWithdrawalApproved(
+            withdrawal.userId,
+            Number(withdrawal.amount),
+          );
+        } catch {
+          /* ignore */
+        }
 
         this.logger.log(`Retrait reconcilié: ${withdrawal.id} (${providerTransactionId})`);
       } else if (status === 'failed') {
+        // withdrawal.amount stores NET; tx.amount stores GROSS — refund GROSS
+        const grossAmount = tx ? tx.amount : withdrawal.amount;
         await this.prisma.$transaction([
           this.prisma.withdrawal.update({
             where: { id: withdrawal.id },
@@ -111,17 +169,25 @@ export class PaymentReconciliationService {
           }),
           this.prisma.wallet.update({
             where: { userId: withdrawal.userId },
-            data: { balance: { increment: withdrawal.amount } },
+            data: { balance: { increment: grossAmount } },
           }),
           this.prisma.transaction.updateMany({
-            where: { metadata: { path: ['withdrawalId'], equals: withdrawal.id }, type: 'WITHDRAWAL' },
+            where: {
+              metadata: { path: ['withdrawalId'], equals: withdrawal.id },
+              type: 'WITHDRAWAL',
+            },
             data: { status: 'FAILED' },
           }),
         ]);
 
         try {
-          await this.notificationsService.notifyWithdrawalRejected(withdrawal.userId, Number(withdrawal.amount));
-        } catch { /* ignore */ }
+          await this.notificationsService.notifyWithdrawalRejected(
+            withdrawal.userId,
+            Number(withdrawal.amount),
+          );
+        } catch {
+          /* ignore */
+        }
 
         this.logger.warn(`Retrait echoue: ${withdrawal.id} (${providerTransactionId})`);
       }

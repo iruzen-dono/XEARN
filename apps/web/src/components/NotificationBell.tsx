@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Bell, CheckCheck, X } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
-import { notificationsApi } from '@/lib/api';
+import { notificationsApi, API_URL } from '@/lib/api';
 import { timeAgo } from '@/lib/utils';
 
 const TYPE_ICONS: Record<string, string> = {
@@ -34,21 +34,59 @@ export default function NotificationBell() {
   const [loading, setLoading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Fetch unread count periodically
+  // SSE real-time stream with polling fallback
   useEffect(() => {
     if (!token) return;
     let cancelled = false;
 
+    // Initial fetch
     const fetchCount = async () => {
       try {
         const data = await notificationsApi.getUnreadCount(token);
         if (!cancelled) setUnreadCount(data.count);
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     };
-
     fetchCount();
-    const interval = setInterval(fetchCount, 30000); // every 30s
-    return () => { cancelled = true; clearInterval(interval); };
+
+    // Try SSE first
+    let eventSource: EventSource | null = null;
+    let pollingInterval: ReturnType<typeof setInterval> | null = null;
+
+    try {
+      eventSource = new EventSource(`${API_URL}/api/notifications/stream`, {
+        withCredentials: true,
+      });
+
+      eventSource.onmessage = (event) => {
+        try {
+          const notification = JSON.parse(event.data) as Notification;
+          setNotifications((prev) => [notification, ...prev]);
+          setUnreadCount((prev) => prev + 1);
+        } catch {
+          /* ignore parse errors */
+        }
+      };
+
+      eventSource.onerror = () => {
+        // SSE failed, fall back to polling
+        eventSource?.close();
+        eventSource = null;
+        if (!cancelled) {
+          pollingInterval = setInterval(fetchCount, 30000);
+        }
+      };
+    } catch {
+      // EventSource not supported, fall back to polling
+      pollingInterval = setInterval(fetchCount, 30000);
+    }
+
+    return () => {
+      cancelled = true;
+      eventSource?.close();
+      if (pollingInterval) clearInterval(pollingInterval);
+    };
   }, [token]);
 
   // Fetch notifications when opening dropdown
@@ -59,8 +97,11 @@ export default function NotificationBell() {
     try {
       const data = await notificationsApi.getAll(token);
       setNotifications(data.notifications || []);
-    } catch { /* ignore */ }
-    finally { setLoading(false); }
+    } catch {
+      /* ignore */
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Close when clicking outside
@@ -78,24 +119,28 @@ export default function NotificationBell() {
     if (!token) return;
     try {
       await notificationsApi.markAsRead(token, id);
-      setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-      setUnreadCount(prev => Math.max(0, prev - 1));
-    } catch { /* ignore */ }
+      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    } catch {
+      /* ignore */
+    }
   };
 
   const markAllAsRead = async () => {
     if (!token) return;
     try {
       await notificationsApi.markAllAsRead(token);
-      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
       setUnreadCount(0);
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   };
 
   return (
     <div className="relative" ref={dropdownRef}>
       <button
-        onClick={() => open ? setOpen(false) : openDropdown()}
+        onClick={() => (open ? setOpen(false) : openDropdown())}
         className="relative p-2 text-dark-400 hover:text-white rounded-lg hover:bg-dark-800 transition-colors"
         aria-label="Notifications"
       >
@@ -158,7 +203,9 @@ export default function NotificationBell() {
                   <div className="text-xl shrink-0 mt-0.5">{TYPE_ICONS[n.type] || '🔔'}</div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
-                      <p className={`text-sm font-medium truncate ${!n.read ? 'text-white' : 'text-dark-300'}`}>
+                      <p
+                        className={`text-sm font-medium truncate ${!n.read ? 'text-white' : 'text-dark-300'}`}
+                      >
                         {n.title}
                       </p>
                       {!n.read && (

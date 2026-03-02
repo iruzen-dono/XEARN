@@ -13,7 +13,7 @@ import {
 import { Transform } from 'class-transformer';
 
 // Sanitize: trim + strip HTML tags to prevent XSS
-const sanitize = (v: any) => (typeof v === 'string' ? v.trim().replace(/<[^>]*>/g, '') : v);
+const sanitize = (v: unknown) => (typeof v === 'string' ? v.trim().replace(/<[^>]*>/g, '') : v);
 
 export enum AdStatusDto {
   PENDING = 'PENDING',

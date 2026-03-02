@@ -10,11 +10,11 @@ import {
 
 /**
  * Fournisseur FedaPay — Paiements réels en zone FCFA.
- * 
+ *
  * Supporte : MTN MoMo, Moov Money (Flooz), TMoney, Orange Money, Visa/Mastercard.
- * 
+ *
  * Documentation : https://docs.fedapay.com
- * 
+ *
  * Variables .env requises :
  *   FEDAPAY_SECRET_KEY   — Clé secrète (sandbox ou live)
  *   FEDAPAY_PUBLIC_KEY   — Clé publique
@@ -32,9 +32,8 @@ export class FedaPayProvider implements PaymentProvider {
 
   constructor(private configService: ConfigService) {
     const env = this.configService.get('FEDAPAY_ENV') || 'sandbox';
-    this.apiBase = env === 'live'
-      ? 'https://api.fedapay.com/v1'
-      : 'https://sandbox-api.fedapay.com/v1';
+    this.apiBase =
+      env === 'live' ? 'https://api.fedapay.com/v1' : 'https://sandbox-api.fedapay.com/v1';
     this.secretKey = this.configService.get('FEDAPAY_SECRET_KEY') || '';
     this.callbackUrl = this.configService.get('FEDAPAY_CALLBACK_URL') || '';
 
@@ -71,11 +70,15 @@ export class FedaPayProvider implements PaymentProvider {
       }
 
       // 2. Générer le token de paiement (URL)
-      const tokenResponse = await this.apiRequest('POST', `/transactions/${transactionId}/token`, {});
+      const tokenResponse = await this.apiRequest(
+        'POST',
+        `/transactions/${transactionId}/token`,
+        {},
+      );
       const paymentUrl = tokenResponse?.v1?.token?.url || tokenResponse?.token;
 
       if (!paymentUrl) {
-        this.logger.error('FedaPay: pas d\'URL de paiement', tokenResponse);
+        this.logger.error("FedaPay: pas d'URL de paiement", tokenResponse);
         return { status: 'failed', message: 'Erreur lors de la génération du lien de paiement' };
       }
 
@@ -86,10 +89,10 @@ export class FedaPayProvider implements PaymentProvider {
         paymentUrl,
         message: 'Redirection vers la page de paiement',
       };
-
-    } catch (error: any) {
-      this.logger.error('FedaPay collecte erreur:', error.message);
-      return { status: 'failed', message: error.message || 'Erreur de paiement FedaPay' };
+    } catch (error: unknown) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      this.logger.error('FedaPay collecte erreur:', err.message);
+      return { status: 'failed', message: err.message || 'Erreur de paiement FedaPay' };
     }
   }
 
@@ -118,16 +121,18 @@ export class FedaPayProvider implements PaymentProvider {
       // Lancer le paiement
       await this.apiRequest('PUT', `/payouts/${payoutId}/start`, {});
 
-      this.logger.log(`FedaPay décaissement lancé: ${payoutId} — ${request.amount} FCFA → ${request.accountInfo}`);
+      this.logger.log(
+        `FedaPay décaissement lancé: ${payoutId} — ${request.amount} FCFA → ${request.accountInfo}`,
+      );
       return {
         status: 'pending',
         providerTransactionId: String(payoutId),
         message: 'Décaissement en cours de traitement',
       };
-
-    } catch (error: any) {
-      this.logger.error('FedaPay décaissement erreur:', error.message);
-      return { status: 'failed', message: error.message || 'Erreur de décaissement FedaPay' };
+    } catch (error: unknown) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      this.logger.error('FedaPay décaissement erreur:', err.message);
+      return { status: 'failed', message: err.message || 'Erreur de décaissement FedaPay' };
     }
   }
 
@@ -140,11 +145,16 @@ export class FedaPayProvider implements PaymentProvider {
       const status = response?.v1?.transaction?.status;
 
       switch (status) {
-        case 'approved': return 'completed';
-        case 'transferred': return 'completed';
-        case 'pending': return 'pending';
-        case 'started': return 'pending';
-        default: return 'failed';
+        case 'approved':
+          return 'completed';
+        case 'transferred':
+          return 'completed';
+        case 'pending':
+          return 'pending';
+        case 'started':
+          return 'pending';
+        default:
+          return 'failed';
       }
     } catch {
       return 'failed';
@@ -155,22 +165,27 @@ export class FedaPayProvider implements PaymentProvider {
 
   private mapMethodToFedaPay(method: string): string {
     const map: Record<string, string> = {
-      'MTN_MOMO': 'mtn',
-      'FLOOZ': 'moov',
-      'TMONEY': 'togocom',
-      'ORANGE_MONEY': 'orange',
-      'MOBILE_MONEY': 'mtn',     // Par défaut MTN
-      'BANK_TRANSFER': 'bank',
+      MTN_MOMO: 'mtn',
+      FLOOZ: 'moov',
+      TMONEY: 'togocom',
+      ORANGE_MONEY: 'orange',
+      MOBILE_MONEY: 'mtn', // Par défaut MTN
+      BANK_TRANSFER: 'bank',
     };
     return map[method] || 'mtn';
   }
 
-  private async apiRequest(method: string, path: string, body: any): Promise<any> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private async apiRequest(
+    method: string,
+    path: string,
+    body: Record<string, unknown> | null,
+  ): Promise<any> {
     const url = `${this.apiBase}${path}`;
     const options: RequestInit = {
       method,
       headers: {
-        'Authorization': `Bearer ${this.secretKey}`,
+        Authorization: `Bearer ${this.secretKey}`,
         'Content-Type': 'application/json',
       },
     };

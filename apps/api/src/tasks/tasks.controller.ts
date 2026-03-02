@@ -1,9 +1,21 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { TasksService } from './tasks.service';
 import { JwtAuthGuard, RolesGuard, Roles } from '../auth/guards';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
+import { JwtRequest } from '../common/types';
 
 @Controller('tasks')
 export class TasksController {
@@ -11,7 +23,11 @@ export class TasksController {
 
   @UseGuards(JwtAuthGuard)
   @Get()
-  async findAll(@Request() req: any, @Query('page') page?: string, @Query('limit') limit?: string) {
+  async findAll(
+    @Request() req: JwtRequest,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
     return this.tasksService.findAll(
       req.user.id,
       Math.max(1, parseInt(page || '') || 1),
@@ -21,21 +37,21 @@ export class TasksController {
 
   @UseGuards(JwtAuthGuard)
   @Get('my-completions')
-  async getMyCompletions(@Request() req: any) {
+  async getMyCompletions(@Request() req: JwtRequest) {
     return this.tasksService.getUserCompletions(req.user.id);
   }
 
   @UseGuards(JwtAuthGuard)
   @Throttle({ default: { ttl: 60000, limit: 10 } })
   @Post(':id/start')
-  async startTask(@Request() req: any, @Param('id') taskId: string) {
+  async startTask(@Request() req: JwtRequest, @Param('id') taskId: string) {
     return this.tasksService.startTask(req.user.id, taskId);
   }
 
   @UseGuards(JwtAuthGuard)
   @Throttle({ default: { ttl: 60000, limit: 5 } })
   @Post(':id/complete')
-  async completeTask(@Request() req: any, @Param('id') taskId: string) {
+  async completeTask(@Request() req: JwtRequest, @Param('id') taskId: string) {
     return this.tasksService.completeTask(req.user.id, taskId);
   }
 

@@ -1,5 +1,23 @@
 import NextAuth from 'next-auth';
 import GoogleProvider from 'next-auth/providers/google';
+import { cookies } from 'next/headers';
+
+// Extend NextAuth types to include our custom fields
+declare module 'next-auth' {
+  interface Session {
+    apiAccessToken?: string;
+    apiRefreshToken?: string;
+    apiUser?: Record<string, unknown>;
+  }
+}
+
+declare module 'next-auth/jwt' {
+  interface JWT {
+    apiAccessToken?: string;
+    apiRefreshToken?: string;
+    apiUser?: Record<string, unknown>;
+  }
+}
 
 // Server-side route handler: API_URL must use env directly (no client-side import)
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
@@ -23,28 +41,22 @@ const handler = NextAuth({
   },
   session: { strategy: 'jwt' },
   callbacks: {
-    async jwt({ token, account, profile }) {
-      if (account?.provider === 'google' && profile) {
+    async jwt({ token, account }) {
+      if (account?.provider === 'google' && account.id_token) {
         try {
-          const googleProfile = profile as any;
-          const name = (googleProfile.name || '').trim();
-          const nameParts = name.split(' ').filter(Boolean);
-          const firstName = nameParts[0] || 'User';
-          const lastName = nameParts.slice(1).join(' ') || 'Google';
-          const email = googleProfile.email;
-          const googleId = googleProfile.sub || googleProfile.id;
+          // Read the referral code cookie set before the OAuth redirect
+          const cookieStore = await cookies();
+          const referralCode = cookieStore.get('xearn_referral')?.value || undefined;
 
-          if (!email || !googleId) return token;
-
+          // Send the Google id_token for server-side verification
+          // The backend verifies the token cryptographically with google-auth-library
+          // instead of trusting frontend-provided profile fields
           const res = await fetch(`${API_URL}/api/auth/google`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              email,
-              googleId,
-              firstName,
-              lastName,
-              avatarUrl: googleProfile.picture,
+              idToken: account.id_token,
+              ...(referralCode ? { referralCode } : {}),
             }),
           });
 
@@ -62,9 +74,9 @@ const handler = NextAuth({
       return token;
     },
     async session({ session, token }) {
-      (session as any).apiAccessToken = token.apiAccessToken;
-      (session as any).apiRefreshToken = token.apiRefreshToken;
-      (session as any).apiUser = token.apiUser;
+      session.apiAccessToken = token.apiAccessToken as string | undefined;
+      session.apiRefreshToken = token.apiRefreshToken as string | undefined;
+      session.apiUser = token.apiUser as Record<string, unknown> | undefined;
       return session;
     },
   },

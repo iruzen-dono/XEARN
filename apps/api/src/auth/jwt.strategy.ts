@@ -22,7 +22,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(payload: { sub: string; role: string }) {
+  async validate(payload: { sub: string; role: string; tokenVersion?: number }) {
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
     });
@@ -35,6 +35,17 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('Compte suspendu ou banni');
     }
 
-    return { id: user.id, email: user.email, role: user.role, status: user.status, tier: (user as any).tier || 'NORMAL' };
+    // Reject tokens issued before a password change
+    if (payload.tokenVersion !== undefined && payload.tokenVersion !== user.tokenVersion) {
+      throw new UnauthorizedException('Session expirée, veuillez vous reconnecter');
+    }
+
+    return {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      status: user.status,
+      tier: user.tier,
+    };
   }
 }

@@ -1,6 +1,13 @@
-import { Injectable, UnauthorizedException, ConflictException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { OAuth2Client } from 'google-auth-library';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import * as nodemailer from 'nodemailer';
@@ -9,7 +16,14 @@ import * as path from 'path';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { AntiCheatService } from './anti-cheat.service';
-import { RegisterDto, LoginDto, ResendVerificationDto, GoogleAuthDto, ForgotPasswordDto, ResetPasswordDto } from './dto/auth.dto';
+import {
+  RegisterDto,
+  LoginDto,
+  ResendVerificationDto,
+  GoogleAuthDto,
+  ForgotPasswordDto,
+  ResetPasswordDto,
+} from './dto/auth.dto';
 
 interface RequestContext {
   ip?: string;
@@ -18,13 +32,19 @@ interface RequestContext {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger('AuthService');
+  private googleClient: OAuth2Client;
+
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
     private configService: ConfigService,
     private notificationsService: NotificationsService,
     private antiCheatService: AntiCheatService,
-  ) {}
+  ) {
+    const googleClientId = this.configService.get('GOOGLE_CLIENT_ID');
+    this.googleClient = new OAuth2Client(googleClientId);
+  }
 
   async register(dto: RegisterDto, ctx?: RequestContext) {
     if (!dto.email && !dto.phone) {
@@ -73,13 +93,20 @@ export class AuthService {
     // Notification de bienvenue
     try {
       await this.notificationsService.notifyWelcome(user.id);
-    } catch (err) { /* ignore */ }
+    } catch (err) {
+      /* ignore */
+    }
 
     // Notifier le parrain
     if (referredById) {
       try {
-        await this.notificationsService.notifyNewReferral(referredById, `${user.firstName} ${user.lastName}`);
-      } catch (err) { /* ignore */ }
+        await this.notificationsService.notifyNewReferral(
+          referredById,
+          `${user.firstName} ${user.lastName}`,
+        );
+      } catch (err) {
+        /* ignore */
+      }
     }
 
     // Anti-triche : enregistrer l'empreinte
@@ -91,9 +118,13 @@ export class AuthService {
           userAgent: ctx?.userAgent,
         });
         if (check?.suspicious) {
-          console.warn(`[AntiCheat] Multi-compte détecté à l'inscription : user=${user.id}, comptes liés=${check.matchedAccounts.join(',')}`);
+          console.warn(
+            `[AntiCheat] Multi-compte détecté à l'inscription : user=${user.id}, comptes liés=${check.matchedAccounts.join(',')}`,
+          );
         }
-      } catch (err) { /* ignore */ }
+      } catch (err) {
+        /* ignore */
+      }
     }
 
     // Si email fourni, exiger confirmation
@@ -110,7 +141,7 @@ export class AuthService {
     }
 
     // Sinon, login direct
-    const tokens = await this.generateTokens(user.id, user.role);
+    const tokens = await this.generateTokens(user.id, user.role, user.tokenVersion);
 
     return {
       user: {
@@ -135,10 +166,9 @@ export class AuthService {
     // Trouver l'utilisateur
     const user = await this.prisma.user.findFirst({
       where: {
-        OR: [
-          dto.email ? { email: dto.email } : {},
-          dto.phone ? { phone: dto.phone } : {},
-        ].filter((condition) => Object.keys(condition).length > 0),
+        OR: [dto.email ? { email: dto.email } : {}, dto.phone ? { phone: dto.phone } : {}].filter(
+          (condition) => Object.keys(condition).length > 0,
+        ),
       },
     });
 
@@ -165,7 +195,7 @@ export class AuthService {
       throw new UnauthorizedException('Compte suspendu');
     }
 
-    const tokens = await this.generateTokens(user.id, user.role);
+    const tokens = await this.generateTokens(user.id, user.role, user.tokenVersion);
 
     // Anti-triche : enregistrer l'empreinte
     if (dto.fingerprint) {
@@ -176,9 +206,13 @@ export class AuthService {
           userAgent: ctx?.userAgent,
         });
         if (check?.suspicious) {
-          console.warn(`[AntiCheat] Multi-compte détecté au login : user=${user.id}, comptes liés=${check.matchedAccounts.join(',')}`);
+          console.warn(
+            `[AntiCheat] Multi-compte détecté au login : user=${user.id}, comptes liés=${check.matchedAccounts.join(',')}`,
+          );
         }
-      } catch (err) { /* ignore */ }
+      } catch (err) {
+        /* ignore */
+      }
     }
 
     return {
@@ -212,7 +246,7 @@ export class AuthService {
         throw new UnauthorizedException('Compte suspendu ou banni');
       }
 
-      const tokens = await this.generateTokens(user.id, user.role);
+      const tokens = await this.generateTokens(user.id, user.role, user.tokenVersion);
 
       return {
         user: {
@@ -276,35 +310,107 @@ export class AuthService {
   }
 
   async googleAuth(dto: GoogleAuthDto) {
-    const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
+    // --- Server-side Google ID Token verification ---
+    // The frontend (NextAuth) sends the id_token obtained from Google OAuth.
+    // We verify it cryptographically to prevent forged tokens.
+    if (!dto.idToken) {
+      throw new BadRequestException("Google idToken requis pour l'authentification");
+    }
+
+    const googleClientId = this.configService.get('GOOGLE_CLIENT_ID');
+    if (!googleClientId) {
+      this.logger.error('GOOGLE_CLIENT_ID non configuré — authentification Google impossible');
+      throw new BadRequestException('Configuration Google manquante sur le serveur');
+    }
+
+    let googlePayload: {
+      email: string;
+      sub: string;
+      given_name?: string;
+      family_name?: string;
+      name?: string;
+      picture?: string;
+    };
+    try {
+      const ticket = await this.googleClient.verifyIdToken({
+        idToken: dto.idToken,
+        audience: googleClientId,
+      });
+      const payload = ticket.getPayload();
+      if (!payload || !payload.email || !payload.sub) {
+        throw new Error('Payload Google invalide');
+      }
+      googlePayload = {
+        email: payload.email,
+        sub: payload.sub,
+        given_name: payload.given_name,
+        family_name: payload.family_name,
+        name: payload.name,
+        picture: payload.picture,
+      };
+    } catch (err) {
+      this.logger.warn(`Vérification Google idToken échouée: ${(err as Error).message}`);
+      throw new UnauthorizedException('Token Google invalide ou expiré');
+    }
+
+    // Extract verified user info from Google's signed payload
+    const email = googlePayload.email.toLowerCase();
+    const googleId = googlePayload.sub;
+    const firstName = googlePayload.given_name || googlePayload.name?.split(' ')[0] || 'User';
+    const lastName =
+      googlePayload.family_name || googlePayload.name?.split(' ').slice(1).join(' ') || 'Google';
+    const avatarUrl = googlePayload.picture;
+
+    const existing = await this.prisma.user.findUnique({ where: { email } });
+
+    // Handle referral code for new users (from Google Auth registration)
+    let referredById: string | undefined;
+    if (!existing && dto.referralCode) {
+      const referrer = await this.prisma.user.findUnique({
+        where: { referralCode: dto.referralCode },
+      });
+      if (referrer) {
+        referredById = referrer.id;
+      }
+    }
 
     const user = existing
       ? await this.prisma.user.update({
           where: { id: existing.id },
           data: {
             provider: 'GOOGLE',
-            googleId: existing.googleId || dto.googleId,
-            avatarUrl: existing.avatarUrl || dto.avatarUrl,
+            googleId: existing.googleId || googleId,
+            avatarUrl: existing.avatarUrl || avatarUrl,
             emailVerifiedAt: existing.emailVerifiedAt || new Date(),
           },
         })
       : await this.prisma.user.create({
           data: {
-            email: dto.email,
+            email,
             password: null,
-            firstName: dto.firstName,
-            lastName: dto.lastName,
-            avatarUrl: dto.avatarUrl,
+            firstName,
+            lastName,
+            avatarUrl,
             provider: 'GOOGLE',
-            googleId: dto.googleId,
+            googleId,
             emailVerifiedAt: new Date(),
+            referredById,
             wallet: {
               create: {},
             },
           },
         });
 
-    const tokens = await this.generateTokens(user.id, user.role);
+    // Notify referrer if new user was referred
+    if (!existing && referredById) {
+      try {
+        await this.notificationsService.notifyNewReferral(referredById, `${firstName} ${lastName}`);
+      } catch {
+        /* ignore */
+      }
+    }
+
+    const tokens = await this.generateTokens(user.id, user.role, user.tokenVersion);
 
     return {
       user: {
@@ -377,8 +483,8 @@ export class AuthService {
     return { message: 'Mot de passe modifié avec succès' };
   }
 
-  private async generateTokens(userId: string, role: string) {
-    const payload = { sub: userId, role };
+  private async generateTokens(userId: string, role: string, tokenVersion?: number) {
+    const payload = { sub: userId, role, ...(tokenVersion !== undefined ? { tokenVersion } : {}) };
 
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload, {
@@ -434,10 +540,10 @@ export class AuthService {
         '',
         'Ce lien est valable pendant 24 heures. Passé ce délai, vous devrez demander un nouveau lien de vérification.',
         '',
-        'Si vous n\'avez pas créé de compte sur XEARN, vous pouvez ignorer cet e-mail en toute sécurité.',
+        "Si vous n'avez pas créé de compte sur XEARN, vous pouvez ignorer cet e-mail en toute sécurité.",
         '',
         'Cordialement,',
-        'L\'équipe XEARN',
+        "L'équipe XEARN",
       ].join('\n'),
       html,
     });
@@ -471,10 +577,10 @@ export class AuthService {
         '',
         'Ce lien est valable pendant 1 heure.',
         '',
-        'Si vous n\'avez pas demandé cette réinitialisation, ignorez cet email.',
+        "Si vous n'avez pas demandé cette réinitialisation, ignorez cet email.",
         '',
         'Cordialement,',
-        'L\'équipe XEARN',
+        "L'équipe XEARN",
       ].join('\n'),
       html,
     });
@@ -482,6 +588,16 @@ export class AuthService {
 
   private hashToken(token: string) {
     return crypto.createHash('sha256').update(token).digest('hex');
+  }
+
+  /** Escape HTML special characters to prevent XSS in email templates */
+  private escapeHtml(str: string): string {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   /** Load an HTML template from /templates and replace {{placeholders}} */
@@ -494,7 +610,10 @@ export class AuthService {
     }
     let html = this.templateCache.get(filename)!;
     for (const [key, value] of Object.entries(vars)) {
-      html = html.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value);
+      // URLs are safe — only escape non-URL values to prevent HTML injection
+      const isUrl = /^https?:\/\//.test(value);
+      const safeValue = isUrl ? value : this.escapeHtml(value);
+      html = html.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), safeValue);
     }
     return html;
   }
@@ -516,5 +635,4 @@ export class AuthService {
     }
     return this.mailTransporter;
   }
-
 }

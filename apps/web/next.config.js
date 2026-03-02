@@ -4,6 +4,12 @@ require('dotenv').config({ path: resolve(__dirname, '../../.env') });
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  images: {
+    remotePatterns: [
+      { protocol: 'https', hostname: '**.googleusercontent.com' },
+      { protocol: 'https', hostname: '**.googleapis.com' },
+    ],
+  },
   env: {
     // Only expose PUBLIC / non-secret values to the client bundle.
     // NEXTAUTH_URL, NEXTAUTH_SECRET and GOOGLE_CLIENT_SECRET are used server-side only
