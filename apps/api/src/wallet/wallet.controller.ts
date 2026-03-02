@@ -70,8 +70,16 @@ export class WalletController {
 
   @UseGuards(JwtAuthGuard)
   @Get('withdrawals')
-  async getWithdrawals(@Request() req: JwtRequest) {
-    return this.walletService.getWithdrawals(req.user.id);
+  async getWithdrawals(
+    @Request() req: JwtRequest,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.walletService.getWithdrawals(
+      req.user.id,
+      Math.max(1, parseInt(page || '') || 1),
+      Math.min(Math.max(1, parseInt(limit || '') || 20), 100),
+    );
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

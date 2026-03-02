@@ -25,6 +25,27 @@ import { useToast } from '@/lib/toast';
 import { walletApi } from '@/lib/api';
 import { MotionDiv, AnimatedCounter, staggerContainer, staggerItem } from '@/components/ui';
 import { PageSkeleton } from '@/components/ui/Skeleton';
+import type { Transaction } from '@/types';
+
+interface WalletData {
+  id: string;
+  userId: string;
+  balance: number;
+  totalEarned: number;
+  totalWithdrawn: number;
+  pendingWithdrawal: number;
+}
+
+interface FeesData {
+  tier: string;
+  feePercent: number;
+  tiers: Record<string, { feePercent: number }>;
+}
+
+interface TierPricingData {
+  PREMIUM: { price: number };
+  VIP: { price: number };
+}
 
 const PAYMENT_METHODS = [
   { value: 'MTN_MOMO', label: 'MTN Mobile Money', icon: '🟡' },
@@ -36,8 +57,8 @@ const PAYMENT_METHODS = [
 export default function WalletPage() {
   const { user, token, refreshUser } = useAuth();
   const toast = useToast();
-  const [wallet, setWallet] = useState<any>(null);
-  const [transactions, setTransactions] = useState<any[]>([]);
+  const [wallet, setWallet] = useState<WalletData | null>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [txPage, setTxPage] = useState(1);
   const [txTotal, setTxTotal] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -50,16 +71,16 @@ export default function WalletPage() {
     method: 'MTN_MOMO',
     accountInfo: '',
   });
-  const [feeInfo, setFeeInfo] = useState<any>(null);
-  const [tierPricing, setTierPricing] = useState<any>(null);
+  const [feeInfo, setFeeInfo] = useState<FeesData | null>(null);
+  const [tierPricing, setTierPricing] = useState<TierPricingData | null>(null);
   const [upgrading, setUpgrading] = useState(false);
 
   const fetchData = useCallback(async () => {
     if (!token) return;
     try {
       const [w, txs, fees, pricing] = await Promise.all([
-        walletApi.get(token) as any,
-        walletApi.getTransactions(token, 1) as any,
+        walletApi.get(token) as Promise<unknown> as Promise<WalletData>,
+        walletApi.getTransactions(token, 1),
         walletApi.getFees(token).catch(() => null),
         walletApi.getTierPricing(token).catch(() => null),
       ]);
@@ -67,8 +88,8 @@ export default function WalletPage() {
       setTransactions(txs?.transactions || []);
       setTxTotal(txs?.total || 0);
       setTxPage(1);
-      if (fees) setFeeInfo(fees);
-      if (pricing) setTierPricing(pricing);
+      if (fees) setFeeInfo(fees as unknown as FeesData);
+      if (pricing) setTierPricing(pricing as unknown as TierPricingData);
     } catch (err) {
       console.error('Erreur chargement portefeuille:', err);
     } finally {
@@ -85,7 +106,7 @@ export default function WalletPage() {
     setLoadingMore(true);
     try {
       const nextPage = txPage + 1;
-      const txs = (await walletApi.getTransactions(token, nextPage)) as any;
+      const txs = await walletApi.getTransactions(token, nextPage);
       setTransactions((prev) => [...prev, ...(txs?.transactions || [])]);
       setTxPage(nextPage);
       setTxTotal(txs?.total || 0);
@@ -106,7 +127,7 @@ export default function WalletPage() {
       >;
       if (result.status === 'pending' && result.paymentUrl) {
         toast.info('Ouverture de la page de paiement FedaPay...');
-        window.open(result.paymentUrl as string, '_blank');
+        window.open(result.paymentUrl as string, '_blank', 'noopener,noreferrer');
         toast.success('Finalisez le paiement FedaPay. Votre compte sera activé automatiquement.');
       } else if (result.status === 'pending' && !result.paymentUrl) {
         toast.warning('Paiement en attente. Réessayez dans quelques minutes.');
@@ -127,11 +148,11 @@ export default function WalletPage() {
     if (!token) return;
     setWithdrawing(true);
     try {
-      const result: any = await walletApi.withdraw(token, {
+      const result = (await walletApi.withdraw(token, {
         amount: Number(withdrawForm.amount),
         method: withdrawForm.method as import('@/types').PaymentMethod,
         accountInfo: withdrawForm.accountInfo,
-      });
+      })) as import('@/types').Withdrawal & { paymentStatus?: string };
       if (result.paymentStatus === 'completed') {
         toast.success('Retrait effectué avec succès !');
       } else {
@@ -153,7 +174,7 @@ export default function WalletPage() {
     try {
       const result = await walletApi.upgradeTier(token, targetTier);
       if (result?.paymentUrl) {
-        window.open(result.paymentUrl, '_blank');
+        window.open(result.paymentUrl, '_blank', 'noopener,noreferrer');
         toast.info('Finalisez le paiement pour upgrader votre compte.');
       } else {
         toast.success(`Compte upgradé vers ${targetTier} !`);
@@ -167,7 +188,7 @@ export default function WalletPage() {
     }
   };
 
-  const fmt = (n: any) => Number(n || 0).toLocaleString('fr-FR');
+  const fmt = (n: string | number | null | undefined) => Number(n || 0).toLocaleString('fr-FR');
 
   const txTypeLabel = (type: string) => {
     const map: Record<string, string> = {
@@ -518,7 +539,7 @@ export default function WalletPage() {
           ) : (
             <>
               <div className="space-y-1">
-                {transactions.map((tx: any, i: number) => {
+                {transactions.map((tx: Transaction, i: number) => {
                   const isWithdrawal = tx.type === 'WITHDRAWAL';
                   return (
                     <motion.div

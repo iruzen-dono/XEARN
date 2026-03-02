@@ -14,6 +14,7 @@ Ou l'authentification par cookies httpOnly (recommandée pour le frontend web).
 
 ## Table des matières
 
+- [Health](#health)
 - [Auth](#auth)
 - [Users](#users)
 - [Tasks](#tasks)
@@ -24,6 +25,36 @@ Ou l'authentification par cookies httpOnly (recommandée pour le frontend web).
 - [Ads (Pub Maker)](#ads-pub-maker)
 - [Niveaux de compte (Tiers)](#niveaux-de-compte-tiers)
 - [Codes d'erreur](#codes-derreur)
+
+---
+
+## Health
+
+### GET `/api/health`
+
+Vérification de l'état de santé de l'API et de la base de données.
+
+**Auth** : Aucune
+
+**Réponse 200** (API et DB en ligne) :
+
+```json
+{
+  "status": "ok",
+  "db": "connected"
+}
+```
+
+**Réponse 503** (DB inaccessible) :
+
+```json
+{
+  "status": "error",
+  "db": "disconnected"
+}
+```
+
+> **Note** : Utilisé par les load balancers et le monitoring pour vérifier la disponibilité de l'API. Retourne un code **503 Service Unavailable** si la base de données ne répond pas.
 
 ---
 
@@ -157,6 +188,8 @@ Connexion / inscription via Google OAuth. Appelé par le frontend après authent
 
 Si l'utilisateur n'existe pas, il est créé automatiquement avec `emailVerifiedAt` défini (pas besoin de vérification email).
 
+> **Note** : Si un compte avec le même email existe déjà avec un mot de passe (provider LOCAL), le provider n'est pas écrasé. Le `googleId` est ajouté mais le provider reste LOCAL, permettant à l'utilisateur de continuer à se connecter avec son mot de passe.
+
 ---
 
 ### GET `/api/auth/verify-email?token=xxx`
@@ -227,6 +260,7 @@ Renouvellement du token d'accès.
 
 **Erreurs** :
 - `401` — Refresh token invalide ou expiré
+- `401` — **Token révoqué** (tokenVersion invalide — survient après un changement ou reset de mot de passe)
 
 ---
 
@@ -361,27 +395,39 @@ Liste paginée des tâches disponibles (actives, non expirées). **Les tâches s
 
 ---
 
-### GET `/api/tasks/my-completions`
+### GET `/api/tasks/my-completions?page=1&limit=20`
 
-Tâches complétées par l'utilisateur connecté.
+Tâches complétées par l'utilisateur connecté (paginé).
 
 **Auth** : JWT
+
+**Query params** :
+
+| Param | Type | Défaut | Description |
+|-------|------|--------|-------------|
+| `page` | number | 1 | Numéro de page |
+| `limit` | number | 20 | Éléments par page |
 
 **Réponse 200** :
 
 ```json
-[
-  {
-    "id": "clxyz...",
-    "taskId": "clxyz...",
-    "earned": "100.00",
-    "createdAt": "2026-02-08T...",
-    "task": {
-      "title": "Regarder la pub Samsung",
-      "type": "VIDEO_AD"
+{
+  "completions": [
+    {
+      "id": "clxyz...",
+      "taskId": "clxyz...",
+      "earned": "100.00",
+      "createdAt": "2026-02-08T...",
+      "task": {
+        "title": "Regarder la pub Samsung",
+        "type": "VIDEO_AD"
+      }
     }
-  }
-]
+  ],
+  "total": 12,
+  "page": 1,
+  "limit": 20
+}
 ```
 
 ---
@@ -430,7 +476,8 @@ Marquer une tâche comme complétée. Crédite le wallet et distribue les commis
 
 **Erreurs** :
 - `404` — Tâche introuvable
-- `400` — Tâche déjà complétée, inactive, ou expirée
+- `400` — Tâche déjà complétée, inactive
+- `400` — **Tâche expirée** (vérification côté serveur de `expiresAt`)
 - `400` — Compte non activé
 - `400` — **Tier insuffisant** ("Cette tâche nécessite le niveau PREMIUM/VIP")
 - `400` — Temps insuffisant (anti-triche)
@@ -646,11 +693,28 @@ Upgrader le niveau de compte. Débite le montant du wallet.
 
 ---
 
-### GET `/api/wallet/withdrawals`
+### GET `/api/wallet/withdrawals?page=1&limit=20`
 
-Liste des demandes de retrait de l'utilisateur.
+Liste paginée des demandes de retrait de l'utilisateur.
 
 **Auth** : JWT
+
+**Query params** :
+
+| Param | Type | Défaut | Description |
+|-------|------|--------|-------------|
+| `page` | number | 1 | Numéro de page |
+| `limit` | number | 20 | Éléments par page |
+
+**Réponse 200** :
+
+```json
+{
+  "withdrawals": [ ... ],
+  "total": 5,
+  "page": 1,
+  "limit": 20
+}
 
 ---
 
@@ -1022,7 +1086,7 @@ XEARN propose 3 niveaux de compte avec des avantages progressifs :
 
 - **Tâches** : `GET /api/tasks` filtre automatiquement par `requiredTier <= user.tier`. Les tâches avec `requiredTier: PREMIUM` ne sont pas visibles par un utilisateur NORMAL.
 - **Retraits** : `POST /api/wallet/withdraw` applique les frais selon le tier. Les frais sont stockés dans les métadonnées de la transaction.
-- **Parrainage** : `GET /api/referrals/tree` inclut les filleuls L3 seulement pour les VIP. Les commissions L3 (5%) ne sont distribuées qu'aux parrains VIP.
+- **Parrainage** : `GET /api/referrals/tree` inclut les filleuls L3 seulement pour les VIP. Les commissions L2 (10%) ne sont distribuées qu'aux bénéficiaires **PREMIUM ou VIP**. Les commissions L3 (5%) ne sont distribuées qu'aux parrains VIP.
 - **Publicités** : `POST /api/ads` est réservé aux rôles `PARTNER` et `ADMIN`. Les pubs peuvent cibler des tiers spécifiques via `targetTiers`.
 
 ---

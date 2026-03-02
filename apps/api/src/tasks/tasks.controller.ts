@@ -37,8 +37,16 @@ export class TasksController {
 
   @UseGuards(JwtAuthGuard)
   @Get('my-completions')
-  async getMyCompletions(@Request() req: JwtRequest) {
-    return this.tasksService.getUserCompletions(req.user.id);
+  async getMyCompletions(
+    @Request() req: JwtRequest,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.tasksService.getUserCompletions(
+      req.user.id,
+      Math.max(1, parseInt(page || '') || 1),
+      Math.min(Math.max(1, parseInt(limit || '') || 100), 500),
+    );
   }
 
   @UseGuards(JwtAuthGuard)

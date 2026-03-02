@@ -225,7 +225,7 @@ export class UsersService {
       throw new BadRequestException('Mot de passe actuel incorrect');
     }
 
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
 
     await this.prisma.user.update({
       where: { id: userId },

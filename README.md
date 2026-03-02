@@ -3,7 +3,7 @@
 **Plateforme panafricaine de micro-revenus digitaux**
 
 XEARN permet aux utilisateurs de gagner de l'argent (FCFA) en réalisant des micro-tâches digitales : visionnage de publicités, sondages, clics sponsorisés, etc.  
-Un système de parrainage à 3 niveaux (dont le niveau 3 réservé aux VIP) récompense les parrains à chaque tâche complétée par leurs filleuls.  
+Un système de parrainage à 3 niveaux récompense les parrains à chaque tâche complétée par leurs filleuls (L2 réservé aux PREMIUM+, L3 réservé aux VIP).  
 Trois niveaux de compte (Normal, Premium, VIP) offrent des avantages progressifs : frais de retrait réduits, accès à des tâches exclusives et commissions étendues.
 
 ---
@@ -12,15 +12,15 @@ Trois niveaux de compte (Normal, Premium, VIP) offrent des avantages progressifs
 
 | Module | Description |
 |--------|-------------|
-| **Authentification** | Email + Google OAuth (NextAuth v4), vérification email, JWT (access + refresh), rate limiting anti brute-force |
+| **Authentification** | Email + Google OAuth (NextAuth v4, idToken vérifié côté serveur), JWT httpOnly cookies + CSRF double-submit, tokenVersion pour invalidation, bcrypt 12 |
 | **Niveaux de compte** | 3 tiers (Normal / Premium / VIP) avec avantages progressifs, upgrade payant depuis le wallet |
 | **Tâches** | Création admin, liste paginée filtrée par tier, complétion utilisateur, crédit automatique au wallet |
-| **Portefeuille** | Solde en temps réel, historique, activation (4 000 FCFA), retraits avec frais par tier (10% / 5% / 2%) |
-| **Parrainage** | 3 niveaux (L1 : 40 %, L2 : 10 %, L3 VIP : 5 %), commissions automatiques, arbre de filleuls |
+| **Portefeuille** | Solde en temps réel, historique, activation (4 000 FCFA), retraits avec frais par tier (10% / 5% / 2%), **protection race condition** (SELECT FOR UPDATE) |
+| **Parrainage** | 3 niveaux (L1 : 40 %, L2 : 10 % PREMIUM+, L3 VIP : 5 %), commissions automatiques, arbre de filleuls |
 | **Publicités** | Rôle Partenaire (Pub Maker), ciblage par pays et par tier, budget et dépenses, approbation admin |
-| **Paiements** | Multi-provider (FedaPay recommandé, Mock dev), webhooks, Mobile Money |
+| **Paiements** | Multi-provider (FedaPay recommandé, Mock dev), webhooks idempotents, Mobile Money |
 | **Administration** | Dashboard admin, gestion utilisateurs (suspension/ban), statistiques globales |
-| **Sécurité** | Helmet (CSP, HSTS), rate limiting 3 paliers, CORS dynamique, validation DTOs |
+| **Sécurité** | Helmet (CSP, HSTS), rate limiting 3 paliers, CORS dynamique, CSRF double-submit, CSP headers frontend, Permissions-Policy, validation DTOs (sans implicit conversion) |
 | **Pages légales** | CGU, Politique de confidentialité, Mentions légales |
 | **UX Mobile** | Interface responsive, sidebars adaptatives, toasts, navigation mobile |
 
@@ -33,7 +33,7 @@ Trois niveaux de compte (Normal, Premium, VIP) offrent des avantages progressifs
 | Frontend | Next.js 15.5 · React 19 · TypeScript 5.8 · TailwindCSS 3.4 · Lucide React · NextAuth v4 |
 | Backend | NestJS 10 · TypeScript 5.8 · Prisma 6.19 · Nodemailer |
 | Base de données | PostgreSQL 16 (Docker) |
-| Auth | JWT (access 15 min + refresh 7 jours) · bcrypt · Google OAuth |
+| Auth | JWT httpOnly cookies (access 15 min + refresh 7 jours) · bcrypt 12 · tokenVersion · CSRF double-submit · Google OAuth |
 | Paiements | FedaPay (production) · Mock (dev) |
 | Monorepo | npm workspaces |
 | Runtime | Node.js 22+ |
@@ -144,7 +144,9 @@ Ou avec PowerShell :
 
 - [QUICKSTART.md](QUICKSTART.md) — Guide de démarrage rapide pas à pas
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — Architecture technique détaillée
-- [docs/API.md](docs/API.md) — Référence complète de l'API (25+ endpoints)
+- [docs/API.md](docs/API.md) — Référence complète de l'API (30+ endpoints)
+- [docs/ROADMAP.md](docs/ROADMAP.md) — Feuille de route et audit de sécurité
+- [CHANGELOG.md](CHANGELOG.md) — Historique des modifications
 
 ---
 
@@ -216,18 +218,18 @@ Parrain (Niveau 0)
 Lorsqu'un filleul complète une tâche :
 1. Le filleul reçoit la récompense complète dans son wallet
 2. Le parrain de niveau 1 reçoit automatiquement **40%** en commission
-3. Le parrain de niveau 2 (s'il existe) reçoit automatiquement **10%** en commission
+3. Le parrain de niveau 2 (s'il existe **et est PREMIUM ou VIP**) reçoit automatiquement **10%** en commission
 4. Le parrain de niveau 3 (s'il existe **et est VIP**) reçoit automatiquement **5%** en commission
 
 ---
 
 ## Niveaux de compte
 
-| Tier | Prix d'upgrade | Frais de retrait | Tâches | Parrainage L3 |
-|------|---------------|-----------------|--------|---------------|
-| **Normal** | — (par défaut) | 10% | Tâches standard | ❌ |
-| **Premium** | 10 000 FCFA | 5% | + Tâches Premium | ❌ |
-| **VIP** | 25 000 FCFA | 2% | + Tâches VIP | ✅ (5%) |
+| Tier | Prix d'upgrade | Frais de retrait | Tâches | Parrainage |
+|------|---------------|-----------------|--------|------------|
+| **Normal** | — (par défaut) | 10% | Tâches standard | L1 (40%) |
+| **Premium** | 10 000 FCFA | 5% | + Tâches Premium | L1 (40%) + L2 (10%) |
+| **VIP** | 25 000 FCFA | 2% | + Tâches VIP | L1 (40%) + L2 (10%) + L3 (5%) |
 
 L'upgrade se fait depuis le portefeuille. Le montant est débité du solde de l'utilisateur.
 
@@ -249,7 +251,8 @@ L'upgrade se fait depuis le portefeuille. Le montant est débité du solde de l'
 - [x] UX Mobile + Toasts
 - [x] Pages légales (CGU, Confidentialité, Mentions légales)
 - [x] Paiements FedaPay (Mobile Money)
-- [x] Tests unitaires (Jest — 7 suites, 60 tests)
+- [x] Tests unitaires (Jest — 10 suites, 89 tests)
+- [x] Audit sécurité approfondi (Phase 11 — 8 CRITICAL, 6 HIGH, 10 MEDIUM corrigés)
 - [ ] Analytics avancés
 - [ ] Déploiement production (Vercel + Railway)
 - [ ] Application mobile

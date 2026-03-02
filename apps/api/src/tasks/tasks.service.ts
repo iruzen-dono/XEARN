@@ -81,6 +81,11 @@ export class TasksService {
     if (!task) throw new NotFoundException('Tâche introuvable');
     if (task.status !== 'ACTIVE') throw new BadRequestException('Tâche non disponible');
 
+    // H4 fix: Reject expired tasks
+    if (task.expiresAt && new Date(task.expiresAt) < new Date()) {
+      throw new BadRequestException('Cette tâche a expiré');
+    }
+
     // Vérifier que l'utilisateur est activé
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user || user.status !== 'ACTIVATED') {
@@ -279,12 +284,20 @@ export class TasksService {
     };
   }
 
-  async getUserCompletions(userId: string) {
-    return this.prisma.taskCompletion.findMany({
-      where: { userId },
-      include: { task: true },
-      orderBy: { createdAt: 'desc' },
-    });
+  // M5 fix: Paginate user completions
+  async getUserCompletions(userId: string, page = 1, limit = 20) {
+    const skip = (page - 1) * limit;
+    const [completions, total] = await Promise.all([
+      this.prisma.taskCompletion.findMany({
+        where: { userId },
+        include: { task: true },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.taskCompletion.count({ where: { userId } }),
+    ]);
+    return { completions, total, page, limit };
   }
 
   async toggleTask(taskId: string) {

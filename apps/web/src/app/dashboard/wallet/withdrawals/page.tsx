@@ -7,9 +7,21 @@ import { useAuth } from '@/lib/auth';
 import { walletApi } from '@/lib/api';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
-  PENDING: { label: 'En attente', color: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20', icon: Clock },
-  PROCESSING: { label: 'En cours', color: 'text-blue-400 bg-blue-500/10 border-blue-500/20', icon: Loader2 },
-  COMPLETED: { label: 'Complété', color: 'text-green-400 bg-green-500/10 border-green-500/20', icon: CheckCircle2 },
+  PENDING: {
+    label: 'En attente',
+    color: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20',
+    icon: Clock,
+  },
+  PROCESSING: {
+    label: 'En cours',
+    color: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
+    icon: Loader2,
+  },
+  COMPLETED: {
+    label: 'Complété',
+    color: 'text-green-400 bg-green-500/10 border-green-500/20',
+    icon: CheckCircle2,
+  },
   FAILED: { label: 'Échoué', color: 'text-red-400 bg-red-500/10 border-red-500/20', icon: XCircle },
   CANCELLED: { label: 'Annulé', color: 'text-dark-400 bg-dark-800 border-dark-700', icon: XCircle },
 };
@@ -26,15 +38,18 @@ const METHOD_LABELS: Record<string, string> = {
 
 export default function WithdrawalsPage() {
   const { token } = useAuth();
-  const [withdrawals, setWithdrawals] = useState<any[]>([]);
+  const [withdrawals, setWithdrawals] = useState<import('@/types').Withdrawal[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchWithdrawals = useCallback(async () => {
     if (!token) return;
     try {
-      const data = await walletApi.getWithdrawals(token) as any;
-      setWithdrawals(Array.isArray(data) ? data : []);
+      const data = (await walletApi.getWithdrawals(token)) as {
+        withdrawals?: import('@/types').Withdrawal[];
+      };
+      const list = data?.withdrawals || [];
+      setWithdrawals(Array.isArray(list) ? list : []);
     } catch (err) {
       console.error('Erreur chargement retraits:', err);
     } finally {
@@ -52,7 +67,7 @@ export default function WithdrawalsPage() {
     fetchWithdrawals();
   };
 
-  const fmt = (n: any) => Number(n || 0).toLocaleString('fr-FR');
+  const fmt = (n: string | number | null | undefined) => Number(n || 0).toLocaleString('fr-FR');
 
   // Compute summary stats
   const totalCompleted = withdrawals

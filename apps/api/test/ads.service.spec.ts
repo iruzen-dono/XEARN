@@ -22,10 +22,7 @@ describe('AdsService', () => {
     jest.clearAllMocks();
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        AdsService,
-        { provide: PrismaService, useValue: mockPrisma },
-      ],
+      providers: [AdsService, { provide: PrismaService, useValue: mockPrisma }],
     }).compile();
 
     service = module.get<AdsService>(AdsService);
@@ -46,7 +43,9 @@ describe('AdsService', () => {
       expect(result.id).toBe('ad-1');
       expect(result.publisherId).toBe('pub-1');
       expect(mockPrisma.advertisement.create).toHaveBeenCalledWith(
-        expect.objectContaining({ data: expect.objectContaining({ publisherId: 'pub-1', title: 'Promo Test' }) }),
+        expect.objectContaining({
+          data: expect.objectContaining({ publisherId: 'pub-1', title: 'Promo Test' }),
+        }),
       );
     });
   });
@@ -54,10 +53,10 @@ describe('AdsService', () => {
   // ─── findActive ────────────────────────────────────
   describe('findActive', () => {
     it('should return active non-expired ads with pagination', async () => {
-      mockPrisma.$transaction.mockResolvedValue([
-        [{ id: 'ad-1', status: 'ACTIVE' }],
-        1,
+      mockPrisma.advertisement.findMany.mockResolvedValue([
+        { id: 'ad-1', status: 'ACTIVE', budget: null, spent: 0 },
       ]);
+      mockPrisma.advertisement.count.mockResolvedValue(1);
 
       const result = await service.findActive(1, 20);
       expect(result.ads).toHaveLength(1);
@@ -112,9 +111,7 @@ describe('AdsService', () => {
     it('should throw ForbiddenException if not owner and not admin', async () => {
       mockPrisma.advertisement.findUnique.mockResolvedValue({ id: 'ad-1', publisherId: 'pub-1' });
 
-      await expect(
-        service.remove('ad-1', 'other-user', false),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(service.remove('ad-1', 'other-user', false)).rejects.toThrow(ForbiddenException);
     });
 
     it('should allow owner to delete', async () => {

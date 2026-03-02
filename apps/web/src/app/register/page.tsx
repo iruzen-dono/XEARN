@@ -163,7 +163,7 @@ function RegisterForm() {
               // Store referral code in a cookie so it survives the OAuth redirect
               // and is accessible server-side in the NextAuth callback
               if (form.referralCode) {
-                document.cookie = `xearn_referral=${encodeURIComponent(form.referralCode)};path=/;max-age=600;SameSite=Lax`;
+                document.cookie = `xearn_referral=${encodeURIComponent(form.referralCode)};path=/;max-age=600;SameSite=Lax;Secure`;
               }
               signIn('google', { callbackUrl: '/dashboard' });
             } catch (err) {
@@ -212,6 +212,7 @@ function RegisterForm() {
                 <input
                   id="firstName"
                   type="text"
+                  autoComplete="given-name"
                   className="input-field pl-10"
                   placeholder="Jean"
                   value={form.firstName}
@@ -227,6 +228,7 @@ function RegisterForm() {
               <input
                 id="lastName"
                 type="text"
+                autoComplete="family-name"
                 className="input-field"
                 placeholder="Dupont"
                 value={form.lastName}
@@ -245,6 +247,7 @@ function RegisterForm() {
               <input
                 id="reg-email"
                 type="email"
+                autoComplete="email"
                 className="input-field pl-10"
                 placeholder="votre@email.com"
                 value={form.email}
@@ -263,6 +266,7 @@ function RegisterForm() {
               <input
                 id="phone"
                 type="tel"
+                autoComplete="tel"
                 className="input-field pl-10"
                 placeholder="+228 90 00 00 00"
                 value={form.phone}
@@ -280,6 +284,7 @@ function RegisterForm() {
               <input
                 id="reg-password"
                 type={showPassword ? 'text' : 'password'}
+                autoComplete="new-password"
                 className="input-field pl-10 pr-10"
                 placeholder="Min. 6 caractères"
                 value={form.password}

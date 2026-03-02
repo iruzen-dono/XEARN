@@ -31,6 +31,9 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
   if (url.pathname === '/login' || url.pathname === '/register') return;
 
+  // C6 fix: Never cache protected pages (dashboard, admin, profile)
+  if (url.pathname.startsWith('/dashboard') || url.pathname.startsWith('/admin')) return;
+
   // Static assets (JS, CSS, images) — stale-while-revalidate
   if (/\.(js|css|png|jpg|jpeg|svg|ico|woff2?)(\?.*)?$/.test(url.pathname)) {
     event.respondWith(

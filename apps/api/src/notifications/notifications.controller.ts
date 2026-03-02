@@ -9,7 +9,7 @@ import {
   Sse,
   MessageEvent,
 } from '@nestjs/common';
-import { Observable, fromEvent, map } from 'rxjs';
+import { Observable, fromEvent, map, finalize } from 'rxjs';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { JwtAuthGuard } from '../auth/guards';
 import { NotificationsService } from './notifications.service';
@@ -27,13 +27,18 @@ export class NotificationsController {
   @Sse('stream')
   stream(@Request() req: JwtRequest): Observable<MessageEvent> {
     const userId = req.user.id;
-    return fromEvent(this.eventEmitter, `notification.${userId}`).pipe(
+    const eventName = `notification.${userId}`;
+    // H5 fix: Properly clean up listener when SSE client disconnects
+    return fromEvent(this.eventEmitter, eventName).pipe(
       map(
         (notification) =>
           ({
             data: notification,
           }) as MessageEvent,
       ),
+      finalize(() => {
+        this.eventEmitter.removeAllListeners(eventName);
+      }),
     );
   }
 

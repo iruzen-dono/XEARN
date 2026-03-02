@@ -34,7 +34,7 @@ const TYPE_ICONS: Record<string, string> = {
 export default function TasksPage() {
   const { token } = useAuth();
   const toast = useToast();
-  const [tasks, setTasks] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<import('@/types').Task[]>([]);
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState<string | null>(null);
@@ -50,16 +50,19 @@ export default function TasksPage() {
     const fetchData = async () => {
       try {
         const [allTasks, myCompletions] = await Promise.all([
-          tasksApi.getAll(token) as any,
-          tasksApi.getMyCompletions(token) as any,
+          tasksApi.getAll(token),
+          tasksApi.getMyCompletions(token),
         ]);
-        const taskList = allTasks?.tasks || allTasks || [];
+        const taskList = (allTasks as import('@/types').TasksPage)?.tasks || [];
         setTasks(Array.isArray(taskList) ? taskList : []);
         const doneIds = new Set<string>();
+        const completionData = myCompletions as {
+          completions?: import('@/types').TaskCompletion[];
+        };
         const completions = Array.isArray(myCompletions)
           ? myCompletions
-          : myCompletions?.completions || [];
-        completions.forEach((c: any) => doneIds.add(c.taskId));
+          : completionData?.completions || [];
+        completions.forEach((c: import('@/types').TaskCompletion) => doneIds.add(c.taskId));
         setCompletedIds(doneIds);
       } catch (err) {
         console.error('Erreur chargement tâches:', err);

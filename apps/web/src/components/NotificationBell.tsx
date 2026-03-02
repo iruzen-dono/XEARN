@@ -104,15 +104,24 @@ export default function NotificationBell() {
     }
   };
 
-  // Close when clicking outside
+  // Close when clicking outside or pressing Escape
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setOpen(false);
       }
     };
-    if (open) document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    if (open) {
+      document.addEventListener('mousedown', handleClick);
+      document.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
   }, [open]);
 
   const markAsRead = async (id: string) => {
@@ -143,6 +152,8 @@ export default function NotificationBell() {
         onClick={() => (open ? setOpen(false) : openDropdown())}
         className="relative p-2 text-dark-400 hover:text-white rounded-lg hover:bg-dark-800 transition-colors"
         aria-label="Notifications"
+        aria-expanded={open}
+        aria-haspopup="true"
       >
         <Bell className="w-5 h-5" />
         {unreadCount > 0 && (
@@ -153,7 +164,11 @@ export default function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-dark-900 border border-dark-700 rounded-xl shadow-2xl z-50 overflow-hidden">
+        <div
+          role="menu"
+          aria-label="Notifications"
+          className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-dark-900 border border-dark-700 rounded-xl shadow-2xl z-50 overflow-hidden"
+        >
           {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-dark-800">
             <h3 className="font-semibold text-sm">Notifications</h3>

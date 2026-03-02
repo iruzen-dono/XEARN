@@ -82,16 +82,22 @@ export default function ReferralsPage() {
 
   const shareText = `Rejoins XEARN et gagne de l'argent en complétant des tâches simples ! Inscris-toi avec mon lien : ${referralLink}`;
   const shareWhatsApp = () =>
-    window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, '_blank');
+    window.open(
+      `https://wa.me/?text=${encodeURIComponent(shareText)}`,
+      '_blank',
+      'noopener,noreferrer',
+    );
   const shareTelegram = () =>
     window.open(
       `https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${encodeURIComponent("Rejoins XEARN et gagne de l'argent en complétant des tâches simples !")}`,
       '_blank',
+      'noopener,noreferrer',
     );
   const shareFacebook = () =>
     window.open(
       `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(referralLink)}`,
       '_blank',
+      'noopener,noreferrer',
     );
 
   const fmt = (n: number | string | undefined) => Number(n || 0).toLocaleString('fr-FR');

@@ -62,7 +62,7 @@ export class AuthService {
     }
 
     // Hasher le mot de passe
-    const hashedPassword = await bcrypt.hash(dto.password, 10);
+    const hashedPassword = await bcrypt.hash(dto.password, 12);
 
     // Trouver le parrain si code fourni
     let referredById: string | undefined;
@@ -246,6 +246,11 @@ export class AuthService {
         throw new UnauthorizedException('Compte suspendu ou banni');
       }
 
+      // C1 fix: Reject refresh tokens issued before a password/security change
+      if (payload.tokenVersion !== undefined && payload.tokenVersion !== user.tokenVersion) {
+        throw new UnauthorizedException('Session expirée, veuillez vous reconnecter');
+      }
+
       const tokens = await this.generateTokens(user.id, user.role, user.tokenVersion);
 
       return {
@@ -374,11 +379,13 @@ export class AuthService {
       }
     }
 
+    // M3 fix: Don't overwrite provider for existing LOCAL accounts — only fill missing fields
     const user = existing
       ? await this.prisma.user.update({
           where: { id: existing.id },
           data: {
-            provider: 'GOOGLE',
+            provider:
+              existing.provider === 'LOCAL' && existing.password ? existing.provider : 'GOOGLE',
             googleId: existing.googleId || googleId,
             avatarUrl: existing.avatarUrl || avatarUrl,
             emailVerifiedAt: existing.emailVerifiedAt || new Date(),
@@ -469,14 +476,16 @@ export class AuthService {
       throw new BadRequestException('Lien de réinitialisation invalide ou expiré');
     }
 
-    const hashedPassword = await bcrypt.hash(dto.password, 10);
+    const hashedPassword = await bcrypt.hash(dto.password, 12);
 
+    // C2 fix: Increment tokenVersion to invalidate all existing sessions
     await this.prisma.user.update({
       where: { id: user.id },
       data: {
         password: hashedPassword,
         passwordResetToken: null,
         passwordResetExpiresAt: null,
+        tokenVersion: { increment: 1 },
       },
     });
 

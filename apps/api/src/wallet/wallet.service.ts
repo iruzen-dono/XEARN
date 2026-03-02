@@ -175,9 +175,14 @@ export class WalletService {
 
     // Transaction atomique : vérifier le solde + débiter le wallet + créer le retrait
     const result = await this.prisma.$transaction(async (tx) => {
-      // Re-check balance inside transaction to prevent race conditions
-      const wallet = await tx.wallet.findUnique({ where: { userId } });
-      if (!wallet || wallet.balance.lessThan(new Decimal(amount))) {
+      // C3 fix: Use SELECT FOR UPDATE to prevent concurrent withdrawal race conditions
+      const [lockedWallet] = await tx.$queryRaw<{ balance: any }[]>`
+        SELECT balance FROM "Wallet" WHERE "userId" = ${userId} FOR UPDATE
+      `;
+      if (
+        !lockedWallet ||
+        new Decimal(String(lockedWallet.balance)).lessThan(new Decimal(amount))
+      ) {
         throw new BadRequestException('Solde insuffisant');
       }
 
@@ -278,11 +283,19 @@ export class WalletService {
     }
   }
 
-  async getWithdrawals(userId: string) {
-    return this.prisma.withdrawal.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
-    });
+  // M4 fix: Paginate withdrawals
+  async getWithdrawals(userId: string, page = 1, limit = 20) {
+    const skip = (page - 1) * limit;
+    const [withdrawals, total] = await Promise.all([
+      this.prisma.withdrawal.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.withdrawal.count({ where: { userId } }),
+    ]);
+    return { withdrawals, total, page, limit };
   }
 
   // Admin: stats globales

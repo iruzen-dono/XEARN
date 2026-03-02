@@ -161,9 +161,19 @@ export class ReferralsService {
       where: { id: userId },
       include: {
         referredBy: {
-          include: {
+          select: {
+            id: true,
+            status: true,
+            tier: true,
+            firstName: true,
+            lastName: true,
             referredBy: {
-              include: {
+              select: {
+                id: true,
+                status: true,
+                tier: true,
+                firstName: true,
+                lastName: true,
                 referredBy: {
                   select: { id: true, status: true, tier: true, firstName: true, lastName: true },
                 },
@@ -216,8 +226,12 @@ export class ReferralsService {
       );
     }
 
-    // Commission niveau 2
-    if (user.referredBy.referredBy?.status === 'ACTIVATED') {
+    // Commission niveau 2 (H3 fix: requires PREMIUM or VIP tier for L2 beneficiary)
+    if (
+      user.referredBy.referredBy?.status === 'ACTIVATED' &&
+      user.referredBy.referredBy?.tier &&
+      ['PREMIUM', 'VIP'].includes(user.referredBy.referredBy.tier)
+    ) {
       const commissionL2 = amount.mul(l2Percent).div(100);
 
       operations.push(
@@ -316,7 +330,7 @@ export class ReferralsService {
       }
     }
 
-    if (l3Beneficiary?.status === 'ACTIVATED' && (l3Beneficiary as any).tier === 'VIP') {
+    if (l3Beneficiary?.status === 'ACTIVATED' && l3Beneficiary.tier === 'VIP') {
       const commissionL3 = amount.mul(l3Percent).div(100);
       try {
         await this.notificationsService.notifyCommission(

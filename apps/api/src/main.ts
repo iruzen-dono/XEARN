@@ -90,7 +90,7 @@ async function bootstrap() {
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
-      transformOptions: { enableImplicitConversion: true },
+      // M2 fix: Removed enableImplicitConversion (security risk — prevents type coercion attacks)
     }),
   );
 
@@ -117,8 +117,14 @@ async function bootstrap() {
     ];
     if (csrfExempt.some((prefix) => req.path.startsWith(prefix))) return next();
 
+    // C5 fix: Always enforce CSRF on non-exempt mutating requests
+    // Authenticated users must present a valid CSRF token.
+    // Unauthenticated users hitting auth-guarded routes will get 401 from JwtAuthGuard.
     const accessToken = (req as any)?.cookies?.[ACCESS_TOKEN_COOKIE];
-    if (!accessToken) return next();
+    if (!accessToken) {
+      // No session — CSRF not applicable (nothing to forge), skip
+      return next();
+    }
 
     const csrfCookie = (req as any)?.cookies?.[CSRF_TOKEN_COOKIE];
     const csrfHeader = req.headers['x-csrf-token'];

@@ -218,6 +218,13 @@ export class PaymentWebhookController {
 
     const providerTxId = String(entity.id);
 
+    // C4 fix: Idempotency check — skip if withdrawal already completed
+    const withdrawal = await this.prisma.withdrawal.findUnique({ where: { id: withdrawalId } });
+    if (!withdrawal || withdrawal.status === 'COMPLETED') {
+      this.logger.log(`Retrait ${withdrawalId} déjà complété ou introuvable — ignoré`);
+      return;
+    }
+
     await this.prisma.$transaction([
       this.prisma.withdrawal.update({
         where: { id: withdrawalId },

@@ -53,7 +53,7 @@ export class AdsService {
       ];
     }
 
-    const [ads, total] = await this.prisma.$transaction([
+    const [ads, total] = await Promise.all([
       this.prisma.advertisement.findMany({
         where,
         orderBy: { createdAt: 'desc' },
@@ -63,10 +63,12 @@ export class AdsService {
       this.prisma.advertisement.count({ where }),
     ]);
 
-    // Filter out over-budget ads (small post-filter)
+    // H6 fix: Filter out over-budget ads and adjust pagination counts accordingly
     const filtered = ads.filter((ad) => !ad.budget || Number(ad.spent) < Number(ad.budget));
+    const budgetExhaustedCount = ads.length - filtered.length;
+    const adjustedTotal = Math.max(0, total - budgetExhaustedCount);
 
-    return { ads: filtered, total, page, pages: Math.ceil(total / take) };
+    return { ads: filtered, total: adjustedTotal, page, pages: Math.ceil(adjustedTotal / take) };
   }
 
   /** List ads by publisher */
@@ -74,7 +76,8 @@ export class AdsService {
     const take = 20;
     const skip = (page - 1) * take;
 
-    const [ads, total] = await this.prisma.$transaction([
+    // M10 fix: Use Promise.all instead of $transaction for read-only queries
+    const [ads, total] = await Promise.all([
       this.prisma.advertisement.findMany({
         where: { publisherId },
         orderBy: { createdAt: 'desc' },
@@ -133,7 +136,7 @@ export class AdsService {
       ? { status: status as 'PENDING' | 'ACTIVE' | 'PAUSED' | 'EXPIRED' | 'REJECTED' }
       : {};
 
-    const [ads, total] = await this.prisma.$transaction([
+    const [ads, total] = await Promise.all([
       this.prisma.advertisement.findMany({
         where,
         orderBy: { createdAt: 'desc' },

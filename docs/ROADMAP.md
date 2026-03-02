@@ -1,7 +1,7 @@
 # XEARN — Feuille de Route
 
 > Plateforme panafricaine de micro-revenus digitaux  
-> Dernière mise à jour : Mars 2026
+> Dernière mise à jour : Juin 2025
 
 ---
 
@@ -31,6 +31,37 @@
 **12 MEDIUM** — aria-label sur tous les boutons icônes admin, labels français pour statuts (users/tasks), googleAuthPending non nettoyé à l'échec, dead code `data.data` supprimé, toast.error sur erreur dashboard, notifications polling avec cancel flag, pagination a11y, task types labels, error boundaries (dashboard + admin)
 
 **5 LOW** — Suppression console.log inutiles, ESLint deps fixes, AbortController polling
+
+### Corrections effectuées (Phase 11 - Audit sécurité approfondi)
+
+**8 CRITICAL** :
+- **C1** : tokenVersion vérifié au refresh → invalidation des tokens après changement/reset de mot de passe
+- **C2** : tokenVersion incrémenté au resetPassword + bcrypt 12
+- **C3** : `SELECT ... FOR UPDATE` dans le wallet pour prévenir les race conditions sur les retraits
+- **C4** : Idempotence des webhooks (retrait COMPLETED ne peut être traité 2 fois)
+- **C5** : CSRF bypass documenté (comportement correct)
+- **C6** : Service Worker exclut `/dashboard` et `/admin` du cache
+- **C7** : CSP + X-Frame-Options + X-Content-Type-Options + Referrer-Policy + Permissions-Policy dans next.config.js
+- **C8** : Flag `Secure` sur le cookie referral
+
+**6 HIGH** :
+- **H1** : Health check retourne 503 si la DB est inaccessible
+- **H3** : Commissions L2 limitées aux bénéficiaires PREMIUM+
+- **H4** : Vérification de l'expiration des tâches côté serveur dans `completeTask`
+- **H5** : SSE stream avec nettoyage propre (`finalize`) à la déconnexion
+- **H6** : Total ajusté dans findActive pour exclure les pubs à budget épuisé
+- **H11** : Redirect non-admin vers /dashboard dans le layout admin
+- **H12** : ARIA (aria-expanded, aria-haspopup, role="menu") + Escape handler sur NotificationBell
+
+**10 MEDIUM** :
+- **M1** : bcrypt rounds 10→12 dans register
+- **M2** : `enableImplicitConversion` supprimé du ValidationPipe
+- **M3** : Google Auth ne modifie pas le provider d'un compte LOCAL existant
+- **M4** : Pagination sur `GET /wallet/withdrawals` (page, limit)
+- **M5** : Pagination sur `GET /tasks/my-completions` (page, limit)
+- **M6** : SanitizeInterceptor limite de profondeur (MAX_DEPTH=16)
+- **M10** : Remplacement `$transaction` par `Promise.all` pour les requêtes read-only (ads)
+- **M17–M20** : Types explicites sur le frontend (wallet, tasks, withdrawals pages), autoComplete attributes, noopener/noreferrer sur window.open
 
 ---
 
@@ -65,11 +96,11 @@
 
 ## Phase 2 — Qualité du code (Priorité: HAUTE)
 
-### 2.1 Typage TypeScript strict
-- [ ] Remplacer tous les `any` par des types/interfaces explicites (30+ occurrences)
+### 2.1 Typage TypeScript strict ✅
+- [x] Remplacer tous les `any` par des types/interfaces explicites (30+ occurrences)
 - [ ] Créer un fichier `types/` partagé (ou package `@xearn/types`)
-- [ ] Ajouter `strict: true` dans les tsconfig (si pas déjà fait)
-- [ ] Typer les réponses API avec des interfaces côté frontend
+- [x] `strict: true` dans les tsconfig
+- [x] Typer les réponses API avec des interfaces côté frontend (WalletData, Transaction, FeesData, TierPricingData, Task, Withdrawal)
 
 ### 2.2 Tests unitaires backend
 - [ ] Atteindre 80% de couverture sur les services critiques:
@@ -170,7 +201,7 @@
 ### 5.3 Monitoring & Observabilité
 - [ ] APM: Sentry pour le tracking d'erreurs (backend + frontend)
 - [ ] Logs structurés (déjà en place) → exporter vers un agrégateur (Loki, Datadog)
-- [x] Health check endpoint `/api/health` avec vérification DB
+- [x] Health check endpoint `/api/health` avec vérification DB (**retourne 503 si DB down**)
 - [ ] Uptime monitoring (UptimeRobot, Better Stack)
 - [ ] Alertes Slack/Telegram pour les erreurs critiques et les paiements échoués
 
@@ -229,8 +260,13 @@
 | ~~`any` omniprésent~~ | ~~30+ fichiers~~ | ~~HAUTE~~ | ~~~50 occurrences de `any`~~ → **Résolu** : types strictement typés frontend + backend |
 | ~~Advertisement sans FK~~ | ~~`schema.prisma`~~ | ~~MOYENNE~~ | ~~`publisherId` est un String libre~~ → **Résolu** : `@relation` ajouté |
 | ~~Landing page `'use client'`~~ | ~~`app/page.tsx`~~ | ~~BASSE~~ | ~~La landing 7KB JS~~ → **Résolu** : Server Component pur |
+| ~~bcrypt rounds faibles~~ | ~~`auth.service.ts`, `users.service.ts`~~ | ~~MOYENNE~~ | ~~Salt rounds = 10~~ → **Résolu** : bcrypt 12 partout (register, changePassword, resetPassword) |
+| ~~Race condition retraits~~ | ~~`wallet.service.ts`~~ | ~~**CRITIQUE**~~ | ~~Pas de verrou sur la balance wallet~~ → **Résolu** : `SELECT ... FOR UPDATE` dans transaction interactive |
+| ~~Tokens non-invalidables~~ | ~~`auth.service.ts`~~ | ~~**CRITIQUE**~~ | ~~Pas de mécanisme pour révoquer les refresh tokens~~ → **Résolu** : tokenVersion validé au refresh |
+| ~~Webhook non-idempotent~~ | ~~`payment-webhook.controller.ts`~~ | ~~**CRITIQUE**~~ | ~~Payout webhook pouvait être traité en double~~ → **Résolu** : vérification du statut avant traitement |
+| ~~SanitizeInterceptor stack overflow~~ | ~~`sanitize.interceptor.ts`~~ | ~~MOYENNE~~ | ~~Pas de limite de profondeur~~ → **Résolu** : MAX_DEPTH=16 |
 | PWA sans versioning | `public/sw.js` | BASSE | Le service worker ne gère pas les versions de cache |
-| Polling notifications | `NotificationBell.tsx` | BASSE | Polling 30s → remplacer par SSE/WebSocket |
+| Polling notifications | `NotificationBell.tsx` | BASSE | Polling 30s → remplacer par SSE/WebSocket (SSE stream existe côté backend, nettoyage propre ajouté) |
 
 ---
 
