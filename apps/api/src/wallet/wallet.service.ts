@@ -58,8 +58,10 @@ export class WalletService {
 
     return {
       ...wallet,
-      totalWithdrawn: completedWithdrawals._sum?.amount || 0,
-      pendingWithdrawal: pendingWithdrawals._sum?.amount || 0,
+      balance: Number(wallet.balance),
+      totalEarned: Number(wallet.totalEarned),
+      totalWithdrawn: Number(completedWithdrawals._sum?.amount || 0),
+      pendingWithdrawal: Number(pendingWithdrawals._sum?.amount || 0),
     };
   }
 

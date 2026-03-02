@@ -242,7 +242,7 @@ export default function WalletPage() {
       </MotionDiv>
 
       {/* Tier & Fees info */}
-      {user?.status === 'ACTIVATED' && (
+      {user && (
         <MotionDiv preset="fadeUp" delay={0.15}>
           <div className="card">
             <div className="flex items-center justify-between mb-4">
@@ -294,11 +294,14 @@ export default function WalletPage() {
                       Frais réduits à 5% • Tâches Premium
                     </div>
                     <div className="text-lg font-bold text-white mb-3">
-                      {Number(tierPricing.PREMIUM).toLocaleString('fr-FR')} FCFA
+                      {Number(tierPricing.PREMIUM?.price || tierPricing.PREMIUM).toLocaleString(
+                        'fr-FR',
+                      )}{' '}
+                      FCFA
                     </div>
                     <button
                       onClick={() => handleUpgradeTier('PREMIUM')}
-                      disabled={upgrading}
+                      disabled={upgrading || user?.status !== 'ACTIVATED'}
                       className="btn-primary btn-sm w-full disabled:opacity-50"
                     >
                       {upgrading ? (
@@ -321,11 +324,12 @@ export default function WalletPage() {
                       Frais réduits à 2% • Toutes les tâches • Parrainage L3 (5%)
                     </div>
                     <div className="text-lg font-bold text-white mb-3">
-                      {Number(tierPricing.VIP).toLocaleString('fr-FR')} FCFA
+                      {Number(tierPricing.VIP?.price || tierPricing.VIP).toLocaleString('fr-FR')}{' '}
+                      FCFA
                     </div>
                     <button
                       onClick={() => handleUpgradeTier('VIP')}
-                      disabled={upgrading}
+                      disabled={upgrading || user?.status !== 'ACTIVATED'}
                       className="btn-primary btn-sm w-full disabled:opacity-50"
                     >
                       {upgrading ? (
@@ -344,6 +348,12 @@ export default function WalletPage() {
             {user.tier === 'VIP' && (
               <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-sm text-amber-400">
                 ✨ Vous êtes VIP — tous les avantages sont débloqués !
+              </div>
+            )}
+
+            {user?.status !== 'ACTIVATED' && tierPricing && (
+              <div className="p-3 rounded-xl bg-primary-500/5 border border-primary-500/20 text-sm text-dark-300 mt-4">
+                💡 Activez votre compte pour pouvoir upgrader vers Premium ou VIP.
               </div>
             )}
           </div>

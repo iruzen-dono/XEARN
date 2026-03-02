@@ -1,63 +1,22 @@
-PASS test/auth-cookies.spec.ts (16.613 s)
-PASS test/fedapay-signature.spec.ts (17.085 s)
-PASS test/ads.service.spec.ts (19.105 s)
-PASS test/gamification.service.spec.ts (19.46 s)
-PASS test/anti-cheat.service.spec.ts (19.358 s)
-PASS test/wallet.service.spec.ts (19.485 s)
-PASS test/tasks.service.spec.ts (19.706 s)
-PASS test/users.service.spec.ts (19.685 s)
-PASS test/payment.service.spec.ts (19.739 s)
-PASS test/auth.service.spec.ts (20.727 s)
-  ● Console
+PASS test/wallet.service.spec.ts (9.255 s)
+  WalletService
+    getWallet
+      √ should return null if no wallet found (21 ms)
+      √ should return wallet with withdrawal stats (5 ms)
+    getTransactions
+      √ should return paginated transactions (5 ms)
+    activateAccount
+      √ should throw if user not found (29 ms)
+      √ should throw if already activated (4 ms)
+      √ should throw for suspended users (3 ms)
+      √ should activate on successful mock payment (3 ms)
+    requestWithdrawal
+      √ should throw if amount below minimum (7 ms)
+      √ should throw if account is not activated (4 ms)
 
-    console.error
-      Erreur envoi email de vérification: Error: connect ECONNREFUSED ::1:587
-          at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1634:16) {
-        errno: -4078,
-        code: 'ESOCKET',
-        syscall: 'connect',
-        address: '::1',
-        port: 587,
-        command: 'CONN'
-      }
-
-      109 |         await this.sendVerificationEmail(user.id, user.email, user.firstName);
-      110 |       } catch (err) {
-    > 111 |         console.error('Erreur envoi email de vérification:', err);
-          |                 ^
-      112 |       }
-      113 |       return {
-      114 |         message: 'Compte créé. Vérifiez votre email pour activer le compte.',
-
-      at AuthService.register (src/auth/auth.service.ts:111:17)
-      at Object.<anonymous> (test/auth.service.spec.ts:98:22)
-
-    console.error
-      Erreur envoi email de vérification: Error: connect ECONNREFUSED ::1:587
-          at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1634:16) {
-        errno: -4078,
-        code: 'ESOCKET',
-        syscall: 'connect',
-        address: '::1',
-        port: 587,
-        command: 'CONN'
-      }
-
-      109 |         await this.sendVerificationEmail(user.id, user.email, user.firstName);
-      110 |       } catch (err) {
-    > 111 |         console.error('Erreur envoi email de vérification:', err);
-          |                 ^
-      112 |       }
-      113 |       return {
-      114 |         message: 'Compte créé. Vérifiez votre email pour activer le compte.',
-
-      at AuthService.register (src/auth/auth.service.ts:111:17)
-      at Object.<anonymous> (test/auth.service.spec.ts:117:7)
-
-
-Test Suites: 10 passed, 10 total
-Tests:       89 passed, 89 total
+Test Suites: 1 passed, 1 total
+Tests:       9 passed, 9 total
 Snapshots:   0 total
-Time:        22.185 s
-Ran all test suites.
+Time:        9.57 s, estimated 18 s
+Ran all test suites matching /wallet/i.
 Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?

@@ -9,9 +9,15 @@ import { NotificationsService } from '../src/notifications/notifications.service
 // Mock Decimal
 class MockDecimal {
   private val: number;
-  constructor(v: any) { this.val = Number(v); }
-  lessThan(other: MockDecimal) { return this.val < other.val; }
-  toString() { return this.val.toFixed(2); }
+  constructor(v: any) {
+    this.val = Number(v);
+  }
+  lessThan(other: MockDecimal) {
+    return this.val < other.val;
+  }
+  toString() {
+    return this.val.toFixed(2);
+  }
 }
 
 const mockPrisma = {
@@ -79,13 +85,15 @@ describe('WalletService', () => {
         totalEarned: '1000.00',
       });
       mockPrisma.withdrawal.aggregate
-        .mockResolvedValueOnce({ _sum: { amount: '300.00' } })  // completed
-        .mockResolvedValueOnce({ _sum: { amount: '100.00' } });  // pending
+        .mockResolvedValueOnce({ _sum: { amount: '300.00' } }) // completed
+        .mockResolvedValueOnce({ _sum: { amount: '100.00' } }); // pending
 
       const result = await service.getWallet('user-1');
       expect(result).toBeDefined();
-      expect(result!.totalWithdrawn).toBe('300.00');
-      expect(result!.pendingWithdrawal).toBe('100.00');
+      expect(result!.balance).toBe(500);
+      expect(result!.totalEarned).toBe(1000);
+      expect(result!.totalWithdrawn).toBe(300);
+      expect(result!.pendingWithdrawal).toBe(100);
     });
   });
 
