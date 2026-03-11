@@ -87,7 +87,7 @@ export default function DashboardPage() {
   const statCards = [
     {
       label: 'Solde',
-      value: Number(wallet?.wallet?.balance || 0),
+      value: Number(wallet?.balance || 0),
       suffix: ' FCFA',
       sub: 'Portefeuille actuel',
       icon: <Wallet className="w-5 h-5" />,
@@ -96,7 +96,7 @@ export default function DashboardPage() {
     },
     {
       label: 'Total gagné',
-      value: Number(wallet?.wallet?.totalEarned || 0),
+      value: Number(wallet?.totalEarned || 0),
       suffix: ' FCFA',
       sub: "Depuis l'inscription",
       icon: <TrendingUp className="w-5 h-5" />,
