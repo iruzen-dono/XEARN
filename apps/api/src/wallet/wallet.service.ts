@@ -327,6 +327,9 @@ export class WalletService {
           data: {
             metadata: {
               withdrawalId: result.id,
+              feePercent,
+              feeAmount,
+              netAmount,
               providerTransactionId: disbursement.providerTransactionId,
             },
           },

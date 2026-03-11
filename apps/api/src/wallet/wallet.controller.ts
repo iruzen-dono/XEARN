@@ -130,30 +130,31 @@ export class WalletController {
     });
     const header = 'id,userId,userName,email,type,status,amount,description,createdAt\n';
     const rows = transactions
-      .map(
-        (t: {
-          id: string;
-          userId: string;
-          user: { firstName: string; lastName: string; email: string | null };
-          type: string;
-          status: string;
-          amount: string | number | Decimal;
-          description: string | null;
-          createdAt: Date;
-        }) =>
-          [
-            t.id,
-            t.userId,
-            this.csvSafe(`${t.user.firstName} ${t.user.lastName}`),
-            this.csvSafe(t.user.email || ''),
-            t.type,
-            t.status,
-            t.amount,
-            `"${(t.description || '').replace(/"/g, '""')}"`,
-            t.createdAt.toISOString(),
-          ].join(','),
-      )
-      .join('\n');
+          .map(
+            (t: {
+              id: string;
+              userId: string;
+              user: { firstName: string; lastName: string; email: string | null };
+              type: string;
+              status: string;
+              amount: string | number | Decimal;
+              description: string | null;
+              createdAt: Date;
+            }) =>
+              [
+                t.id,
+                t.userId,
+                this.csvSafe(`${t.user.firstName} ${t.user.lastName}`),
+                this.csvSafe(t.user.email || ''),
+                t.type,
+                t.status,
+                t.amount,
+                `"${(t.description || '').replace(/"/g, '""').replace(/[
+\n]+/g, ' ')}"`,
+                t.createdAt.toISOString(),
+              ].join(','),
+          )
+          .join('\n');
     res.setHeader('Content-Disposition', 'attachment; filename=xearn-transactions.csv');
     res.send(header + rows);
   }
