@@ -49,7 +49,7 @@ export class PaymentWebhookController {
   ) {
     this.logger.log(`Webhook reçu: ${JSON.stringify(body).substring(0, 300)}`);
 
-    if (fedapaySignature || body?.entity) {
+    if (fedapaySignature && body?.entity) {
       const secret =
         this.configService.get('FEDAPAY_WEBHOOK_SECRET') ||
         this.configService.get('FEDAPAY_SECRET_KEY');
