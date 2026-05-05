@@ -118,13 +118,7 @@ cd ../..
 Double-clique sur **`start.bat`** à la racine du projet.  
 Le script lance automatiquement Docker, la BDD, l'API et le frontend.
 
-### Option B : PowerShell
-
-```powershell
-.\start.ps1
-```
-
-### Option C : Lancer manuellement
+### Option B : Lancer manuellement
 
 **Terminal 1** — API :
 ```bash
@@ -154,7 +148,7 @@ Ouvre ton navigateur :
 
 | Rôle | Email | Mot de passe |
 |------|-------|-------------|
-| **Admin** | juleszhou01@gmail.com | *(votre mot de passe)* |
+| **Admin** | admin@xearn.local | Admin1234 |
 
 > **Note** : Créez de nouveaux comptes via la page d'inscription http://localhost:3000/register.
 
@@ -164,7 +158,7 @@ Ouvre ton navigateur :
 # Login admin
 $r = Invoke-RestMethod -Uri "http://localhost:4000/api/auth/login" `
   -Method POST -ContentType "application/json" `
-  -Body '{"email":"juleszhou01@gmail.com","password":"votre_mot_de_passe"}'
+  -Body '{"email":"admin@xearn.local","password":"Admin1234"}'
 
 Write-Host "Connecté : $($r.user.firstName) $($r.user.lastName) ($($r.user.role))"
 ```
@@ -177,12 +171,6 @@ Write-Host "Connecté : $($r.user.firstName) $($r.user.lastName) ($($r.user.role
 
 ```bash
 start.bat stop
-```
-
-### Si lancé via PowerShell :
-
-```powershell
-.\start.ps1 -Stop
 ```
 
 ### Manuellement :

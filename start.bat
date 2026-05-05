@@ -16,6 +16,10 @@ set "ROOT=%~dp0"
 set "API_DIR=%ROOT%apps\api"
 set "WEB_DIR=%ROOT%apps\web"
 set "ENV_FILE=%ROOT%.env"
+set "LOG_DIR=%ROOT%logs"
+if not exist "%LOG_DIR%" mkdir "%LOG_DIR%" >nul 2>&1
+set "API_LOG=%LOG_DIR%\api.log"
+set "WEB_LOG=%LOG_DIR%\web.log"
 
 REM Charger les variables du fichier .env dans l'environnement
 REM Utilise scripts/load-env.js pour gerer les caracteres speciaux (<> & | etc.)
@@ -78,9 +82,13 @@ echo    OK: Node.js disponible
 if not exist "%ROOT%node_modules" (
     echo    node_modules manquant, installation en cours...
     pushd "%ROOT%"
-    call npm install
+    if exist "%ROOT%package-lock.json" (
+        call npm ci --no-fund --no-audit
+    ) else (
+        call npm install
+    )
     if errorlevel 1 (
-        echo    ERREUR: npm install a echoue !
+        echo    ERREUR: installation des dependances a echoue !
         popd
         pause
         exit /b 1
@@ -93,6 +101,12 @@ if not exist "%ROOT%node_modules" (
 
 if "%1"=="web" goto :WEB_ONLY
 if "%1"=="WEB" goto :WEB_ONLY
+
+REM ============================================
+REM 0B. VALIDATION DES SECRETS BACKEND
+REM ============================================
+call :REQUIRE_ENV DATABASE_URL "DATABASE_URL manquant dans .env"
+call :REQUIRE_ENV JWT_SECRET "JWT_SECRET manquant dans .env"
 
 REM ============================================
 REM 1. DOCKER / POSTGRESQL
@@ -246,7 +260,7 @@ for /f "tokens=5" %%a in ('netstat -aon ^| findstr ":%API_PORT%.*LISTENING" 2^>n
 )
 timeout /t 1 /nobreak >nul
 
-start "XEARN-API" /MIN /D "%API_DIR%" node dist\main.js
+start "XEARN-API" /MIN /D "%API_DIR%" cmd /c "node dist\main.js >> "%API_LOG%" 2>&1"
 
 REM Attendre que l'API soit prete
 echo    Attente de l'API...
@@ -270,11 +284,30 @@ if "%1"=="api" goto :SUMMARY
 if "%1"=="API" goto :SUMMARY
 
 REM ============================================
-REM 6. START WEB
+REM 6. BUILD WEB
 REM ============================================
 :WEB_ONLY
 echo.
-echo [6/6] Demarrage Web (port %WEB_PORT%)...
+echo [6/7] Build Web (Next.js)...
+
+pushd "%WEB_DIR%"
+call npm run build >nul 2>&1
+if errorlevel 1 (
+    echo    ERREUR: Compilation frontend echouee !
+    echo    Details :
+    call npm run build
+    popd
+    pause
+    exit /b 1
+)
+echo    OK: Frontend compile (build/.next)
+popd
+
+REM ============================================
+REM 7. START WEB
+REM ============================================
+echo.
+echo [7/7] Demarrage Web (port %WEB_PORT%)...
 
 REM Tuer le processus existant sur le port Web
 for /f "tokens=5" %%a in ('netstat -aon ^| findstr ":%WEB_PORT%.*LISTENING" 2^>nul') do (
@@ -282,7 +315,7 @@ for /f "tokens=5" %%a in ('netstat -aon ^| findstr ":%WEB_PORT%.*LISTENING" 2^>n
 )
 timeout /t 1 /nobreak >nul
 
-start "XEARN-WEB" /MIN /D "%WEB_DIR%" npx next dev --port %WEB_PORT%
+start "XEARN-WEB" /MIN /D "%WEB_DIR%" cmd /c "npm run start -- --port %WEB_PORT% >> "%WEB_LOG%" 2>&1"
 
 echo    Attente du frontend...
 set ATTEMPTS=0
@@ -319,6 +352,31 @@ echo     start.bat api    - API seulement
 echo     start.bat web    - Frontend seulement
 echo.
 pause
+exit /b 0
+
+REM ============================================
+REM VALIDATION D'UNE VARIABLE REQUISE
+REM ============================================
+:REQUIRE_ENV
+set "REQUIRED_KEY=%~1"
+set "REQUIRED_MESSAGE=%~2"
+set "REQUIRED_VALUE=!%REQUIRED_KEY%!"
+
+if not defined REQUIRED_VALUE (
+    echo    ERREUR: %REQUIRED_MESSAGE%
+    echo    Ouvrez .env et renseignez la variable %REQUIRED_KEY%.
+    pause
+    exit /b 1
+)
+
+echo %REQUIRED_VALUE% | findstr /I "votre remplacez placeholder changez-moi" >nul 2>&1
+if not errorlevel 1 (
+    echo    ERREUR: %REQUIRED_KEY% contient encore une valeur de placeholder.
+    echo    Ouvrez .env et remplacez-la par une vraie valeur.
+    pause
+    exit /b 1
+)
+
 exit /b 0
 
 REM ============================================

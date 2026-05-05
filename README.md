@@ -76,7 +76,6 @@ XEARN/
 ├── .env                        # Variables d'environnement
 ├── docker-compose.yml          # PostgreSQL 16
 ├── start.bat                   # Script de lancement Windows
-├── start.ps1                   # Script de lancement PowerShell
 └── package.json                # Monorepo npm workspaces
 ```
 
@@ -116,12 +115,6 @@ cd ../..
 start.bat
 ```
 
-Ou avec PowerShell :
-
-```powershell
-.\start.ps1
-```
-
 ### URLs
 
 | Service | URL |
@@ -134,7 +127,9 @@ Ou avec PowerShell :
 
 | Rôle | Email |
 |------|-------|
-| Admin | juleszhou01@gmail.com |
+| Admin | admin@xearn.local |
+
+> Identifiants de seed par défaut : admin@xearn.local / Admin1234 (voir [.env.example](.env.example))
 
 > Créez de nouveaux comptes via http://localhost:3000/register
 
@@ -154,16 +149,16 @@ Ou avec PowerShell :
 
 ```bash
 # Lancement complet
-start.bat                  # ou .\start.ps1
+start.bat
 
 # API uniquement
-start.bat api              # ou .\start.ps1 -ApiOnly
+start.bat api
 
 # Frontend uniquement
-start.bat web              # ou .\start.ps1 -WebOnly
+start.bat web
 
 # Arrêter tout
-start.bat stop             # ou .\start.ps1 -Stop
+start.bat stop
 
 # Prisma Studio (explorer la BDD)
 cd apps/api && npx prisma studio
