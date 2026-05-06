@@ -14,7 +14,20 @@ async function main() {
 
   const admin = await prisma.user.upsert({
     where: { email: adminEmail },
-    update: {},
+    update: {
+      password: adminPassword,
+      firstName: adminFirstName,
+      lastName: adminLastName,
+      role: 'ADMIN',
+      status: 'ACTIVATED',
+      provider: 'LOCAL',
+      googleId: null,
+      emailVerifiedAt: new Date(),
+      emailVerificationToken: null,
+      emailVerificationExpiresAt: null,
+      passwordResetToken: null,
+      passwordResetExpiresAt: null,
+    },
     create: {
       email: adminEmail,
       password: adminPassword,
@@ -22,9 +35,15 @@ async function main() {
       lastName: adminLastName,
       role: 'ADMIN',
       status: 'ACTIVATED',
+      provider: 'LOCAL',
       emailVerifiedAt: new Date(),
-      wallet: { create: {} },
     },
+  });
+
+  await prisma.wallet.upsert({
+    where: { userId: admin.id },
+    update: {},
+    create: { userId: admin.id },
   });
   console.log(`✅ Admin créé: ${admin.email}`);
 

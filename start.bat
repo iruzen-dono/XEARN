@@ -16,10 +16,6 @@ set "ROOT=%~dp0"
 set "API_DIR=%ROOT%apps\api"
 set "WEB_DIR=%ROOT%apps\web"
 set "ENV_FILE=%ROOT%.env"
-set "LOG_DIR=%ROOT%logs"
-if not exist "%LOG_DIR%" mkdir "%LOG_DIR%" >nul 2>&1
-set "API_LOG=%LOG_DIR%\api.log"
-set "WEB_LOG=%LOG_DIR%\web.log"
 
 REM Charger les variables du fichier .env dans l'environnement
 REM Utilise scripts/load-env.js pour gerer les caracteres speciaux (<> & | etc.)
@@ -181,15 +177,11 @@ echo    OK: Prisma Client genere
 
 call npx prisma migrate deploy >nul 2>&1
 if errorlevel 1 (
-    echo    AVERTISSEMENT: prisma migrate deploy a echoue
-    echo    Tentative avec prisma db push...
-    call npx prisma db push >nul 2>&1
-    if errorlevel 1 (
-        echo    ERREUR: Impossible d'appliquer le schema !
-        popd
-        pause
-        exit /b 1
-    )
+    echo    ERREUR: prisma migrate deploy a echoue !
+    echo    Verifiez les migrations Prisma dans apps\api\prisma\migrations
+    popd
+    pause
+    exit /b 1
 )
 echo    OK: Migrations appliquees
 popd
@@ -260,7 +252,7 @@ for /f "tokens=5" %%a in ('netstat -aon ^| findstr ":%API_PORT%.*LISTENING" 2^>n
 )
 timeout /t 1 /nobreak >nul
 
-start "XEARN-API" /MIN /D "%API_DIR%" cmd /c "node dist\main.js >> "%API_LOG%" 2>&1"
+start "XEARN-API" /MIN /D "%API_DIR%" node dist\main.js
 
 REM Attendre que l'API soit prete
 echo    Attente de l'API...
@@ -290,6 +282,8 @@ REM ============================================
 echo.
 echo [6/7] Build Web (Next.js)...
 
+set "NODE_ENV=production"
+
 pushd "%WEB_DIR%"
 call npm run build >nul 2>&1
 if errorlevel 1 (
@@ -315,7 +309,7 @@ for /f "tokens=5" %%a in ('netstat -aon ^| findstr ":%WEB_PORT%.*LISTENING" 2^>n
 )
 timeout /t 1 /nobreak >nul
 
-start "XEARN-WEB" /MIN /D "%WEB_DIR%" cmd /c "npm run start -- --port %WEB_PORT% >> "%WEB_LOG%" 2>&1"
+start "XEARN-WEB" /MIN /D "%WEB_DIR%" npm.cmd run start -- --port %WEB_PORT%
 
 echo    Attente du frontend...
 set ATTEMPTS=0

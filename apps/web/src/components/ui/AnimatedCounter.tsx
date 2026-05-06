@@ -21,13 +21,17 @@ export default function AnimatedCounter({
   separator = ' ',
   className,
 }: AnimatedCounterProps) {
+  const safeEnd = Number.isFinite(end) ? end : 0;
+  const safeDuration = Number.isFinite(duration) && duration > 0 ? duration : 2;
+  const safeDecimals = Number.isFinite(decimals) && decimals >= 0 ? decimals : 0;
+
   return (
     <CountUp
-      end={end}
+      end={safeEnd}
       prefix={prefix}
       suffix={suffix}
-      duration={duration}
-      decimals={decimals}
+      duration={safeDuration}
+      decimals={safeDecimals}
       separator={separator}
       enableScrollSpy
       scrollSpyOnce

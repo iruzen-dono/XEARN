@@ -37,8 +37,8 @@ function LoginContent() {
     setError('');
     try {
       await login(form.email, form.password);
-    } catch (err: any) {
-      setError(err.message || 'Erreur de connexion');
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Erreur de connexion');
     } finally {
       setLoading(false);
     }

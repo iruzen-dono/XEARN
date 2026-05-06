@@ -68,6 +68,11 @@ export default function AdminDashboardPage() {
     return Math.round(revenue / active);
   }, [stats, walletStats]);
 
+  const toAmount = (value: unknown) => {
+    const amount = Number(value);
+    return Number.isFinite(amount) ? amount : 0;
+  };
+
   if (loading) return <PageSkeleton />;
 
   const kpiRow1 = [
@@ -330,7 +335,7 @@ export default function AdminDashboardPage() {
                     <div>
                       <div className="font-medium text-sm text-white">{t.title}</div>
                       <div className="text-dark-500 text-xs">
-                        {t.type} — {Number(t.reward)} FCFA
+                        {t.type} — {toAmount(t.reward)} FCFA
                       </div>
                     </div>
                     <span className="badge bg-primary-500/10 text-primary-400 border-primary-500/20">

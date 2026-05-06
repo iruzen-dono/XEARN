@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useSession, signOut as nextAuthSignOut } from 'next-auth/react';
 import { authApi, usersApi } from './api';
 import { generateFingerprint } from './fingerprint';
-import type { User } from '@/types';
+import type { AuthResponse, RegisterResponse, User } from '@/types';
 
 // Re-export for backward compatibility
 export type { User };
@@ -38,6 +38,11 @@ interface RegisterResult {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const AUTH_SENTINEL = 'cookie';
+
+interface NextAuthApiSession {
+  apiRefreshToken?: string;
+  apiUser?: User;
+}
 
 // Provider
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -83,8 +88,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Only sync if the user explicitly clicked "Continue with Google"
     if (!sessionStorage.getItem('googleAuthPending')) return;
 
-    const apiRefreshToken = (session as any)?.apiRefreshToken as string | undefined;
-    const apiUser = (session as any)?.apiUser as User | undefined;
+    const nextAuthSession = session as NextAuthApiSession | null | undefined;
+    const apiRefreshToken = nextAuthSession?.apiRefreshToken;
+    const apiUser = nextAuthSession?.apiUser;
 
     if (!apiRefreshToken || !apiUser) return;
 
@@ -164,7 +170,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch {
         /* ignore */
       }
-      const data = (await authApi.login({ email, password, fingerprint })) as any;
+      const data = (await authApi.login({ email, password, fingerprint })) as AuthResponse;
       setToken(AUTH_SENTINEL);
       setUser(data.user);
       router.push(data.user.role === 'ADMIN' ? '/admin' : '/dashboard');
@@ -180,10 +186,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch {
         /* ignore */
       }
-      const data = (await authApi.register({ ...regData, fingerprint })) as any;
+      const data = (await authApi.register({ ...regData, fingerprint })) as RegisterResponse;
       if (data?.requiresEmailVerification) {
         router.push(`/verify-email/pending?email=${encodeURIComponent(regData.email)}`);
         return { requiresEmailVerification: true, message: data.message };
+      }
+      if (!data.user) {
+        throw new Error(data.message || "Erreur lors de l'inscription");
       }
       setToken(AUTH_SENTINEL);
       setUser(data.user);
