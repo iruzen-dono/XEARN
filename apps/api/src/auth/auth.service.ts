@@ -130,12 +130,18 @@ export class AuthService {
     // Si email fourni, exiger confirmation
     if (user.email) {
       try {
+        await this.sendAccountCreatedEmail(user.email, user.firstName, true);
+      } catch (err) {
+        console.error('Erreur envoi email de confirmation de création de compte:', err);
+      }
+
+      try {
         await this.sendVerificationEmail(user.id, user.email, user.firstName);
       } catch (err) {
         console.error('Erreur envoi email de vérification:', err);
       }
       return {
-        message: 'Compte créé. Vérifiez votre email pour activer le compte.',
+        message: 'Compte créé avec succès. Consultez votre boîte mail pour terminer l’activation.',
         requiresEmailVerification: true,
       };
     }
@@ -408,6 +414,14 @@ export class AuthService {
           },
         });
 
+    if (!existing) {
+      try {
+        await this.sendAccountCreatedEmail(user.email, user.firstName, false);
+      } catch (err) {
+        console.error('Erreur envoi email de confirmation de création de compte:', err);
+      }
+    }
+
     // Notify referrer if new user was referred
     if (!existing && referredById) {
       try {
@@ -550,6 +564,62 @@ export class AuthService {
         'Ce lien est valable pendant 24 heures. Passé ce délai, vous devrez demander un nouveau lien de vérification.',
         '',
         "Si vous n'avez pas créé de compte sur XEARN, vous pouvez ignorer cet e-mail en toute sécurité.",
+        '',
+        'Cordialement,',
+        "L'équipe XEARN",
+      ].join('\n'),
+      html,
+    });
+  }
+
+  private async sendAccountCreatedEmail(
+    email: string,
+    firstName: string,
+    verificationRequired: boolean,
+  ) {
+    const webUrl = this.configService.get('WEB_URL') || 'http://localhost:3000';
+    const loginUrl = `${webUrl}/login`;
+
+    const transporter = this.getMailTransporter();
+    const from = this.configService.get('SMTP_FROM') || this.configService.get('SMTP_USER');
+
+    const html = this.loadTemplate('account-created.html', {
+      firstName,
+      leadText: verificationRequired
+        ? 'Votre inscription a bien été enregistrée. Un e-mail de vérification a été envoyé pour terminer l’activation de votre compte.'
+        : 'Votre inscription a bien été enregistrée. Votre compte est prêt et vous pouvez vous connecter dès maintenant.',
+      cardOneTitle: verificationRequired ? 'Vérification' : 'Connexion',
+      cardOneText: verificationRequired
+        ? 'Ouvrez le message de vérification envoyé à cette adresse pour activer votre compte.'
+        : `Vous pouvez vous connecter à XEARN et commencer à explorer votre espace personnel.`,
+      cardTwoTitle: verificationRequired ? 'Étape suivante' : 'Sécurité',
+      cardTwoText: verificationRequired
+        ? 'Une fois l’adresse confirmée, vos tâches, vos gains et vos retraits seront disponibles.'
+        : 'Conservez vos identifiants en sécurité pour protéger votre compte.',
+      footerNote: verificationRequired
+        ? 'Si vous n’avez pas demandé cette inscription, vous pouvez ignorer cet e-mail.'
+        : 'Si ce compte ne vous appartient pas, ignorez cet e-mail en toute sécurité.',
+      loginUrl,
+      year: String(new Date().getFullYear()),
+    });
+
+    await transporter.sendMail({
+      from: `"XEARN" <${from}>`,
+      to: email,
+      subject: 'Compte créé avec succès — XEARN',
+      text: [
+        `Bonjour ${firstName},`,
+        '',
+        'Votre compte XEARN a bien été créé.',
+        verificationRequired
+          ? 'Un e-mail de vérification a été envoyé pour terminer l’activation de votre compte.'
+          : 'Votre adresse e-mail a déjà été validée et vous pouvez vous connecter dès maintenant.',
+        '',
+        verificationRequired
+          ? 'Après confirmation de votre adresse e-mail, vous pourrez accéder à votre espace XEARN.'
+          : 'Vous pouvez dès maintenant accéder à votre espace XEARN.',
+        '',
+        'Si ce compte ne vous appartient pas, ignorez simplement cet e-mail.',
         '',
         'Cordialement,',
         "L'équipe XEARN",

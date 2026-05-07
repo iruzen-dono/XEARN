@@ -90,12 +90,12 @@ export default function LandingContent() {
           <motion.div
             animate={{ scale: [1, 1.2, 1], opacity: [0.15, 0.25, 0.15] }}
             transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
-            className="absolute -top-24 left-1/4 w-[600px] h-[600px] bg-primary-500/20 rounded-full blur-[120px]"
+            className="absolute -top-24 left-1/4 w-[520px] h-[520px] bg-primary-500/12 rounded-full blur-[100px]"
           />
           <motion.div
             animate={{ scale: [1.2, 1, 1.2], opacity: [0.1, 0.2, 0.1] }}
             transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut' }}
-            className="absolute top-1/3 right-1/4 w-[500px] h-[500px] bg-accent-500/15 rounded-full blur-[120px]"
+            className="absolute top-1/3 right-1/4 w-[440px] h-[440px] bg-accent-500/10 rounded-full blur-[100px]"
           />
           {/* Grid overlay */}
           <div
@@ -103,7 +103,7 @@ export default function LandingContent() {
             style={{
               backgroundImage:
                 'linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)',
-              backgroundSize: '60px 60px',
+              backgroundSize: '72px 72px',
             }}
           />
         </div>
@@ -111,7 +111,7 @@ export default function LandingContent() {
         <div className="max-w-5xl mx-auto text-center relative z-10">
           {/* Badge */}
           <MotionDiv preset="fadeUp" className="inline-block mb-8">
-            <div className="inline-flex items-center gap-2 bg-primary-500/10 border border-primary-500/20 rounded-full px-5 py-2.5 backdrop-blur-sm">
+            <div className="inline-flex items-center gap-2 bg-primary-500/8 border border-primary-500/16 rounded-full px-5 py-2.5 backdrop-blur-sm">
               <div className="w-2 h-2 rounded-full bg-primary-400 animate-pulse" />
               <span className="text-primary-300 text-sm font-medium">
                 La plateforme #1 de micro-revenus en Afrique
@@ -405,7 +405,7 @@ export default function LandingContent() {
       <section className="py-20 px-4">
         <MotionDiv preset="fadeUp">
           <div className="max-w-4xl mx-auto relative rounded-3xl overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-r from-primary-600/20 to-accent-600/20" />
+            <div className="absolute inset-0 bg-gradient-to-r from-primary-600/14 to-accent-600/14" />
             <div className="absolute inset-0 bg-gradient-mesh" />
             <div className="relative z-10 text-center py-16 px-6 sm:px-12">
               <h2 className="heading-lg mb-4">Prêt à commencer ?</h2>

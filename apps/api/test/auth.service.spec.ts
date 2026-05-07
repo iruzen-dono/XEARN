@@ -7,6 +7,14 @@ import { PrismaService } from '../src/prisma/prisma.service';
 import { NotificationsService } from '../src/notifications/notifications.service';
 import { AntiCheatService } from '../src/auth/anti-cheat.service';
 
+jest.mock('../src/notifications/notifications.service', () => ({
+  NotificationsService: class NotificationsService {},
+}));
+
+jest.mock('../src/auth/anti-cheat.service', () => ({
+  AntiCheatService: class AntiCheatService {},
+}));
+
 // --- Mocks ---
 const mockPrisma = {
   user: {
@@ -50,6 +58,10 @@ const mockAntiCheat = {
   recordFingerprint: jest.fn().mockResolvedValue({ suspicious: false, matchedAccounts: [] }),
 };
 
+const mockMailTransporter = {
+  sendMail: jest.fn().mockResolvedValue({}),
+};
+
 describe('AuthService', () => {
   let service: AuthService;
 
@@ -68,6 +80,7 @@ describe('AuthService', () => {
     }).compile();
 
     service = module.get<AuthService>(AuthService);
+    (service as any).getMailTransporter = jest.fn().mockReturnValue(mockMailTransporter);
   });
 
   // ─── register ──────────────────────────────────────
@@ -111,6 +124,13 @@ describe('AuthService', () => {
       const createArgs = mockPrisma.user.create.mock.calls[0][0];
       expect(createArgs.data.email).toBe('new@test.com');
       expect(createArgs.data.wallet).toEqual({ create: {} });
+      expect(mockMailTransporter.sendMail).toHaveBeenCalledTimes(2);
+      expect(mockMailTransporter.sendMail.mock.calls.map(([args]) => args.subject)).toEqual(
+        expect.arrayContaining([
+          'Compte créé avec succès — XEARN',
+          'Confirmez votre adresse e-mail — XEARN',
+        ]),
+      );
     });
 
     it('should link referrer if referralCode is valid', async () => {
@@ -235,6 +255,7 @@ describe('AuthService', () => {
 
       expect(result).toHaveProperty('accessToken');
       expect(mockPrisma.user.create).toHaveBeenCalled();
+      expect(mockMailTransporter.sendMail).toHaveBeenCalledTimes(1);
       expect(mockVerifyIdToken).toHaveBeenCalledWith({
         idToken: 'valid-google-id-token',
         audience: 'test-client-id',

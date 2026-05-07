@@ -56,8 +56,8 @@ function LoginContent() {
     <div className="min-h-screen flex items-center justify-center px-4 relative">
       {/* Background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-24 left-1/3 w-[500px] h-[500px] bg-primary-500/15 rounded-full blur-[120px]" />
-        <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-accent-500/10 rounded-full blur-[120px]" />
+        <div className="absolute -top-24 left-1/3 w-[420px] h-[420px] bg-primary-500/10 rounded-full blur-[100px]" />
+        <div className="absolute bottom-1/4 right-1/4 w-[340px] h-[340px] bg-accent-500/8 rounded-full blur-[100px]" />
       </div>
 
       <motion.div
@@ -70,8 +70,8 @@ function LoginContent() {
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2.5 mb-6 group">
             <div className="relative">
-              <div className="absolute inset-0 bg-primary-500/20 rounded-lg blur-lg group-hover:bg-primary-500/30 transition-all" />
-              <Zap className="relative w-8 h-8 text-primary-400" />
+              <div className="absolute inset-0 rounded-lg bg-primary-500/10 ring-1 ring-primary-500/20 group-hover:bg-primary-500/15 transition-all" />
+              <Zap className="relative w-8 h-8 text-primary-300" />
             </div>
             <span className="text-2xl font-extrabold gradient-text">XEARN</span>
           </Link>

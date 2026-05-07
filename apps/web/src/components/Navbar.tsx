@@ -37,8 +37,8 @@ export default function Navbar() {
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2.5 group">
             <div className="relative">
-              <div className="absolute inset-0 bg-primary-500/20 rounded-lg blur-lg group-hover:bg-primary-500/30 transition-all" />
-              <Zap className="relative w-8 h-8 text-primary-400" />
+              <div className="absolute inset-0 rounded-lg bg-primary-500/10 ring-1 ring-primary-500/20 group-hover:bg-primary-500/15 transition-all" />
+              <Zap className="relative w-8 h-8 text-primary-300" />
             </div>
             <span className="text-2xl font-extrabold gradient-text">XEARN</span>
           </Link>
@@ -68,6 +68,9 @@ export default function Navbar() {
             </Link>
             <button
               onClick={() => setOpen(!open)}
+              aria-label={open ? 'Fermer le menu' : 'Ouvrir le menu'}
+              aria-expanded={open}
+              aria-controls="mobile-menu"
               className="md:hidden p-2 rounded-lg text-dark-400 hover:text-white hover:bg-white/5 transition-all"
             >
               {open ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -80,6 +83,7 @@ export default function Navbar() {
       <AnimatePresence>
         {open && (
           <motion.div
+            id="mobile-menu"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
@@ -102,10 +106,18 @@ export default function Navbar() {
               ))}
               <div className="divider my-3" />
               <div className="flex gap-3 pt-1">
-                <Link href="/login" className="btn-secondary btn-sm flex-1 text-center" onClick={() => setOpen(false)}>
+                <Link
+                  href="/login"
+                  className="btn-secondary btn-sm flex-1 text-center"
+                  onClick={() => setOpen(false)}
+                >
                   Connexion
                 </Link>
-                <Link href="/register" className="btn-primary btn-sm flex-1 text-center" onClick={() => setOpen(false)}>
+                <Link
+                  href="/register"
+                  className="btn-primary btn-sm flex-1 text-center"
+                  onClick={() => setOpen(false)}
+                >
                   S&apos;inscrire
                 </Link>
               </div>

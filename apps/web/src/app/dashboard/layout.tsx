@@ -5,8 +5,19 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Zap, LayoutDashboard, ListTodo, Users, Wallet, LogOut, Menu, X,
-  UserCircle, Bell, Megaphone, ChevronRight, Loader2,
+  Zap,
+  LayoutDashboard,
+  ListTodo,
+  Users,
+  Wallet,
+  LogOut,
+  Menu,
+  X,
+  UserCircle,
+  Bell,
+  Megaphone,
+  ChevronRight,
+  Loader2,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import NotificationBell from '@/components/NotificationBell';
@@ -40,10 +51,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const sidebarContent = (
     <>
       {/* Logo */}
-      <Link href="/" className="flex items-center gap-2.5 mb-10" onClick={() => setSidebarOpen(false)}>
+      <Link
+        href="/"
+        className="flex items-center gap-2.5 mb-10"
+        onClick={() => setSidebarOpen(false)}
+      >
         <div className="relative">
-          <div className="absolute inset-0 bg-primary-500/20 rounded-lg blur-lg" />
-          <Zap className="relative w-7 h-7 text-primary-400" />
+          <div className="absolute inset-0 rounded-lg bg-primary-500/10 ring-1 ring-primary-500/20" />
+          <Zap className="relative w-7 h-7 text-primary-300" />
         </div>
         <span className="text-xl font-extrabold gradient-text">XEARN</span>
       </Link>
@@ -70,7 +85,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                 />
               )}
-              <item.icon className={`w-5 h-5 transition-colors ${isActive ? 'text-primary-400' : 'group-hover:text-white'}`} />
+              <item.icon
+                className={`w-5 h-5 transition-colors ${isActive ? 'text-primary-400' : 'group-hover:text-white'}`}
+              />
               <span className="flex-1">{item.label}</span>
               {isActive && <ChevronRight className="w-4 h-4 text-primary-400/50" />}
             </Link>
@@ -82,13 +99,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <div className="pt-4 border-t border-white/[0.06] mt-4">
         <div className="px-4 py-2 mb-2">
           <div className="flex items-center gap-2">
-            <div className="text-sm font-medium truncate text-white">{user?.firstName} {user?.lastName}</div>
+            <div className="text-sm font-medium truncate text-white">
+              {user?.firstName} {user?.lastName}
+            </div>
             {user?.tier && user.tier !== 'NORMAL' && (
-              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${
-                user.tier === 'VIP'
-                  ? 'bg-gradient-to-r from-yellow-500/20 to-amber-500/20 text-amber-400 border border-amber-500/30'
-                  : 'bg-gradient-to-r from-purple-500/20 to-indigo-500/20 text-purple-400 border border-purple-500/30'
-              }`}>
+              <span
+                className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${
+                  user.tier === 'VIP'
+                    ? 'bg-gradient-to-r from-yellow-500/20 to-amber-500/20 text-amber-400 border border-amber-500/30'
+                    : 'bg-gradient-to-r from-purple-500/20 to-indigo-500/20 text-purple-400 border border-purple-500/30'
+                }`}
+              >
                 {user.tier}
               </span>
             )}
@@ -111,13 +132,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Mobile header */}
       <header className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-dark-950/90 backdrop-blur-2xl border-b border-white/[0.06] h-14 flex items-center justify-between px-4">
         <Link href="/" className="flex items-center gap-2">
-          <Zap className="w-6 h-6 text-primary-400" />
+          <div className="relative">
+            <div className="absolute inset-0 rounded-lg bg-primary-500/10 ring-1 ring-primary-500/20" />
+            <Zap className="relative w-6 h-6 text-primary-300" />
+          </div>
           <span className="text-lg font-bold gradient-text">XEARN</span>
         </Link>
         <div className="flex items-center gap-1">
           <NotificationBell />
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
+            aria-label={sidebarOpen ? 'Fermer le menu latéral' : 'Ouvrir le menu latéral'}
+            aria-expanded={sidebarOpen}
+            aria-controls="dashboard-sidebar"
             className="p-2 rounded-lg text-dark-400 hover:text-white hover:bg-white/5 transition-all"
           >
             {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -140,6 +167,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Sidebar */}
       <aside
+        id="dashboard-sidebar"
         className={`
           fixed top-0 left-0 h-full w-64 bg-dark-900/95 backdrop-blur-2xl
           border-r border-white/[0.06] p-6 flex flex-col z-50
@@ -170,7 +198,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               className="mb-6 p-4 rounded-xl bg-warning-500/10 border border-warning-500/20 text-warning-400 text-sm flex items-center gap-3"
             >
               <span className="font-semibold">Compte suspendu</span>
-              <span className="text-warning-400/70">— Certaines fonctionnalités sont restreintes.</span>
+              <span className="text-warning-400/70">
+                — Certaines fonctionnalités sont restreintes.
+              </span>
             </motion.div>
           )}
           {user?.status === 'BANNED' && (
@@ -180,7 +210,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               className="mb-6 p-4 rounded-xl bg-danger-500/10 border border-danger-500/20 text-danger-400 text-sm flex items-center gap-3"
             >
               <span className="font-semibold">Compte banni</span>
-              <span className="text-danger-400/70">— Votre compte a été désactivé de façon permanente.</span>
+              <span className="text-danger-400/70">
+                — Votre compte a été désactivé de façon permanente.
+              </span>
             </motion.div>
           )}
           <PageTransition>{children}</PageTransition>
