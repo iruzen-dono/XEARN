@@ -43,14 +43,6 @@ jobs:
       - name: Install root dependencies
         run: npm ci
 
-      - name: Install API dependencies
-        run: npm ci
-        working-directory: apps/api
-
-      - name: Install Web dependencies
-        run: npm ci
-        working-directory: apps/web
-
       # --- API ---
       - name: Generate Prisma client
         run: npx prisma generate
