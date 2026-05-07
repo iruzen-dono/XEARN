@@ -15,8 +15,10 @@ import {
 import { useAuth } from '@/lib/auth';
 import { useToast } from '@/lib/toast';
 import { adminApi } from '@/lib/api';
+import { getErrorMessage } from '@/lib/errors';
+import type { Task, TaskType, TasksPage } from '@/types';
 
-const taskTypes = ['VIDEO_AD', 'CLICK_AD', 'SURVEY', 'SPONSORED'];
+const taskTypes: TaskType[] = ['VIDEO_AD', 'CLICK_AD', 'SURVEY', 'SPONSORED'];
 const statusColors: Record<string, string> = {
   ACTIVE: 'bg-green-500/10 text-green-400',
   PAUSED: 'bg-yellow-500/10 text-yellow-400',
@@ -34,19 +36,19 @@ const statusLabels: Record<string, string> = {
 export default function AdminTasksPage() {
   const { token } = useAuth();
   const toast = useToast();
-  const [tasks, setTasks] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [creating, setCreating] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [editingTask, setEditingTask] = useState<any>(null);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [saving, setSaving] = useState(false);
   const [editForm, setEditForm] = useState({
     title: '',
     description: '',
-    type: 'VIDEO_AD',
+    type: 'VIDEO_AD' as TaskType,
     reward: '',
     maxCompletions: '',
     mediaUrl: '',
@@ -55,7 +57,7 @@ export default function AdminTasksPage() {
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [type, setType] = useState('VIDEO_AD');
+  const [type, setType] = useState<TaskType>('VIDEO_AD');
   const [reward, setReward] = useState('');
   const [maxCompletions, setMaxCompletions] = useState('');
   const [mediaUrl, setMediaUrl] = useState('');
@@ -65,7 +67,7 @@ export default function AdminTasksPage() {
     if (!token) return;
     setLoading(true);
     try {
-      const data = (await adminApi.getAllTasks(token, page)) as any;
+      const data = (await adminApi.getAllTasks(token, page)) as TasksPage;
       setTasks(data.tasks || []);
       setTotal(data.total || 0);
     } catch (err) {
@@ -102,8 +104,8 @@ export default function AdminTasksPage() {
       setExternalUrl('');
       setShowCreate(false);
       await fetchTasks();
-    } catch (err: any) {
-      toast.error(err.message || 'Erreur création');
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Erreur création'));
     } finally {
       setCreating(false);
     }
@@ -115,8 +117,8 @@ export default function AdminTasksPage() {
     try {
       await adminApi.toggleTask(token, taskId);
       await fetchTasks();
-    } catch (err: any) {
-      toast.error(err.message || 'Erreur');
+    } catch (error) {
+      toast.error(getErrorMessage(error));
     } finally {
       setActionLoading(null);
     }
@@ -128,14 +130,14 @@ export default function AdminTasksPage() {
     try {
       await adminApi.deleteTask(token, taskId);
       await fetchTasks();
-    } catch (err: any) {
-      toast.error(err.message || 'Erreur');
+    } catch (error) {
+      toast.error(getErrorMessage(error));
     } finally {
       setActionLoading(null);
     }
   };
 
-  const openEdit = (task: any) => {
+  const openEdit = (task: Task) => {
     setEditForm({
       title: task.title || '',
       description: task.description || '',
@@ -165,8 +167,8 @@ export default function AdminTasksPage() {
       setEditingTask(null);
       toast.success('Tâche modifiée avec succès');
       await fetchTasks();
-    } catch (err: any) {
-      toast.error(err.message || 'Erreur modification');
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Erreur modification'));
     } finally {
       setSaving(false);
     }
@@ -207,7 +209,7 @@ export default function AdminTasksPage() {
                 <label className="block text-sm text-dark-400 mb-1">Type *</label>
                 <select
                   value={type}
-                  onChange={(e) => setType(e.target.value)}
+                  onChange={(e) => setType(e.target.value as TaskType)}
                   className="w-full px-4 py-2.5 bg-dark-800 border border-dark-700 rounded-xl text-sm focus:border-primary-500 focus:outline-none"
                 >
                   {taskTypes.map((t) => (
@@ -432,7 +434,7 @@ export default function AdminTasksPage() {
                   <label className="block text-sm text-dark-400 mb-1">Type *</label>
                   <select
                     value={editForm.type}
-                    onChange={(e) => setEditForm({ ...editForm, type: e.target.value })}
+                    onChange={(e) => setEditForm({ ...editForm, type: e.target.value as TaskType })}
                     className="w-full px-4 py-2.5 bg-dark-800 border border-dark-700 rounded-xl text-sm focus:border-primary-500 focus:outline-none"
                   >
                     {taskTypes.map((t) => (

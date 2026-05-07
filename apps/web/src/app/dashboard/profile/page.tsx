@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth';
 import { useToast } from '@/lib/toast';
 import { usersApi } from '@/lib/api';
 import { MotionDiv, staggerContainer, staggerItem } from '@/components/ui';
+import { getErrorMessage } from '@/lib/errors';
 
 export default function ProfilePage() {
   const { user, token, refreshUser } = useAuth();
@@ -40,8 +41,8 @@ export default function ProfilePage() {
       });
       toast.success('Profil mis à jour !');
       refreshUser();
-    } catch (err: any) {
-      toast.error(err.message || 'Erreur lors de la mise à jour');
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Erreur lors de la mise à jour'));
     } finally {
       setSavingProfile(false);
     }
@@ -59,8 +60,8 @@ export default function ProfilePage() {
       await usersApi.changePassword(token, passwordForm.currentPassword, passwordForm.newPassword);
       toast.success('Mot de passe modifié !');
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-    } catch (err: any) {
-      toast.error(err.message || 'Erreur lors du changement de mot de passe');
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Erreur lors du changement de mot de passe'));
     } finally {
       setSavingPassword(false);
     }

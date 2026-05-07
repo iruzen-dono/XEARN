@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Zap, CheckCircle, XCircle } from 'lucide-react';
 import { api } from '@/lib/api';
+import { getErrorMessage } from '@/lib/errors';
 
 export default function VerifyEmailPage() {
   return (
@@ -30,13 +31,14 @@ function VerifyEmailContent() {
     }
 
     api(`/auth/verify-email?token=${encodeURIComponent(token)}`, { skipAuthRedirect: true })
-      .then((data: any) => {
+      .then((data) => {
+        const response = data as { message?: string };
         setStatus('success');
-        setMessage(data?.message || 'Email vérifié avec succès !');
+        setMessage(response?.message || 'Email vérifié avec succès !');
       })
       .catch((err) => {
         setStatus('error');
-        setMessage(err.message || 'Lien invalide ou expiré.');
+        setMessage(getErrorMessage(err, 'Lien invalide ou expiré.'));
       });
   }, [token]);
 

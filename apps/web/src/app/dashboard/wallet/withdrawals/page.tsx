@@ -2,11 +2,13 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { ArrowLeft, Clock, CheckCircle2, XCircle, Loader2, RefreshCw } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
 import { walletApi } from '@/lib/api';
+import type { Withdrawal } from '@/types';
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
+const STATUS_CONFIG: Record<string, { label: string; color: string; icon: LucideIcon }> = {
   PENDING: {
     label: 'En attente',
     color: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20',
@@ -46,7 +48,7 @@ export default function WithdrawalsPage() {
     if (!token) return;
     try {
       const data = (await walletApi.getWithdrawals(token)) as {
-        withdrawals?: import('@/types').Withdrawal[];
+        withdrawals?: Withdrawal[];
       };
       const list = data?.withdrawals || [];
       setWithdrawals(Array.isArray(list) ? list : []);

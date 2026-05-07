@@ -26,6 +26,7 @@ import { walletApi } from '@/lib/api';
 import { MotionDiv, AnimatedCounter, staggerContainer, staggerItem } from '@/components/ui';
 import { PageSkeleton } from '@/components/ui/Skeleton';
 import type { Transaction } from '@/types';
+import { getErrorMessage } from '@/lib/errors';
 
 interface WalletData {
   id: string;
@@ -136,8 +137,8 @@ export default function WalletPage() {
         await refreshUser();
         await fetchData();
       }
-    } catch (err: any) {
-      toast.error(err.message || "Erreur lors de l'activation");
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Erreur lors de l'activation"));
     } finally {
       setActivating(false);
     }
@@ -161,8 +162,8 @@ export default function WalletPage() {
       setShowWithdraw(false);
       setWithdrawForm({ amount: '', method: 'MTN_MOMO', accountInfo: '' });
       await fetchData();
-    } catch (err: any) {
-      toast.error(err.message || 'Erreur lors du retrait');
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Erreur lors du retrait'));
     } finally {
       setWithdrawing(false);
     }
@@ -181,8 +182,8 @@ export default function WalletPage() {
         await refreshUser();
         await fetchData();
       }
-    } catch (err: any) {
-      toast.error(err.message || "Erreur lors de l'upgrade");
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Erreur lors de l'upgrade"));
     } finally {
       setUpgrading(false);
     }

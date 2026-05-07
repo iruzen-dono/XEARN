@@ -5,14 +5,37 @@ import { Loader2, CheckCircle, XCircle, Clock, ChevronLeft, ChevronRight } from 
 import { useAuth } from '@/lib/auth';
 import { useToast } from '@/lib/toast';
 import { adminApi } from '@/lib/api';
+import { getErrorMessage } from '@/lib/errors';
+import type { Withdrawal } from '@/types';
+
+interface WithdrawalWithUser extends Withdrawal {
+  user?: {
+    firstName: string;
+    lastName: string;
+    email?: string | null;
+    phone?: string | null;
+  };
+}
+
+interface WalletStats {
+  totalRevenue: number;
+  totalWithdrawals: number;
+  completedWithdrawals: number;
+  pendingWithdrawals: number;
+}
+
+interface PendingWithdrawalsResponse {
+  withdrawals?: WithdrawalWithUser[];
+  total?: number;
+}
 
 export default function AdminTransactionsPage() {
   const { token } = useAuth();
   const toast = useToast();
-  const [withdrawals, setWithdrawals] = useState<any[]>([]);
+  const [withdrawals, setWithdrawals] = useState<WithdrawalWithUser[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [walletStats, setWalletStats] = useState<any>(null);
+  const [walletStats, setWalletStats] = useState<WalletStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
@@ -21,8 +44,8 @@ export default function AdminTransactionsPage() {
     setLoading(true);
     try {
       const [ws, wd] = await Promise.all([
-        adminApi.getWalletStats(token).catch(() => null) as any,
-        adminApi.getPendingWithdrawals(token, page) as any,
+        adminApi.getWalletStats(token).catch(() => null) as Promise<WalletStats | null>,
+        adminApi.getPendingWithdrawals(token, page) as Promise<PendingWithdrawalsResponse>,
       ]);
       setWalletStats(ws);
       setWithdrawals(wd?.withdrawals || []);
@@ -42,8 +65,8 @@ export default function AdminTransactionsPage() {
     try {
       await adminApi.approveWithdrawal(token, id);
       await fetchData();
-    } catch (err: any) {
-      toast.error(err.message || 'Erreur');
+    } catch (error) {
+      toast.error(getErrorMessage(error));
     } finally {
       setActionLoading(null);
     }
@@ -55,14 +78,14 @@ export default function AdminTransactionsPage() {
     try {
       await adminApi.rejectWithdrawal(token, id);
       await fetchData();
-    } catch (err: any) {
-      toast.error(err.message || 'Erreur');
+    } catch (error) {
+      toast.error(getErrorMessage(error));
     } finally {
       setActionLoading(null);
     }
   };
 
-  const fmt = (n: any) => Number(n || 0).toLocaleString('fr-FR');
+  const fmt = (n: unknown) => Number(n || 0).toLocaleString('fr-FR');
   const totalPages = Math.ceil(total / 20);
 
   if (loading) {

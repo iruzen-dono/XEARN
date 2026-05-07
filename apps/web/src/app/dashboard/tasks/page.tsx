@@ -8,7 +8,8 @@ import { useToast } from '@/lib/toast';
 import { tasksApi } from '@/lib/api';
 import { MotionDiv, staggerContainer, staggerItem } from '@/components/ui';
 import { PageSkeleton } from '@/components/ui/Skeleton';
-import type { TaskSession } from '@/types';
+import { getErrorMessage } from '@/lib/errors';
+import type { Task, TaskCompletion, TaskSession, TasksPage } from '@/types';
 
 const TYPE_LABELS: Record<string, string> = {
   VIDEO_AD: 'Vidéo publicitaire',
@@ -34,7 +35,7 @@ const TYPE_ICONS: Record<string, string> = {
 export default function TasksPage() {
   const { token } = useAuth();
   const toast = useToast();
-  const [tasks, setTasks] = useState<import('@/types').Task[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [completedIds, setCompletedIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState<string | null>(null);
@@ -53,16 +54,14 @@ export default function TasksPage() {
           tasksApi.getAll(token),
           tasksApi.getMyCompletions(token),
         ]);
-        const taskList = (allTasks as import('@/types').TasksPage)?.tasks || [];
+        const taskList = (allTasks as TasksPage)?.tasks || [];
         setTasks(Array.isArray(taskList) ? taskList : []);
         const doneIds = new Set<string>();
-        const completionData = myCompletions as {
-          completions?: import('@/types').TaskCompletion[];
-        };
+        const completionData = myCompletions as { completions?: TaskCompletion[] };
         const completions = Array.isArray(myCompletions)
           ? myCompletions
           : completionData?.completions || [];
-        completions.forEach((c: import('@/types').TaskCompletion) => doneIds.add(c.taskId));
+        completions.forEach((c: TaskCompletion) => doneIds.add(c.taskId));
         setCompletedIds(doneIds);
       } catch (err) {
         console.error('Erreur chargement tâches:', err);
@@ -96,8 +95,8 @@ export default function TasksPage() {
         setActiveSession(session);
         setLinkOpened(false);
         setCountdown(session.minDurationSeconds);
-      } catch (err: any) {
-        toast.error(err.message || 'Erreur lors du démarrage');
+      } catch (error) {
+        toast.error(getErrorMessage(error, 'Erreur lors du démarrage'));
       } finally {
         setStarting(null);
       }
@@ -123,8 +122,8 @@ export default function TasksPage() {
       toast.success('Tâche complétée ! Récompense créditée.');
       setActiveSession(null);
       setLinkOpened(false);
-    } catch (err: any) {
-      toast.error(err.message || 'Erreur lors de la complétion');
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Erreur lors de la complétion'));
     } finally {
       setCompleting(false);
     }

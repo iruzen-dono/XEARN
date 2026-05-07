@@ -5,6 +5,17 @@ import { Search, Loader2, Shield, Ban, UserCheck, ChevronLeft, ChevronRight } fr
 import { useAuth } from '@/lib/auth';
 import { useToast } from '@/lib/toast';
 import { adminApi } from '@/lib/api';
+import { getErrorMessage } from '@/lib/errors';
+import type { User } from '@/types';
+
+interface UserWithWallet extends User {
+  wallet?: { balance: string } | null;
+}
+
+interface AdminUsersResponse {
+  users?: UserWithWallet[];
+  total?: number;
+}
 
 const statuses = ['ALL', 'FREE', 'ACTIVATED', 'SUSPENDED', 'BANNED'];
 const statusColors: Record<string, string> = {
@@ -24,7 +35,7 @@ const statusLabels: Record<string, string> = {
 export default function AdminUsersPage() {
   const { token } = useAuth();
   const toast = useToast();
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<UserWithWallet[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
@@ -36,7 +47,7 @@ export default function AdminUsersPage() {
     if (!token) return;
     setLoading(true);
     try {
-      const data = await adminApi.getUsers(token, page, search || undefined, statusFilter) as any;
+      const data = (await adminApi.getUsers(token, page, search || undefined, statusFilter)) as AdminUsersResponse;
       setUsers(data.users || []);
       setTotal(data.total || 0);
     } catch (err) {
@@ -72,8 +83,8 @@ export default function AdminUsersPage() {
       else if (action === 'suspend') await adminApi.suspendUser(token, userId);
       else await adminApi.banUser(token, userId);
       await fetchUsers();
-    } catch (err: any) {
-      toast.error(err.message || 'Erreur');
+    } catch (error) {
+      toast.error(getErrorMessage(error));
     } finally {
       setActionLoading(null);
     }

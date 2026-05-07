@@ -8,15 +8,7 @@ import { notificationsApi } from '@/lib/api';
 import { useToast } from '@/lib/toast';
 import { MotionDiv } from '@/components/ui';
 import { PageSkeleton } from '@/components/ui/Skeleton';
-
-interface Notification {
-  id: string;
-  type: string;
-  title: string;
-  message: string;
-  read: boolean;
-  createdAt: string;
-}
+import type { NotificationsPage, Notification } from '@/types';
 
 export default function NotificationsPage() {
   const { token } = useAuth();
@@ -29,7 +21,7 @@ export default function NotificationsPage() {
   const fetchNotifications = useCallback(async (p: number) => {
     if (!token) return;
     try {
-      const data = await notificationsApi.getAll(token, p) as any;
+      const data = (await notificationsApi.getAll(token, p)) as NotificationsPage;
       setNotifications(data.notifications || []);
       setTotal(data.total || 0);
     } catch (err) {

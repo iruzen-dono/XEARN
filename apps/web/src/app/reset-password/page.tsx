@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Zap, Lock, Eye, EyeOff, CheckCircle, ArrowLeft } from 'lucide-react';
 import { authApi } from '@/lib/api';
+import { getErrorMessage } from '@/lib/errors';
 
 function ResetPasswordForm() {
   const searchParams = useSearchParams();
@@ -36,8 +37,8 @@ function ResetPasswordForm() {
     try {
       await authApi.resetPassword(token, password);
       setSuccess(true);
-    } catch (err: any) {
-      setError(err.message || 'Erreur lors de la réinitialisation');
+    } catch (error) {
+      setError(getErrorMessage(error, 'Erreur lors de la réinitialisation'));
     } finally {
       setLoading(false);
     }

@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { Zap, Mail } from 'lucide-react';
 import { authApi } from '@/lib/api';
 import { useState } from 'react';
+import { getErrorMessage } from '@/lib/errors';
 
 function PendingContent() {
   const searchParams = useSearchParams();
@@ -20,8 +21,8 @@ function PendingContent() {
     try {
       await authApi.resendVerification(email);
       setResendMsg('Email renvoyé ! Vérifiez votre boîte de réception.');
-    } catch (err: any) {
-      setResendMsg(err.message || 'Erreur lors du renvoi.');
+    } catch (error) {
+      setResendMsg(getErrorMessage(error, 'Erreur lors du renvoi.'));
     } finally {
       setResending(false);
     }

@@ -5,8 +5,12 @@ import { Loader2, CheckCircle, XCircle, Pause, ChevronLeft, ChevronRight, Extern
 import { useAuth } from '@/lib/auth';
 import { useToast } from '@/lib/toast';
 import { adminApi } from '@/lib/api';
+import { getErrorMessage } from '@/lib/errors';
+import type { AdStatus, AdsPage, Advertisement } from '@/types';
 
-const AD_STATUSES = ['ALL', 'PENDING', 'ACTIVE', 'PAUSED', 'EXPIRED', 'REJECTED'] as const;
+type AdFilter = AdStatus | 'ALL';
+
+const AD_STATUSES: AdFilter[] = ['ALL', 'PENDING', 'ACTIVE', 'PAUSED', 'EXPIRED', 'REJECTED'];
 
 const statusColors: Record<string, string> = {
   PENDING: 'bg-amber-500/10 text-amber-400',
@@ -28,10 +32,10 @@ const statusLabels: Record<string, string> = {
 export default function AdminAdsPage() {
   const { token } = useAuth();
   const toast = useToast();
-  const [ads, setAds] = useState<any[]>([]);
+  const [ads, setAds] = useState<Advertisement[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [statusFilter, setStatusFilter] = useState<AdFilter>('ALL');
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
@@ -40,7 +44,7 @@ export default function AdminAdsPage() {
     setLoading(true);
     try {
       const status = statusFilter === 'ALL' ? undefined : statusFilter;
-      const data = await adminApi.getAllAds(token, page, status) as any;
+      const data = (await adminApi.getAllAds(token, page, status)) as AdsPage;
       setAds(data.ads || []);
       setTotal(data.total || 0);
     } catch (err) {
@@ -61,8 +65,8 @@ export default function AdminAdsPage() {
       await adminApi.approveAd(token, id);
       toast.success('Publicité approuvée');
       await fetchAds();
-    } catch (err: any) {
-      toast.error(err.message || 'Erreur');
+    } catch (error) {
+      toast.error(getErrorMessage(error));
     } finally {
       setActionLoading(null);
     }
@@ -75,8 +79,8 @@ export default function AdminAdsPage() {
       await adminApi.rejectAd(token, id);
       toast.success('Publicité rejetée');
       await fetchAds();
-    } catch (err: any) {
-      toast.error(err.message || 'Erreur');
+    } catch (error) {
+      toast.error(getErrorMessage(error));
     } finally {
       setActionLoading(null);
     }
@@ -89,8 +93,8 @@ export default function AdminAdsPage() {
       await adminApi.pauseAd(token, id);
       toast.success('Publicité mise en pause');
       await fetchAds();
-    } catch (err: any) {
-      toast.error(err.message || 'Erreur');
+    } catch (error) {
+      toast.error(getErrorMessage(error));
     } finally {
       setActionLoading(null);
     }
@@ -106,7 +110,7 @@ export default function AdminAdsPage() {
           <Filter className="w-4 h-4 text-dark-400" />
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => setStatusFilter(e.target.value as AdFilter)}
             className="px-3 py-2 bg-dark-800 border border-dark-700 rounded-xl text-sm focus:border-primary-500 focus:outline-none"
           >
             {AD_STATUSES.map((s) => (

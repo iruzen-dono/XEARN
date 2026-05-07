@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Zap, Mail, ArrowLeft, CheckCircle } from 'lucide-react';
 import { authApi } from '@/lib/api';
+import { getErrorMessage } from '@/lib/errors';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -19,8 +20,8 @@ export default function ForgotPasswordPage() {
     try {
       await authApi.forgotPassword(email);
       setSent(true);
-    } catch (err: any) {
-      setError(err.message || 'Erreur lors de l\'envoi');
+    } catch (error) {
+      setError(getErrorMessage(error, 'Erreur lors de l\'envoi'));
     } finally {
       setLoading(false);
     }
