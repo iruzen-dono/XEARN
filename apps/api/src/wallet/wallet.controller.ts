@@ -11,6 +11,7 @@ import {
   Res,
   Header,
 } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
 import { WalletService } from './wallet.service';
@@ -22,6 +23,7 @@ import { UpgradeTierDto } from './dto/upgrade-tier.dto';
 import { JwtRequest } from '../common/types';
 
 @Controller('wallet')
+@ApiTags('Wallet')
 export class WalletController {
   constructor(
     private walletService: WalletService,

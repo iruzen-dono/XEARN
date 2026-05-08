@@ -1,9 +1,11 @@
 import { Controller, Get, Query, UseGuards, Request } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { ReferralsService } from './referrals.service';
 import { JwtAuthGuard } from '../auth/guards';
 import { JwtRequest } from '../common/types';
 
 @Controller('referrals')
+@ApiTags('Referrals')
 export class ReferralsController {
   constructor(private referralsService: ReferralsService) {}
 

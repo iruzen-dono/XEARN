@@ -1,10 +1,12 @@
 import { Controller, Get, Query, UseGuards, Req } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { GamificationService } from './gamification.service';
 import { JwtAuthGuard, RolesGuard, Roles } from '../auth/guards';
 import { JwtRequest } from '../common/types';
 
 @Controller('gamification')
 @UseGuards(JwtAuthGuard, RolesGuard)
+@ApiTags('Gamification')
 export class GamificationController {
   constructor(private readonly gamificationService: GamificationService) {}
 

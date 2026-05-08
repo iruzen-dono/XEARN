@@ -38,6 +38,7 @@ postgres-data/
 
 # Auto-generated
 next-env.d.ts
+backups/
 
 # Test artifacts
 test-results/

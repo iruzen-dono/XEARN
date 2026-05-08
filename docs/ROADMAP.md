@@ -202,13 +202,14 @@
 - [ ] APM: Sentry pour le tracking d'erreurs (backend + frontend)
 - [ ] Logs structurés (déjà en place) → exporter vers un agrégateur (Loki, Datadog)
 - [x] Health check endpoint `/api/health` avec vérification DB (**retourne 503 si DB down**)
+- [x] Probe de santé CLI (`npm run monitor:health`) avec alerte webhook optionnelle
 - [ ] Uptime monitoring (UptimeRobot, Better Stack)
 - [ ] Alertes Slack/Telegram pour les erreurs critiques et les paiements échoués
 
 ### 5.4 Sécurité production
 - [ ] Variables d'environnement sécurisées (vault ou secrets manager)
 - [ ] HTTPS obligatoire + HSTS
-- [ ] Backup automatique de la base de données (quotidien)
+- [x] Backup automatisable de la base de données (`npm run backup:db`) avec rétention
 - [ ] Rotation des secrets JWT périodique
 
 ---

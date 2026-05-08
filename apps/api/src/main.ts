@@ -6,6 +6,7 @@ import helmet from 'helmet';
 import * as bodyParser from 'body-parser';
 import * as cookieParser from 'cookie-parser';
 import { randomUUID } from 'crypto';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { ACCESS_TOKEN_COOKIE, CSRF_TOKEN_COOKIE } from './auth/auth.cookies';
 import { SanitizeInterceptor } from './common/sanitize.interceptor';
@@ -166,6 +167,26 @@ async function bootstrap() {
 
   // Prefix API
   app.setGlobalPrefix('api');
+
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle('XEARN API')
+    .setDescription(
+      'API NestJS de XEARN, documentée à partir des DTOs et des contrôleurs du monorepo.',
+    )
+    .setVersion('1.0.0')
+    .addServer('/api')
+    .build();
+
+  const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig, {
+    deepScanRoutes: true,
+  });
+
+  SwaggerModule.setup('docs', app, swaggerDocument, {
+    useGlobalPrefix: true,
+    swaggerOptions: {
+      persistAuthorization: true,
+    },
+  });
 
   const port = configService.get<number>('API_PORT') || 4000;
 

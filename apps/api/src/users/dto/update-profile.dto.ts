@@ -1,9 +1,11 @@
 import { IsOptional, IsString, MinLength, MaxLength, Matches } from 'class-validator';
 import { Transform } from 'class-transformer';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 
 const sanitize = (v: unknown) => (typeof v === 'string' ? v.trim().replace(/<[^>]*>/g, '') : v);
 
 export class UpdateProfileDto {
+  @ApiPropertyOptional({ example: 'Jean' })
   @IsOptional()
   @IsString()
   @MinLength(1, { message: 'Le prénom est requis' })
@@ -11,6 +13,7 @@ export class UpdateProfileDto {
   @Transform(({ value }) => sanitize(value))
   firstName?: string;
 
+  @ApiPropertyOptional({ example: 'Kossi' })
   @IsOptional()
   @IsString()
   @MinLength(1, { message: 'Le nom est requis' })
@@ -18,6 +21,7 @@ export class UpdateProfileDto {
   @Transform(({ value }) => sanitize(value))
   lastName?: string;
 
+  @ApiPropertyOptional({ example: '+22890123456' })
   @IsOptional()
   @IsString()
   @Matches(/^\+?[0-9]{8,15}$/, { message: 'Numéro de téléphone invalide' })
@@ -26,10 +30,12 @@ export class UpdateProfileDto {
 }
 
 export class ChangePasswordDto {
+  @ApiPropertyOptional({ example: 'CurrentPassw0rd!' })
   @IsString()
   @MinLength(1, { message: 'Mot de passe actuel requis' })
   currentPassword: string;
 
+  @ApiPropertyOptional({ example: 'N3wStr0ngPassw0rd!' })
   @IsString()
   @MinLength(8, { message: 'Le nouveau mot de passe doit contenir au moins 8 caractères' })
   @MaxLength(128, { message: 'Le mot de passe ne peut pas dépasser 128 caractères' })

@@ -10,6 +10,7 @@ import {
   Res,
   Header,
 } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
 import { UsersService } from './users.service';
 import { AuditLogService } from '../common/audit-log.service';
@@ -18,6 +19,7 @@ import { UpdateProfileDto, ChangePasswordDto } from './dto/update-profile.dto';
 import { JwtRequest } from '../common/types';
 
 @Controller('users')
+@ApiTags('Users')
 export class UsersController {
   constructor(
     private usersService: UsersService,

@@ -9,6 +9,7 @@ import {
   ValidateIf,
 } from 'class-validator';
 import { Transform } from 'class-transformer';
+import { ApiProperty } from '@nestjs/swagger';
 
 const sanitize = (v: unknown) => (typeof v === 'string' ? v.trim().replace(/<[^>]*>/g, '') : v);
 
@@ -26,17 +27,23 @@ export enum WithdrawMethod {
 }
 
 export class WithdrawDto {
+  @ApiProperty({ example: 10000, description: 'Montant du retrait en FCFA' })
   @IsNumber({}, { message: 'Le montant doit être un nombre' })
   @Min(2000, { message: 'Le montant minimum de retrait est 2 000 FCFA' })
   @Max(5000000, { message: 'Le montant maximum de retrait est 5 000 000 FCFA' })
   amount: number;
 
+  @ApiProperty({ enum: WithdrawMethod, example: WithdrawMethod.MTN_MOMO })
   @IsEnum(WithdrawMethod, {
     message:
       'Méthode de retrait invalide (MTN_MOMO, FLOOZ, TMONEY, ORANGE_MONEY, VISA, MASTERCARD, PAYPAL)',
   })
   method: WithdrawMethod;
 
+  @ApiProperty({
+    example: '+22890123456',
+    description: 'Numéro ou identifiant du compte destinataire selon la méthode de retrait',
+  })
   @IsString()
   @MaxLength(100, { message: 'Les informations de compte ne peuvent pas dépasser 100 caractères' })
   @Transform(({ value }) => sanitize(value))

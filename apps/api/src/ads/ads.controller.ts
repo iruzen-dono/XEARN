@@ -10,6 +10,7 @@ import {
   UseGuards,
   Req,
 } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { AdsService } from './ads.service';
 import { CreateAdDto, UpdateAdDto } from './dto/ads.dto';
 import { JwtAuthGuard, RolesGuard, Roles } from '../auth/guards';
@@ -17,6 +18,7 @@ import { AuditLogService } from '../common/audit-log.service';
 import { JwtRequest } from '../common/types';
 
 @Controller('ads')
+@ApiTags('Ads')
 export class AdsController {
   constructor(
     private ads: AdsService,

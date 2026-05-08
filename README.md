@@ -141,6 +141,7 @@ start.bat
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — Architecture technique détaillée
 - [docs/API.md](docs/API.md) — Référence complète de l'API (30+ endpoints)
 - [docs/ROADMAP.md](docs/ROADMAP.md) — Feuille de route et audit de sécurité
+- [docs/PRODUCTION.md](docs/PRODUCTION.md) — Runbook de sauvegarde et monitoring production
 - [CHANGELOG.md](CHANGELOG.md) — Historique des modifications
 
 ---
@@ -165,6 +166,12 @@ cd apps/api && npx prisma studio
 
 # Seed (réinitialiser les données de test)
 cd apps/api && npx ts-node prisma/seed.ts
+
+# Sauvegarde PostgreSQL (dump custom + rétention)
+npm run backup:db
+
+# Probe de santé API pour monitoring externe
+npm run monitor:health
 ```
 
 ---

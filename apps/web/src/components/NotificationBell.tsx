@@ -23,6 +23,7 @@ interface Notification {
   title: string;
   message: string;
   read: boolean;
+  metadata?: Record<string, unknown> | null;
   createdAt: string;
 }
 
@@ -34,13 +35,14 @@ export default function NotificationBell() {
   const [loading, setLoading] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // SSE real-time stream with polling fallback
+  // SSE real-time stream with reconnect fallback
   useEffect(() => {
     if (!token) return;
     let cancelled = false;
+    let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+    let reconnectDelay = 5000;
 
-    // Initial fetch
-    const fetchCount = async () => {
+    const fetchUnreadCount = async () => {
       try {
         const data = await notificationsApi.getUnreadCount(token);
         if (!cancelled) setUnreadCount(data.count);
@@ -48,16 +50,20 @@ export default function NotificationBell() {
         /* ignore */
       }
     };
-    fetchCount();
 
-    // Try SSE first
     let eventSource: EventSource | null = null;
-    let pollingInterval: ReturnType<typeof setInterval> | null = null;
 
-    try {
+    const connect = () => {
+      if (cancelled) return;
+
       eventSource = new EventSource(`${API_URL}/api/notifications/stream`, {
         withCredentials: true,
       });
+
+      eventSource.onopen = () => {
+        reconnectDelay = 5000;
+        fetchUnreadCount();
+      };
 
       eventSource.onmessage = (event) => {
         try {
@@ -70,22 +76,22 @@ export default function NotificationBell() {
       };
 
       eventSource.onerror = () => {
-        // SSE failed, fall back to polling
         eventSource?.close();
         eventSource = null;
         if (!cancelled) {
-          pollingInterval = setInterval(fetchCount, 30000);
+          reconnectTimeout = setTimeout(connect, reconnectDelay);
+          reconnectDelay = Math.min(reconnectDelay * 2, 30000);
         }
       };
-    } catch {
-      // EventSource not supported, fall back to polling
-      pollingInterval = setInterval(fetchCount, 30000);
-    }
+    };
+
+    fetchUnreadCount();
+    connect();
 
     return () => {
       cancelled = true;
       eventSource?.close();
-      if (pollingInterval) clearInterval(pollingInterval);
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
     };
   }, [token]);
 
@@ -97,6 +103,7 @@ export default function NotificationBell() {
     try {
       const data = await notificationsApi.getAll(token);
       setNotifications(data.notifications || []);
+      setUnreadCount(data.unreadCount ?? 0);
     } catch {
       /* ignore */
     } finally {

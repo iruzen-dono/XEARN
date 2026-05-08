@@ -24,7 +24,11 @@
     "db:migrate": "npm run db:migrate --workspace=apps/api",
     "db:generate": "npm run db:generate --workspace=apps/api",
     "db:seed": "npm run db:seed --workspace=apps/api",
-    "db:studio": "npm run db:studio --workspace=apps/api"
+    "db:studio": "npm run db:studio --workspace=apps/api",
+    "backup:db": "node scripts/backup-db.js",
+    "backup:db:dry-run": "node scripts/backup-db.js --dry-run",
+    "monitor:health": "node scripts/check-health.js",
+    "monitor:health:dry-run": "node scripts/check-health.js --dry-run"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",

@@ -10,6 +10,7 @@ import {
   UseGuards,
   Request,
 } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { TasksService } from './tasks.service';
 import { JwtAuthGuard, RolesGuard, Roles } from '../auth/guards';
@@ -18,6 +19,7 @@ import { UpdateTaskDto } from './dto/update-task.dto';
 import { JwtRequest } from '../common/types';
 
 @Controller('tasks')
+@ApiTags('Tasks')
 export class TasksController {
   constructor(private tasksService: TasksService) {}
 

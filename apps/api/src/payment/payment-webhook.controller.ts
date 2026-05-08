@@ -10,6 +10,7 @@ import {
   BadRequestException,
   ForbiddenException,
 } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
@@ -32,6 +33,7 @@ interface FedapayWebhookBody {
  * Supporte FedaPay.
  */
 @Controller('payment')
+@ApiTags('Payments')
 export class PaymentWebhookController {
   private readonly logger = new Logger('PaymentWebhook');
 

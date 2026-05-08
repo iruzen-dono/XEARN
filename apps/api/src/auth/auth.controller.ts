@@ -1,5 +1,6 @@
 import { Controller, Post, Body, HttpCode, HttpStatus, Get, Query, Req, Res } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
+import { ApiTags } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
@@ -22,6 +23,7 @@ interface AuthTokenResult {
 }
 
 @Controller('auth')
+@ApiTags('Auth')
 export class AuthController {
   constructor(
     private authService: AuthService,
