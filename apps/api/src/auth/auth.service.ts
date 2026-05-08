@@ -416,7 +416,7 @@ export class AuthService {
 
     if (!existing) {
       try {
-        await this.sendAccountCreatedEmail(user.email, user.firstName, false);
+        await this.sendAccountCreatedEmail(user.email!, user.firstName, false);
       } catch (err) {
         console.error('Erreur envoi email de confirmation de création de compte:', err);
       }
