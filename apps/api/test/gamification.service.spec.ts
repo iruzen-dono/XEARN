@@ -2,7 +2,11 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { GamificationService } from '../src/gamification/gamification.service';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { NotificationsService } from '../src/notifications/notifications.service';
-import { BadgeCategory } from '@prisma/client';
+
+const BadgeCategory = {
+  STREAK: 'STREAK',
+  TASKS: 'TASKS',
+} as const;
 
 const mockPrisma = {
   $transaction: jest.fn().mockImplementation((args) => {

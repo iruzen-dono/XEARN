@@ -11,6 +11,7 @@ import {
 } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import type { AccountTier as SharedAccountTier, TaskType as SharedTaskType } from '@xearn/types';
 
 const sanitize = (v: unknown) => (typeof v === 'string' ? v.trim().replace(/<[^>]*>/g, '') : v);
 
@@ -44,7 +45,7 @@ export class CreateTaskDto {
 
   @ApiProperty({ enum: TaskType, example: TaskType.VIDEO_AD })
   @IsEnum(TaskType, { message: 'Type de tâche invalide (VIDEO_AD, CLICK_AD, SURVEY, SPONSORED)' })
-  type: TaskType;
+  type: SharedTaskType;
 
   @ApiProperty({ example: 500 })
   @IsNumber({}, { message: 'La récompense doit être un nombre' })
@@ -72,5 +73,5 @@ export class CreateTaskDto {
   @ApiPropertyOptional({ enum: AccountTierDto, example: AccountTierDto.NORMAL })
   @IsOptional()
   @IsEnum(AccountTierDto, { message: 'Tier requis invalide (NORMAL, PREMIUM, VIP)' })
-  requiredTier?: AccountTierDto;
+  requiredTier?: SharedAccountTier;
 }

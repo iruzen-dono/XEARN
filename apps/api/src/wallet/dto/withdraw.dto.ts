@@ -10,6 +10,7 @@ import {
 } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
+import type { PaymentMethod as SharedPaymentMethod } from '@xearn/types';
 
 const sanitize = (v: unknown) => (typeof v === 'string' ? v.trim().replace(/<[^>]*>/g, '') : v);
 
@@ -38,7 +39,7 @@ export class WithdrawDto {
     message:
       'Méthode de retrait invalide (MTN_MOMO, FLOOZ, TMONEY, ORANGE_MONEY, VISA, MASTERCARD, PAYPAL)',
   })
-  method: WithdrawMethod;
+  method: SharedPaymentMethod;
 
   @ApiProperty({
     example: '+22890123456',

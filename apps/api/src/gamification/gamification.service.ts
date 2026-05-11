@@ -1,17 +1,42 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
-import { BadgeCategory } from '@prisma/client';
+import type { BadgeCategory } from '@xearn/types';
+
+const BadgeCategories = {
+  STREAK: 'STREAK',
+  TASKS: 'TASKS',
+  REFERRALS: 'REFERRALS',
+  EARNINGS: 'EARNINGS',
+} as const;
+
+type BadgeRecord = {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  icon: string;
+  category: BadgeCategory;
+  threshold: number;
+  reward: number | null;
+};
+
+type UserBadgeEntry = {
+  badgeId: string;
+  earnedAt: Date;
+};
+
+type BadgeSeed = Omit<BadgeRecord, 'id'>;
 
 /** Default badge definitions — seeded on first access. */
-const DEFAULT_BADGES = [
+const DEFAULT_BADGES: BadgeSeed[] = [
   // Streak badges
   {
     code: 'streak_3',
     name: '🔥 3 jours',
     description: "3 jours consécutifs d'activité",
     icon: '🔥',
-    category: BadgeCategory.STREAK,
+    category: 'STREAK',
     threshold: 3,
     reward: 100,
   },
@@ -20,7 +45,7 @@ const DEFAULT_BADGES = [
     name: '🔥 Semaine parfaite',
     description: "7 jours consécutifs d'activité",
     icon: '🔥',
-    category: BadgeCategory.STREAK,
+    category: 'STREAK',
     threshold: 7,
     reward: 300,
   },
@@ -29,7 +54,7 @@ const DEFAULT_BADGES = [
     name: '💎 Mois complet',
     description: "30 jours consécutifs d'activité",
     icon: '💎',
-    category: BadgeCategory.STREAK,
+    category: 'STREAK',
     threshold: 30,
     reward: 1500,
   },
@@ -38,7 +63,7 @@ const DEFAULT_BADGES = [
     name: '👑 Centurion',
     description: "100 jours consécutifs d'activité",
     icon: '👑',
-    category: BadgeCategory.STREAK,
+    category: 'STREAK',
     threshold: 100,
     reward: 5000,
   },
@@ -48,7 +73,7 @@ const DEFAULT_BADGES = [
     name: '⚡ Débutant',
     description: '10 tâches complétées',
     icon: '⚡',
-    category: BadgeCategory.TASKS,
+    category: 'TASKS',
     threshold: 10,
     reward: 200,
   },
@@ -57,7 +82,7 @@ const DEFAULT_BADGES = [
     name: '🏆 Travailleur',
     description: '50 tâches complétées',
     icon: '🏆',
-    category: BadgeCategory.TASKS,
+    category: 'TASKS',
     threshold: 50,
     reward: 500,
   },
@@ -66,7 +91,7 @@ const DEFAULT_BADGES = [
     name: '🌟 Expert',
     description: '200 tâches complétées',
     icon: '🌟',
-    category: BadgeCategory.TASKS,
+    category: 'TASKS',
     threshold: 200,
     reward: 2000,
   },
@@ -75,7 +100,7 @@ const DEFAULT_BADGES = [
     name: '🎯 Maître',
     description: '500 tâches complétées',
     icon: '🎯',
-    category: BadgeCategory.TASKS,
+    category: 'TASKS',
     threshold: 500,
     reward: 5000,
   },
@@ -85,7 +110,7 @@ const DEFAULT_BADGES = [
     name: '🤝 Ambassadeur',
     description: '3 filleuls actifs',
     icon: '🤝',
-    category: BadgeCategory.REFERRALS,
+    category: 'REFERRALS',
     threshold: 3,
     reward: 500,
   },
@@ -94,7 +119,7 @@ const DEFAULT_BADGES = [
     name: '📢 Influenceur',
     description: '10 filleuls actifs',
     icon: '📢',
-    category: BadgeCategory.REFERRALS,
+    category: 'REFERRALS',
     threshold: 10,
     reward: 2000,
   },
@@ -103,7 +128,7 @@ const DEFAULT_BADGES = [
     name: '🌍 Leader',
     description: '50 filleuls actifs',
     icon: '🌍',
-    category: BadgeCategory.REFERRALS,
+    category: 'REFERRALS',
     threshold: 50,
     reward: 10000,
   },
@@ -113,7 +138,7 @@ const DEFAULT_BADGES = [
     name: '💰 Premier palier',
     description: '5 000 FCFA gagnés au total',
     icon: '💰',
-    category: BadgeCategory.EARNINGS,
+    category: 'EARNINGS',
     threshold: 5000,
     reward: 200,
   },
@@ -122,7 +147,7 @@ const DEFAULT_BADGES = [
     name: '💵 Investisseur',
     description: '50 000 FCFA gagnés au total',
     icon: '💵',
-    category: BadgeCategory.EARNINGS,
+    category: 'EARNINGS',
     threshold: 50000,
     reward: 1000,
   },
@@ -131,7 +156,7 @@ const DEFAULT_BADGES = [
     name: '🏦 Millionnaire',
     description: '500 000 FCFA gagnés au total',
     icon: '🏦',
-    category: BadgeCategory.EARNINGS,
+    category: 'EARNINGS',
     threshold: 500000,
     reward: 5000,
   },
@@ -208,7 +233,7 @@ export class GamificationService {
     });
 
     // Check for new streak badges
-    const newBadges = await this.checkAndAwardBadges(userId, BadgeCategory.STREAK, newStreak);
+    const newBadges = await this.checkAndAwardBadges(userId, BadgeCategories.STREAK, newStreak);
 
     return { currentStreak: newStreak, newBadges };
   }
@@ -219,7 +244,7 @@ export class GamificationService {
   async checkTaskBadges(userId: string): Promise<string[]> {
     await this.ensureBadgesSeeded();
     const taskCount = await this.prisma.taskCompletion.count({ where: { userId } });
-    return this.checkAndAwardBadges(userId, BadgeCategory.TASKS, taskCount);
+    return this.checkAndAwardBadges(userId, BadgeCategories.TASKS, taskCount);
   }
 
   /**
@@ -228,7 +253,7 @@ export class GamificationService {
   async checkReferralBadges(userId: string): Promise<string[]> {
     await this.ensureBadgesSeeded();
     const referralCount = await this.prisma.user.count({ where: { referredById: userId } });
-    return this.checkAndAwardBadges(userId, BadgeCategory.REFERRALS, referralCount);
+    return this.checkAndAwardBadges(userId, BadgeCategories.REFERRALS, referralCount);
   }
 
   /**
@@ -241,7 +266,7 @@ export class GamificationService {
       select: { totalEarned: true },
     });
     if (!wallet) return [];
-    return this.checkAndAwardBadges(userId, BadgeCategory.EARNINGS, Number(wallet.totalEarned));
+    return this.checkAndAwardBadges(userId, BadgeCategories.EARNINGS, Number(wallet.totalEarned));
   }
 
   /**
@@ -276,7 +301,7 @@ export class GamificationService {
   async getUserBadges(userId: string) {
     await this.ensureBadgesSeeded();
 
-    const [allBadges, userBadges] = await Promise.all([
+    const [allBadges, userBadges]: [BadgeRecord[], UserBadgeEntry[]] = await Promise.all([
       this.prisma.badge.findMany({ orderBy: [{ category: 'asc' }, { threshold: 'asc' }] }),
       this.prisma.userBadge.findMany({
         where: { userId },

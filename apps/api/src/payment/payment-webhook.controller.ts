@@ -15,11 +15,20 @@ import { Request } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { verifyFedapaySignature } from './fedapay-signature';
+import type { AccountTier } from '@xearn/types';
+
+type FedapayMetadata = {
+  userId?: string;
+  type?: 'activation' | 'tier_upgrade';
+  targetTier?: Exclude<AccountTier, 'NORMAL'>;
+  withdrawalId?: string;
+  providerTransactionId?: string;
+};
 
 interface FedapayEntity {
   id: string | number;
   amount?: number;
-  metadata?: Record<string, string>;
+  metadata?: FedapayMetadata;
   [key: string]: unknown;
 }
 
@@ -174,7 +183,7 @@ export class PaymentWebhookController {
         await this.prisma.$transaction([
           this.prisma.user.update({
             where: { id: userId },
-            data: { tier: targetTier as any },
+            data: { tier: targetTier },
           }),
           this.prisma.transaction.update({
             where: { id: existing.id },
@@ -188,7 +197,7 @@ export class PaymentWebhookController {
         await this.prisma.$transaction([
           this.prisma.user.update({
             where: { id: userId },
-            data: { tier: targetTier as any },
+            data: { tier: targetTier },
           }),
           this.prisma.transaction.create({
             data: {

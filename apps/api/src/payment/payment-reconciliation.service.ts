@@ -3,6 +3,14 @@ import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentService } from './payment.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import type { AccountTier } from '@xearn/types';
+
+type ReconciliationMetadata = {
+  providerTransactionId?: string;
+  targetTier?: Exclude<AccountTier, 'NORMAL'>;
+  withdrawalId?: string;
+  userId?: string;
+};
 
 @Injectable()
 export class PaymentReconciliationService {
@@ -34,9 +42,8 @@ export class PaymentReconciliationService {
     const provider = this.paymentService.getProvider();
 
     for (const tx of pending) {
-      const providerTransactionId = (tx.metadata as any)?.providerTransactionId as
-        | string
-        | undefined;
+      const metadata = tx.metadata as ReconciliationMetadata | null;
+      const providerTransactionId = metadata?.providerTransactionId;
       if (!providerTransactionId) continue;
 
       const status = await provider.checkStatus(providerTransactionId);
@@ -79,10 +86,9 @@ export class PaymentReconciliationService {
     const provider = this.paymentService.getProvider();
 
     for (const tx of pending) {
-      const providerTransactionId = (tx.metadata as any)?.providerTransactionId as
-        | string
-        | undefined;
-      const targetTier = (tx.metadata as any)?.targetTier as string | undefined;
+      const metadata = tx.metadata as ReconciliationMetadata | null;
+      const providerTransactionId = metadata?.providerTransactionId;
+      const targetTier = metadata?.targetTier;
       if (!providerTransactionId || !targetTier) continue;
 
       const status = await provider.checkStatus(providerTransactionId);
@@ -90,7 +96,7 @@ export class PaymentReconciliationService {
         await this.prisma.$transaction([
           this.prisma.user.update({
             where: { id: tx.userId },
-            data: { tier: targetTier as any },
+            data: { tier: targetTier },
           }),
           this.prisma.transaction.update({
             where: { id: tx.id },
@@ -128,9 +134,8 @@ export class PaymentReconciliationService {
         },
       });
 
-      const providerTransactionId = (tx?.metadata as any)?.providerTransactionId as
-        | string
-        | undefined;
+      const metadata = tx?.metadata as ReconciliationMetadata | null;
+      const providerTransactionId = metadata?.providerTransactionId;
       if (!providerTransactionId) continue;
 
       const status = await provider.checkStatus(providerTransactionId);

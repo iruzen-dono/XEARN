@@ -253,8 +253,8 @@ L'upgrade se fait depuis le portefeuille. Le montant est débité du solde de l'
 - [x] UX Mobile + Toasts
 - [x] Pages légales (CGU, Confidentialité, Mentions légales)
 - [x] Paiements FedaPay (Mobile Money)
-- [x] Tests unitaires (Jest — 10 suites, 89 tests)
-- [x] Audit sécurité approfondi (Phase 11 — 8 CRITICAL, 6 HIGH, 10 MEDIUM corrigés)
+- [x] Tests unitaires (Jest — 11 suites, 93 tests)
+- [x] Audit sécurité approfondi (Phase 11 — 8 CRITICAL, 6 HIGH, 10 MEDIUM corrigés, audit final à 0 vulnérabilité)
 - [ ] Analytics avancés
 - [ ] Déploiement production (Vercel + Railway)
 - [ ] Application mobile

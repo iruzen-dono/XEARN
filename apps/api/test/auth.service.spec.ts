@@ -218,6 +218,24 @@ describe('AuthService', () => {
       expect(result).toHaveProperty('user');
       expect(result.user.email).toBe('user@test.com');
     });
+
+    it('should reject login when email is not verified', async () => {
+      const hashed = await bcrypt.hash('Test1234', 10);
+      mockPrisma.user.findFirst.mockResolvedValue({
+        id: 'u1',
+        email: 'user@test.com',
+        password: hashed,
+        firstName: 'A',
+        lastName: 'B',
+        role: 'USER',
+        status: 'FREE',
+        emailVerifiedAt: null,
+      });
+
+      await expect(
+        service.login({ email: 'user@test.com', password: 'Test1234' } as any),
+      ).rejects.toThrow('Email non vérifié. Vérifiez votre boîte mail.');
+    });
   });
 
   // ─── Google OAuth ──────────────────────────────────

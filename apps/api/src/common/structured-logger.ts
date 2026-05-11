@@ -13,23 +13,23 @@ export class StructuredLogger implements LoggerService {
     this.isProduction = process.env.NODE_ENV === 'production';
   }
 
-  log(message: any, context?: string) {
+  log(message: unknown, context?: string) {
     this.emit('log', message, context);
   }
 
-  error(message: any, trace?: string, context?: string) {
+  error(message: unknown, trace?: string, context?: string) {
     this.emit('error', message, context, trace);
   }
 
-  warn(message: any, context?: string) {
+  warn(message: unknown, context?: string) {
     this.emit('warn', message, context);
   }
 
-  debug(message: any, context?: string) {
+  debug(message: unknown, context?: string) {
     this.emit('debug', message, context);
   }
 
-  verbose(message: any, context?: string) {
+  verbose(message: unknown, context?: string) {
     this.emit('verbose', message, context);
   }
 
@@ -37,13 +37,13 @@ export class StructuredLogger implements LoggerService {
     // No-op — NestJS manages log levels
   }
 
-  private emit(level: string, message: any, context?: string, trace?: string) {
+  private emit(level: string, message: unknown, context?: string, trace?: string) {
     if (this.isProduction) {
-      const entry: Record<string, any> = {
+      const entry: Record<string, unknown> = {
         timestamp: new Date().toISOString(),
         level,
         context: context || 'App',
-        message: typeof message === 'string' ? message : JSON.stringify(message),
+        message: this.formatMessage(message),
       };
       if (trace) entry.trace = trace;
       // JSON-line output (compatible with ELK/CloudWatch/Datadog)
@@ -53,7 +53,7 @@ export class StructuredLogger implements LoggerService {
       const ctx = context ? `[${context}]` : '';
       const ts = new Date().toLocaleTimeString();
       const levelUpper = level.toUpperCase().padEnd(7);
-      const out = `${ts} ${levelUpper} ${ctx} ${message}`;
+      const out = `${ts} ${levelUpper} ${ctx} ${this.formatMessage(message)}`;
 
       switch (level) {
         case 'error':
@@ -66,6 +66,16 @@ export class StructuredLogger implements LoggerService {
         default:
           console.log(out);
       }
+    }
+  }
+
+  private formatMessage(message: unknown): string {
+    if (typeof message === 'string') return message;
+    try {
+      const serialized = JSON.stringify(message);
+      return serialized ?? String(message);
+    } catch {
+      return String(message);
     }
   }
 }

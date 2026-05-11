@@ -1,6 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
+type FingerprintMatch = { userId: string };
+type SharedFingerprintRow = { fingerprint: string; user_count: bigint; user_ids: string };
+
 export interface FingerprintData {
   fingerprint: string;
   ipAddress?: string;
@@ -63,8 +66,8 @@ export class AntiCheatService {
 
     // Merge unique user IDs
     const allMatched = new Set([
-      ...matchedByFingerprint.map(m => m.userId),
-      ...matchedByIp.map(m => m.userId),
+      ...matchedByFingerprint.map((m: FingerprintMatch) => m.userId),
+      ...matchedByIp.map((m: FingerprintMatch) => m.userId),
     ]);
 
     if (allMatched.size > 0) {
@@ -84,9 +87,7 @@ export class AntiCheatService {
    */
   async getSuspiciousAccounts() {
     // Find fingerprints shared by multiple users
-    const sharedFingerprints = await this.prisma.$queryRaw<
-      { fingerprint: string; user_count: bigint; user_ids: string }[]
-    >`
+    const sharedFingerprints = await this.prisma.$queryRaw<SharedFingerprintRow[]>`
       SELECT fingerprint, COUNT(DISTINCT "userId") as user_count,
              STRING_AGG(DISTINCT "userId", ',') as user_ids
       FROM device_fingerprints
@@ -98,7 +99,7 @@ export class AntiCheatService {
 
     // Get user details for each group
     const results = await Promise.all(
-      sharedFingerprints.map(async (sf) => {
+      sharedFingerprints.map(async (sf: SharedFingerprintRow) => {
         const userIds = sf.user_ids.split(',');
         const users = await this.prisma.user.findMany({
           where: { id: { in: userIds } },

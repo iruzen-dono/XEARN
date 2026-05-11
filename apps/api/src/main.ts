@@ -12,6 +12,11 @@ import { ACCESS_TOKEN_COOKIE, CSRF_TOKEN_COOKIE } from './auth/auth.cookies';
 import { SanitizeInterceptor } from './common/sanitize.interceptor';
 import { StructuredLogger } from './common/structured-logger';
 
+type RequestWithCookies = Request & {
+  requestId?: string;
+  cookies?: Partial<Record<typeof ACCESS_TOKEN_COOKIE | typeof CSRF_TOKEN_COOKIE, string>>;
+};
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     logger: new StructuredLogger(),
@@ -35,7 +40,7 @@ async function bootstrap() {
   app.use((req: Request, res: Response, next: NextFunction) => {
     const start = Date.now();
     const requestId = (req.headers['x-request-id'] as string) || randomUUID();
-    (req as any).requestId = requestId;
+    (req as RequestWithCookies).requestId = requestId;
     res.setHeader('x-request-id', requestId);
 
     res.on('finish', () => {
@@ -121,13 +126,14 @@ async function bootstrap() {
     // C5 fix: Always enforce CSRF on non-exempt mutating requests
     // Authenticated users must present a valid CSRF token.
     // Unauthenticated users hitting auth-guarded routes will get 401 from JwtAuthGuard.
-    const accessToken = (req as any)?.cookies?.[ACCESS_TOKEN_COOKIE];
+    const request = req as RequestWithCookies;
+    const accessToken = request.cookies?.[ACCESS_TOKEN_COOKIE];
     if (!accessToken) {
       // No session — CSRF not applicable (nothing to forge), skip
       return next();
     }
 
-    const csrfCookie = (req as any)?.cookies?.[CSRF_TOKEN_COOKIE];
+    const csrfCookie = request.cookies?.[CSRF_TOKEN_COOKIE];
     const csrfHeader = req.headers['x-csrf-token'];
 
     if (!csrfCookie || !csrfHeader || csrfHeader !== csrfCookie) {
@@ -144,7 +150,10 @@ async function bootstrap() {
     .map((o) => o.trim());
 
   app.enableCors({
-    origin: (origin, callback) => {
+    origin: (
+      origin: string | undefined,
+      callback: (error: Error | null, allow?: boolean) => void,
+    ) => {
       // En production, rejeter les requêtes sans origin (sauf healthcheck/curl)
       const isProduction = configService.get('NODE_ENV') === 'production';
       if (!origin) {
@@ -188,7 +197,7 @@ async function bootstrap() {
     },
   });
 
-  const port = configService.get<number>('API_PORT') || 4000;
+  const port = configService.get<number>('API_PORT') || configService.get<number>('PORT') || 4000;
 
   const logger = new Logger('Bootstrap');
   await app.listen(port);

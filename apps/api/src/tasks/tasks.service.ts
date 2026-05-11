@@ -4,9 +4,11 @@ import { ReferralsService } from '../referrals/referrals.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { GamificationService } from '../gamification/gamification.service';
 import { Decimal } from '@prisma/client/runtime/library';
+import { Prisma } from '@prisma/client';
+import type { AccountTier, TaskStatus, TaskType } from '@xearn/types';
 
 // Durée minimum en secondes par type de tâche
-const MIN_DURATION_SECONDS: Record<string, number> = {
+const MIN_DURATION_SECONDS: Record<TaskType, number> = {
   VIDEO_AD: 15,
   CLICK_AD: 10,
   SURVEY: 30,
@@ -25,10 +27,10 @@ export class TasksService {
     private gamificationService: GamificationService,
   ) {}
 
-  private readonly TIER_ORDER = ['NORMAL', 'PREMIUM', 'VIP'] as const;
+  private readonly TIER_ORDER: readonly AccountTier[] = ['NORMAL', 'PREMIUM', 'VIP'];
 
-  private tierSatisfied(userTier: string, requiredTier: string): boolean {
-    return this.TIER_ORDER.indexOf(userTier as any) >= this.TIER_ORDER.indexOf(requiredTier as any);
+  private tierSatisfied(userTier: AccountTier, requiredTier: AccountTier): boolean {
+    return this.TIER_ORDER.indexOf(userTier) >= this.TIER_ORDER.indexOf(requiredTier);
   }
 
   async findAll(userId: string, page = 1, limit = 20) {
@@ -37,11 +39,14 @@ export class TasksService {
       where: { id: userId },
       select: { tier: true },
     });
-    const userTier = user?.tier || 'NORMAL';
-    const accessibleTiers = this.TIER_ORDER.slice(0, this.TIER_ORDER.indexOf(userTier as any) + 1);
+    const userTier: AccountTier = user?.tier || 'NORMAL';
+    const accessibleTiers = this.TIER_ORDER.slice(0, this.TIER_ORDER.indexOf(userTier) + 1);
 
     const skip = (page - 1) * limit;
-    const where = { status: 'ACTIVE' as const, requiredTier: { in: accessibleTiers as any } };
+    const where: Record<string, unknown> = {
+      status: 'ACTIVE',
+      requiredTier: { in: accessibleTiers },
+    };
     const [tasks, total] = await Promise.all([
       this.prisma.task.findMany({
         skip,
@@ -66,12 +71,12 @@ export class TasksService {
   async create(data: {
     title: string;
     description?: string;
-    type: 'VIDEO_AD' | 'CLICK_AD' | 'SURVEY' | 'SPONSORED';
+    type: TaskType;
     reward: number;
     mediaUrl?: string;
     externalUrl?: string;
     maxCompletions?: number;
-    requiredTier?: 'NORMAL' | 'PREMIUM' | 'VIP';
+    requiredTier?: AccountTier;
   }) {
     return this.prisma.task.create({ data });
   }
@@ -117,7 +122,8 @@ export class TasksService {
     }
 
     // Vérifier le temps minimum selon le type de tâche
-    const minSeconds = MIN_DURATION_SECONDS[task.type] || 10;
+    const taskType = task.type as TaskType;
+    const minSeconds = MIN_DURATION_SECONDS[taskType] || 10;
     const elapsedMs = Date.now() - session.startedAt.getTime();
     const elapsedSeconds = elapsedMs / 1000;
 
@@ -152,7 +158,7 @@ export class TasksService {
     // Transaction atomique : compléter la tâche + créditer le wallet
     let result;
     try {
-      result = await this.prisma.$transaction(async (tx) => {
+      result = await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         // Re-check maxCompletions inside transaction (authoritative)
         const freshTask = await tx.task.findUniqueOrThrow({ where: { id: taskId } });
         if (freshTask.maxCompletions && freshTask.completionCount >= freshTask.maxCompletions) {
@@ -200,7 +206,7 @@ export class TasksService {
       });
     } catch (error: unknown) {
       // Handle Prisma unique constraint violation (P2002) — concurrent duplicate completion
-      if (error instanceof Error && 'code' in error && (error as any).code === 'P2002') {
+      if (this.isUniqueConstraintError(error)) {
         throw new BadRequestException('Tâche déjà complétée');
       }
       throw error;
@@ -266,7 +272,8 @@ export class TasksService {
       create: { userId, taskId },
     });
 
-    const minSeconds = MIN_DURATION_SECONDS[task.type] || 10;
+    const taskType = task.type as TaskType;
+    const minSeconds = MIN_DURATION_SECONDS[taskType] || 10;
 
     return {
       sessionId: session.id,
@@ -303,7 +310,7 @@ export class TasksService {
   async toggleTask(taskId: string) {
     const task = await this.prisma.task.findUnique({ where: { id: taskId } });
     if (!task) throw new NotFoundException('Tâche introuvable');
-    const newStatus = task.status === 'ACTIVE' ? 'PAUSED' : 'ACTIVE';
+    const newStatus: TaskStatus = task.status === 'ACTIVE' ? 'PAUSED' : 'ACTIVE';
     return this.prisma.task.update({
       where: { id: taskId },
       data: { status: newStatus },
@@ -315,12 +322,12 @@ export class TasksService {
     data: {
       title?: string;
       description?: string;
-      type?: 'VIDEO_AD' | 'CLICK_AD' | 'SURVEY' | 'SPONSORED';
+      type?: TaskType;
       reward?: number;
       mediaUrl?: string;
       externalUrl?: string;
       maxCompletions?: number;
-      requiredTier?: 'NORMAL' | 'PREMIUM' | 'VIP';
+      requiredTier?: AccountTier;
     },
   ) {
     const task = await this.prisma.task.findUnique({ where: { id: taskId } });
@@ -336,5 +343,14 @@ export class TasksService {
       where: { id: taskId },
       data: { status: 'EXPIRED' },
     });
+  }
+
+  private isUniqueConstraintError(error: unknown): boolean {
+    return (
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      (error as { code?: unknown }).code === 'P2002'
+    );
   }
 }

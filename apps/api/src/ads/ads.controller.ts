@@ -16,6 +16,7 @@ import { CreateAdDto, UpdateAdDto } from './dto/ads.dto';
 import { JwtAuthGuard, RolesGuard, Roles } from '../auth/guards';
 import { AuditLogService } from '../common/audit-log.service';
 import { JwtRequest } from '../common/types';
+import type { AdStatus } from '@xearn/types';
 
 @Controller('ads')
 @ApiTags('Ads')
@@ -80,7 +81,7 @@ export class AdsController {
   @Get('admin/all')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
-  adminFindAll(@Query('page') page?: string, @Query('status') status?: string) {
+  adminFindAll(@Query('page') page?: string, @Query('status') status?: AdStatus) {
     return this.ads.adminFindAll(parseInt(page || '1', 10) || 1, status);
   }
 

@@ -38,12 +38,14 @@ const mockConfigService = {
   }),
 };
 
+const mockPaymentProvider = {
+  name: 'mock',
+  collect: jest.fn().mockResolvedValue({ status: 'completed', providerTransactionId: 'tx-123' }),
+  disburse: jest.fn().mockResolvedValue({ status: 'completed', providerTransactionId: 'tx-456' }),
+};
+
 const mockPaymentService = {
-  getProvider: jest.fn().mockReturnValue({
-    name: 'mock',
-    collect: jest.fn().mockResolvedValue({ status: 'completed', providerTransactionId: 'tx-123' }),
-    disburse: jest.fn().mockResolvedValue({ status: 'completed', providerTransactionId: 'tx-456' }),
-  }),
+  getProvider: jest.fn().mockReturnValue(mockPaymentProvider),
 };
 
 const mockNotifications = {
@@ -56,6 +58,14 @@ describe('WalletService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    mockPaymentProvider.collect.mockResolvedValue({
+      status: 'completed',
+      providerTransactionId: 'tx-123',
+    });
+    mockPaymentProvider.disburse.mockResolvedValue({
+      status: 'completed',
+      providerTransactionId: 'tx-456',
+    });
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -165,6 +175,63 @@ describe('WalletService', () => {
       await expect(
         service.requestWithdrawal('u1', 5000, 'MTN_MOMO', '+22890000000'),
       ).rejects.toThrow('Compte non activé');
+    });
+
+    it('should create a pending withdrawal with the correct fee metadata', async () => {
+      const transactionalTx = {
+        $queryRaw: jest.fn().mockResolvedValue([{ balance: '10000' }]),
+        wallet: { update: jest.fn().mockResolvedValue({}) },
+        withdrawal: {
+          create: jest.fn().mockResolvedValue({ id: 'wd-1' }),
+          update: jest.fn().mockResolvedValue({}),
+        },
+        transaction: {
+          create: jest.fn().mockResolvedValue({}),
+          updateMany: jest.fn().mockResolvedValue({}),
+        },
+      };
+
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: 'u1',
+        status: 'ACTIVATED',
+        tier: 'NORMAL',
+        firstName: 'A',
+        lastName: 'B',
+      });
+      mockPrisma.$transaction.mockImplementation(async (arg: any) => {
+        if (typeof arg === 'function') {
+          return arg(transactionalTx);
+        }
+        return Promise.all(arg);
+      });
+
+      const result = await service.requestWithdrawal('u1', 5000, 'MTN_MOMO', '+22890000000');
+
+      expect(mockPaymentProvider.disburse).toHaveBeenCalledWith(
+        expect.objectContaining({
+          amount: 4500,
+          method: 'MTN_MOMO',
+          accountInfo: '+22890000000',
+          recipientName: 'A B',
+          callbackMeta: { withdrawalId: 'wd-1', userId: 'u1' },
+        }),
+      );
+      expect(transactionalTx.transaction.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            amount: 5000,
+            metadata: expect.objectContaining({
+              withdrawalId: 'wd-1',
+              feePercent: 10,
+              feeAmount: 500,
+              netAmount: 4500,
+            }),
+          }),
+        }),
+      );
+      expect(result.paymentStatus).toBe('pending');
+      expect(result.message).toBe('Retrait créé — en attente de traitement');
+      expect(result.withdrawal).toEqual({ id: 'wd-1' });
     });
   });
 });

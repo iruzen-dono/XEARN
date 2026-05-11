@@ -1,7 +1,7 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { Prisma } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import type { AccountStatus } from '@xearn/types';
 
 @Injectable()
 export class UsersService {
@@ -15,12 +15,12 @@ export class UsersService {
     });
   }
 
-  async findAll(page = 1, limit = 20, search?: string, status?: string) {
+  async findAll(page = 1, limit = 20, search?: string, status?: AccountStatus | 'ALL') {
     const skip = (page - 1) * limit;
 
-    const where: Prisma.UserWhereInput = {};
+    const where: Record<string, unknown> = {};
     if (status && status !== 'ALL') {
-      where.status = status as Prisma.EnumAccountStatusFilter;
+      where.status = status;
     }
     if (search) {
       where.OR = [
@@ -163,15 +163,29 @@ export class UsersService {
     });
 
     return {
-      registrations: registrations.map((r) => ({ date: r.date, count: Number(r.count) })),
-      topReferrers: topReferrers.map((r) => ({
-        id: r.id,
-        name: `${r.firstName} ${r.lastName}`,
-        email: r.email,
-        referrals: r._count.referrals,
+      registrations: registrations.map((r: { date: string; count: bigint }) => ({
+        date: r.date,
+        count: Number(r.count),
       })),
-      revenue: revenue.map((r) => ({ date: r.date, total: Number(r.total) })),
-      tasksByType: tasksByType.map((t) => ({
+      topReferrers: topReferrers.map(
+        (r: {
+          id: string;
+          firstName: string;
+          lastName: string;
+          email: string;
+          _count: { referrals: number };
+        }) => ({
+          id: r.id,
+          name: `${r.firstName} ${r.lastName}`,
+          email: r.email,
+          referrals: r._count.referrals,
+        }),
+      ),
+      revenue: revenue.map((r: { date: string; total: number | bigint }) => ({
+        date: r.date,
+        total: Number(r.total),
+      })),
+      tasksByType: tasksByType.map((t: { type: string; _count: number | { _all?: number } }) => ({
         type: t.type,
         count:
           typeof t._count === 'number'
@@ -194,7 +208,7 @@ export class UsersService {
       }
     }
 
-    const updateData: Prisma.UserUpdateInput = {};
+    const updateData: Record<string, unknown> = {};
     if (data.firstName !== undefined && data.firstName !== '')
       updateData.firstName = data.firstName;
     if (data.lastName !== undefined && data.lastName !== '') updateData.lastName = data.lastName;

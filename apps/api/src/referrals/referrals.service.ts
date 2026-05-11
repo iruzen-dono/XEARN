@@ -27,7 +27,7 @@ export class ReferralsService {
     });
 
     // Niveau 2 : filleuls des filleuls
-    const level1Ids = level1.map((u) => u.id);
+    const level1Ids = level1.map((u: { id: string }) => u.id);
     const level2 = await this.prisma.user.findMany({
       where: { referredById: { in: level1Ids } },
       select: {
@@ -54,7 +54,7 @@ export class ReferralsService {
       referredById: string | null;
     }> = [];
     if (user?.tier === 'VIP') {
-      const level2Ids = level2.map((u) => u.id);
+      const level2Ids = level2.map((u: { id: string }) => u.id);
       level3 = await this.prisma.user.findMany({
         where: { referredById: { in: level2Ids } },
         select: {

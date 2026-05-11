@@ -1,6 +1,13 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateAdDto, UpdateAdDto } from './dto/ads.dto';
+import type { AccountTier, AdStatus } from '@xearn/types';
+
+type AdvertisementRecord = {
+  spent: unknown;
+  budget?: unknown;
+  status: AdStatus;
+} & Record<string, unknown>;
 
 @Injectable()
 export class AdsService {
@@ -17,40 +24,39 @@ export class AdsService {
         targetUrl: dto.targetUrl,
         expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : undefined,
         targetCountries: dto.targetCountries || [],
-        targetTiers: (dto.targetTiers || []) as import('@prisma/client').AccountTier[],
+        targetTiers: dto.targetTiers || [],
         budget: dto.budget,
       },
     });
   }
 
   /** List active ads filtered by user tier and country */
-  async findActive(page = 1, limit = 20, userTier?: string, userCountry?: string) {
+  async findActive(page = 1, limit = 20, userTier?: AccountTier, userCountry?: string) {
     const take = Math.min(limit, 50);
     const skip = (page - 1) * take;
 
-    const where: any = {
+    const andConditions: Record<string, unknown>[] = [];
+    const where: Record<string, unknown> = {
       status: 'ACTIVE' as const,
       OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
     };
 
     // Filter by tier at DB level using Prisma array operators
     if (userTier) {
-      where.AND = [
-        ...(where.AND || []),
-        {
-          OR: [{ targetTiers: { isEmpty: true } }, { targetTiers: { has: userTier } }],
-        },
-      ];
+      andConditions.push({
+        OR: [{ targetTiers: { isEmpty: true } }, { targetTiers: { has: userTier } }],
+      });
     }
 
     // Filter by country at DB level
     if (userCountry) {
-      where.AND = [
-        ...(where.AND || []),
-        {
-          OR: [{ targetCountries: { isEmpty: true } }, { targetCountries: { has: userCountry } }],
-        },
-      ];
+      andConditions.push({
+        OR: [{ targetCountries: { isEmpty: true } }, { targetCountries: { has: userCountry } }],
+      });
+    }
+
+    if (andConditions.length > 0) {
+      where.AND = andConditions;
     }
 
     const [ads, total] = await Promise.all([
@@ -64,7 +70,9 @@ export class AdsService {
     ]);
 
     // H6 fix: Filter out over-budget ads and adjust pagination counts accordingly
-    const filtered = ads.filter((ad) => !ad.budget || Number(ad.spent) < Number(ad.budget));
+    const filtered = ads.filter(
+      (ad: AdvertisementRecord) => !ad.budget || Number(ad.spent) < Number(ad.budget),
+    );
     const budgetExhaustedCount = ads.length - filtered.length;
     const adjustedTotal = Math.max(0, total - budgetExhaustedCount);
 
@@ -129,12 +137,10 @@ export class AdsService {
   }
 
   /** Admin: list all ads with pagination */
-  async adminFindAll(page = 1, status?: string) {
+  async adminFindAll(page = 1, status?: AdStatus) {
     const take = 20;
     const skip = (page - 1) * take;
-    const where = status
-      ? { status: status as 'PENDING' | 'ACTIVE' | 'PAUSED' | 'EXPIRED' | 'REJECTED' }
-      : {};
+    const where: Record<string, unknown> = status ? { status } : {};
 
     const [ads, total] = await Promise.all([
       this.prisma.advertisement.findMany({
@@ -183,16 +189,22 @@ export class AdsService {
     });
 
     const totalAds = ads.length;
-    const activeAds = ads.filter((a) => a.status === 'ACTIVE').length;
-    const totalSpent = ads.reduce((sum, a) => sum + Number(a.spent), 0);
-    const totalBudget = ads.reduce((sum, a) => sum + (a.budget ? Number(a.budget) : 0), 0);
+    const activeAds = ads.filter((a: AdvertisementRecord) => a.status === 'ACTIVE').length;
+    const totalSpent = ads.reduce(
+      (sum: number, a: AdvertisementRecord) => sum + Number(a.spent),
+      0,
+    );
+    const totalBudget = ads.reduce(
+      (sum: number, a: AdvertisementRecord) => sum + (a.budget ? Number(a.budget) : 0),
+      0,
+    );
 
     return {
       totalAds,
       activeAds,
       totalSpent: totalSpent.toFixed(2),
       totalBudget: totalBudget.toFixed(2),
-      ads: ads.map((ad) => ({
+      ads: ads.map((ad: AdvertisementRecord) => ({
         ...ad,
         spent: Number(ad.spent).toFixed(2),
         budget: ad.budget ? Number(ad.budget).toFixed(2) : null,

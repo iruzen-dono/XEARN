@@ -12,6 +12,7 @@ import {
 } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import type { AccountTier as SharedAccountTier, AdStatus as SharedAdStatus } from '@xearn/types';
 
 // Sanitize: trim + strip HTML tags to prevent XSS
 const sanitize = (v: unknown) => (typeof v === 'string' ? v.trim().replace(/<[^>]*>/g, '') : v);
@@ -70,7 +71,7 @@ export class CreateAdDto {
   @IsOptional()
   @IsArray()
   @IsEnum(AccountTierDto, { each: true, message: 'Tier cible invalide (NORMAL, PREMIUM, VIP)' })
-  targetTiers?: AccountTierDto[];
+  targetTiers?: SharedAccountTier[];
 
   @ApiPropertyOptional({ example: 250000 })
   @IsOptional()
@@ -113,7 +114,7 @@ export class UpdateAdDto {
   @ApiPropertyOptional({ enum: AdStatusDto, example: AdStatusDto.ACTIVE })
   @IsOptional()
   @IsEnum(AdStatusDto)
-  status?: AdStatusDto;
+  status?: SharedAdStatus;
 
   @ApiPropertyOptional({ example: ['TG', 'CI'] })
   @IsOptional()
@@ -125,7 +126,7 @@ export class UpdateAdDto {
   @IsOptional()
   @IsArray()
   @IsEnum(AccountTierDto, { each: true, message: 'Tier cible invalide (NORMAL, PREMIUM, VIP)' })
-  targetTiers?: AccountTierDto[];
+  targetTiers?: SharedAccountTier[];
 
   @ApiPropertyOptional({ example: 250000 })
   @IsOptional()

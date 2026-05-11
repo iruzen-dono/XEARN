@@ -10,11 +10,11 @@ import { Observable, map } from 'rxjs';
 export class SanitizeInterceptor implements NestInterceptor {
   private static readonly MAX_DEPTH = 16;
 
-  intercept(_context: ExecutionContext, next: CallHandler): Observable<any> {
+  intercept(_context: ExecutionContext, next: CallHandler): Observable<unknown> {
     return next.handle().pipe(map((data) => this.sanitize(data, 0)));
   }
 
-  private sanitize(value: any, depth: number): any {
+  private sanitize(value: unknown, depth: number): unknown {
     if (value === null || value === undefined) return value;
     // M6 fix: prevent stack overflow on deeply nested payloads
     if (depth >= SanitizeInterceptor.MAX_DEPTH) return value;
@@ -23,17 +23,22 @@ export class SanitizeInterceptor implements NestInterceptor {
     if (typeof value === 'object') {
       // Preserve special types: Date, Decimal (Prisma), Buffer, RegExp
       if (value instanceof Date) return value;
+      const objectValue = value as {
+        toFixed?: unknown;
+        toString?: unknown;
+        constructor?: { name?: string };
+      };
       if (
-        typeof value.toFixed === 'function' &&
-        typeof value.toString === 'function' &&
-        value.constructor?.name === 'Decimal'
+        typeof objectValue.toFixed === 'function' &&
+        typeof objectValue.toString === 'function' &&
+        objectValue.constructor?.name === 'Decimal'
       )
         return value;
       if (Buffer.isBuffer(value)) return value;
       if (value instanceof RegExp) return value;
-      const cleaned: Record<string, any> = {};
+      const cleaned: Record<string, unknown> = {};
       for (const key of Object.keys(value)) {
-        cleaned[key] = this.sanitize(value[key], depth + 1);
+        cleaned[key] = this.sanitize((value as Record<string, unknown>)[key], depth + 1);
       }
       return cleaned;
     }

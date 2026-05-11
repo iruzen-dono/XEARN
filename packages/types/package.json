@@ -1,0 +1,14 @@
+{
+  "name": "@xearn/types",
+  "version": "1.0.0",
+  "private": true,
+  "description": "XEARN shared domain types",
+  "scripts": {
+    "build": "node -e \"process.exit(0)\""
+  },
+  "types": "./src/index.d.ts",
+  "main": "./src/index.d.ts",
+  "files": [
+    "src"
+  ]
+}

@@ -128,18 +128,28 @@ export class WalletController {
     });
     const header = 'id,userId,userName,email,type,status,amount,description,createdAt\n';
     const rows = transactions
-      .map((t) =>
-        [
-          t.id,
-          t.userId,
-          this.csvSafe(`${t.user.firstName} ${t.user.lastName}`),
-          this.csvSafe(t.user.email || ''),
-          t.type,
-          t.status,
-          t.amount,
-          `"${(t.description || '').replace(/"/g, '""')}"`,
-          t.createdAt.toISOString(),
-        ].join(','),
+      .map(
+        (t: {
+          id: string;
+          userId: string;
+          user: { firstName: string; lastName: string; email: string | null };
+          type: string;
+          status: string;
+          amount: string | number;
+          description: string | null;
+          createdAt: Date;
+        }) =>
+          [
+            t.id,
+            t.userId,
+            this.csvSafe(`${t.user.firstName} ${t.user.lastName}`),
+            this.csvSafe(t.user.email || ''),
+            t.type,
+            t.status,
+            t.amount,
+            `"${(t.description || '').replace(/"/g, '""')}"`,
+            t.createdAt.toISOString(),
+          ].join(','),
       )
       .join('\n');
     res.setHeader('Content-Disposition', 'attachment; filename=xearn-transactions.csv');
@@ -159,19 +169,30 @@ export class WalletController {
     const header =
       'id,userId,userName,email,amount,method,status,accountInfo,processedAt,createdAt\n';
     const rows = withdrawals
-      .map((w) =>
-        [
-          w.id,
-          w.userId,
-          this.csvSafe(`${w.user.firstName} ${w.user.lastName}`),
-          this.csvSafe(w.user.email || ''),
-          w.amount,
-          w.method,
-          w.status,
-          `"${this.csvSafe(w.accountInfo).replace(/"/g, '""')}"`,
-          w.processedAt?.toISOString() || '',
-          w.createdAt.toISOString(),
-        ].join(','),
+      .map(
+        (w: {
+          id: string;
+          userId: string;
+          user: { firstName: string; lastName: string; email: string | null };
+          amount: string | number;
+          method: string;
+          status: string;
+          accountInfo: string;
+          processedAt: Date | null;
+          createdAt: Date;
+        }) =>
+          [
+            w.id,
+            w.userId,
+            this.csvSafe(`${w.user.firstName} ${w.user.lastName}`),
+            this.csvSafe(w.user.email || ''),
+            w.amount,
+            w.method,
+            w.status,
+            `"${this.csvSafe(w.accountInfo).replace(/"/g, '""')}"`,
+            w.processedAt?.toISOString() || '',
+            w.createdAt.toISOString(),
+          ].join(','),
       )
       .join('\n');
     res.setHeader('Content-Disposition', 'attachment; filename=xearn-withdrawals.csv');

@@ -247,11 +247,12 @@ Deux cycles d'audit ont été réalisés (Phase 10 et Phase 11), couvrant au tot
 | **Permissions-Policy** | Camera, micro, géoloc, paiement désactivés | ✅ |
 | **Health check** | Retourne 503 si DB inaccessible | ✅ |
 
-### Vulnérabilités restantes connues
+### Points d'attention restants
+
+Le dernier `npm audit --json` du dépôt racine est revenu à 0 vulnérabilité ; la ligne liée aux dépendances a donc été retirée.
 
 | ID | Composant | Sévérité | Description | Action recommandée |
 |---|---|---|---|---|
-| V1 | `node_modules` | BASSE | 19 vulnérabilités dans devDependencies (@nestjs/cli, webpack) | Non exploitables en prod ; surveiller les updates |
 | V2 | `public/sw.js` | BASSE | Service Worker sans versioning de cache | Implémenter un cache versioned |
 | V3 | `NotificationBell.tsx` | BASSE | Polling 30s au lieu de SSE natif | Connecter le SSE backend existant |
 | V4 | Variables d'env | MOYENNE | Pas de vault/secrets manager documenté pour la prod | Utiliser Railway/Vercel env secrets ou Doppler |
@@ -352,9 +353,9 @@ Le pipeline est configuré (`.github/workflows/`) et couvre :
 - Pipeline lint → test → build en place.
 - `husky` pour les hooks pre-commit.
 - `docker-compose.yml` pour PostgreSQL en développement.
+- `docker-compose.staging.yml` pour une base d'infra de préproduction.
 
 ⚠️ **Ce qui manque pour la production** :
-- Pas d'environnement `staging` (préproduction).
 - Pas de migrations Prisma automatiques au déploiement.
 - Pas de rollback automatique si le health check échoue post-déploiement.
 - Pas de rapport de couverture de tests uploadé (Codecov, Coveralls).

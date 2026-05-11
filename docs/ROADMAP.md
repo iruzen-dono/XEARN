@@ -90,7 +90,7 @@
 - [x] `bcrypt` 5.1 → 6.0.0 (fix HIGH: tar path traversal via node-pre-gyp)
 - [x] `@nestjs/config` 3.3 → 4.0.3 (fix MODERATE: lodash prototype pollution)
 - [x] `google-auth-library` ajouté pour la vérification serveur
-- [ ] Restant: 19 vulnérabilités dans les devDependencies (@nestjs/cli, webpack) — non exploitables en production
+- [x] `npm audit --json` complet: 0 vulnérabilité détectée (prod + dev)
 
 ---
 
@@ -98,7 +98,7 @@
 
 ### 2.1 Typage TypeScript strict ✅
 - [x] Remplacer tous les `any` par des types/interfaces explicites (30+ occurrences)
-- [ ] Créer un fichier `types/` partagé (ou package `@xearn/types`)
+- [x] Créer un fichier `types/` partagé (package `@xearn/types`)
 - [x] `strict: true` dans les tsconfig
 - [x] Typer les réponses API avec des interfaces côté frontend (WalletData, Transaction, FeesData, TierPricingData, Task, Withdrawal)
 
@@ -188,7 +188,8 @@
 
 ### 5.1 CI/CD Pipeline ✅
 - [x] GitHub Actions: lint → test → build (`.github/workflows/ci.yml`)
-- [ ] Environnements: `staging` et `production`
+- [x] Environnement `staging` de base (`docker-compose.staging.yml`)
+- [ ] Environnement `production`
 - [ ] Migrations Prisma automatiques au déploiement
 - [ ] Rollback automatique si le health check échoue
 

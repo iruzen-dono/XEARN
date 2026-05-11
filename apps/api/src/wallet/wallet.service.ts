@@ -2,8 +2,10 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { Decimal } from '@prisma/client/runtime/library';
+import { Prisma } from '@prisma/client';
 import { PaymentService } from '../payment/payment.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import type { AccountTier, PaymentMethod } from '@xearn/types';
 
 @Injectable()
 export class WalletService {
@@ -15,7 +17,7 @@ export class WalletService {
   ) {}
 
   // ── Fee rates by tier (percentage of withdrawal amount) ──
-  private getWithdrawalFeePercent(tier: string): number {
+  private getWithdrawalFeePercent(tier: AccountTier): number {
     switch (tier) {
       case 'VIP':
         return 2;
@@ -27,7 +29,7 @@ export class WalletService {
   }
 
   // ── Tier upgrade prices ──
-  private getTierUpgradePrice(targetTier: string): number {
+  private getTierUpgradePrice(targetTier: Exclude<AccountTier, 'NORMAL'>): number {
     switch (targetTier) {
       case 'PREMIUM':
         return this.configService.get<number>('PREMIUM_PRICE_FCFA') || 10000;
@@ -38,7 +40,7 @@ export class WalletService {
     }
   }
 
-  private readonly TIER_ORDER = ['NORMAL', 'PREMIUM', 'VIP'] as const;
+  private readonly TIER_ORDER: readonly AccountTier[] = ['NORMAL', 'PREMIUM', 'VIP'];
 
   async getWallet(userId: string) {
     const wallet = await this.prisma.wallet.findUnique({ where: { userId } });
@@ -153,7 +155,12 @@ export class WalletService {
     throw new BadRequestException(result.message || 'Erreur lors du paiement');
   }
 
-  async requestWithdrawal(userId: string, amount: number, method: string, accountInfo: string) {
+  async requestWithdrawal(
+    userId: string,
+    amount: number,
+    method: PaymentMethod,
+    accountInfo: string,
+  ) {
     const minWithdrawal = this.configService.get<number>('WITHDRAWAL_MIN_FCFA') || 2000;
 
     if (amount < minWithdrawal) {
@@ -174,9 +181,9 @@ export class WalletService {
     const provider = this.paymentService.getProvider();
 
     // Transaction atomique : vérifier le solde + débiter le wallet + créer le retrait
-    const result = await this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // C3 fix: Use SELECT FOR UPDATE to prevent concurrent withdrawal race conditions
-      const [lockedWallet] = await tx.$queryRaw<{ balance: any }[]>`
+      const [lockedWallet] = await tx.$queryRaw<{ balance: Decimal | number | string }[]>`
         SELECT balance FROM "Wallet" WHERE "userId" = ${userId} FOR UPDATE
       `;
       if (
@@ -197,7 +204,7 @@ export class WalletService {
         data: {
           userId,
           amount: netAmount,
-          method: method as any,
+          method,
           accountInfo,
         },
       });
@@ -273,7 +280,7 @@ export class WalletService {
         paymentStatus: disbursement.status,
         message: disbursement.message,
       };
-    } catch (error: any) {
+    } catch {
       // En cas d'erreur du provider, le retrait reste PENDING
       return {
         withdrawal: result,
@@ -431,7 +438,7 @@ export class WalletService {
   // ═══════════════════════════════════════════════════
   // TIER UPGRADE (Premium / VIP)
   // ═══════════════════════════════════════════════════
-  async upgradeTier(userId: string, targetTier: 'PREMIUM' | 'VIP') {
+  async upgradeTier(userId: string, targetTier: Exclude<AccountTier, 'NORMAL'>) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: { wallet: true },
@@ -440,7 +447,7 @@ export class WalletService {
     if (user.status !== 'ACTIVATED')
       throw new BadRequestException("Compte non activé — activez d'abord votre compte");
 
-    const currentIdx = this.TIER_ORDER.indexOf(user.tier as any);
+    const currentIdx = this.TIER_ORDER.indexOf(user.tier);
     const targetIdx = this.TIER_ORDER.indexOf(targetTier);
     if (targetIdx <= currentIdx) {
       throw new BadRequestException(

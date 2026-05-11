@@ -17,6 +17,7 @@ import { AuditLogService } from '../common/audit-log.service';
 import { JwtAuthGuard, RolesGuard, Roles } from '../auth/guards';
 import { UpdateProfileDto, ChangePasswordDto } from './dto/update-profile.dto';
 import { JwtRequest } from '../common/types';
+import type { AccountStatus } from '@xearn/types';
 
 @Controller('users')
 @ApiTags('Users')
@@ -51,7 +52,7 @@ export class UsersController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
     @Query('search') search?: string,
-    @Query('status') status?: string,
+    @Query('status') status?: AccountStatus | 'ALL',
   ) {
     return this.usersService.findAll(
       Math.max(1, parseInt(page || '') || 1),
@@ -83,19 +84,31 @@ export class UsersController {
     const { users } = await this.usersService.findAll(1, 10000);
     const header = 'id,firstName,lastName,email,phone,status,tier,role,referralCode,createdAt\n';
     const rows = users
-      .map((u) =>
-        [
-          u.id,
-          this.csvSafe(u.firstName),
-          this.csvSafe(u.lastName),
-          this.csvSafe(u.email || ''),
-          this.csvSafe(u.phone || ''),
-          u.status,
-          u.tier,
-          u.role,
-          u.referralCode,
-          u.createdAt,
-        ].join(','),
+      .map(
+        (u: {
+          id: string;
+          firstName: string;
+          lastName: string;
+          email: string | null;
+          phone: string | null;
+          status: string;
+          tier: string;
+          role: string;
+          referralCode: string;
+          createdAt: Date;
+        }) =>
+          [
+            u.id,
+            this.csvSafe(u.firstName),
+            this.csvSafe(u.lastName),
+            this.csvSafe(u.email || ''),
+            this.csvSafe(u.phone || ''),
+            u.status,
+            u.tier,
+            u.role,
+            u.referralCode,
+            u.createdAt,
+          ].join(','),
       )
       .join('\n');
     res.setHeader('Content-Disposition', 'attachment; filename=xearn-users.csv');

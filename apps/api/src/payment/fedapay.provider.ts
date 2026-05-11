@@ -8,6 +8,22 @@ import {
   PaymentDisbursementResult,
 } from './payment-provider.interface';
 
+interface FedaPayApiResponse {
+  v1?: {
+    transaction?: {
+      id?: string | number;
+      status?: string;
+    };
+    token?: {
+      url?: string;
+    };
+    payout?: {
+      id?: string | number;
+    };
+  };
+  token?: string;
+}
+
 /**
  * Fournisseur FedaPay — Paiements réels en zone FCFA.
  *
@@ -175,12 +191,11 @@ export class FedaPayProvider implements PaymentProvider {
     return map[method] || 'mtn';
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private async apiRequest(
     method: string,
     path: string,
     body: Record<string, unknown> | null,
-  ): Promise<any> {
+  ): Promise<FedaPayApiResponse> {
     const url = `${this.apiBase}${path}`;
     const options: RequestInit = {
       method,
@@ -201,6 +216,6 @@ export class FedaPayProvider implements PaymentProvider {
       throw new Error(`FedaPay API ${method} ${path}: ${response.status} — ${errorText}`);
     }
 
-    return response.json();
+    return (await response.json()) as FedaPayApiResponse;
   }
 }
