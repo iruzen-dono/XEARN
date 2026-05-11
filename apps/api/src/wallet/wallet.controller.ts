@@ -17,7 +17,7 @@ import { Throttle } from '@nestjs/throttler';
 import { WalletService } from './wallet.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditLogService } from '../common/audit-log.service';
-import type { Decimal } from '@prisma/client/runtime';
+import type { Decimal } from '@prisma/client/runtime/library';
 import { JwtAuthGuard, RolesGuard, Roles } from '../auth/guards';
 import { WithdrawDto } from './dto/withdraw.dto';
 import { UpgradeTierDto } from './dto/upgrade-tier.dto';

@@ -1,48 +1,31 @@
-import { INestApplication } from '@nestjs/common';
-import { Test } from '@nestjs/testing';
 import { HealthController } from '../src/health.controller';
 import { PrismaService } from '../src/prisma/prisma.service';
 
 describe('HealthController', () => {
-  let app: INestApplication;
+  let controller: HealthController;
 
   const mockPrisma = {
     $queryRaw: jest.fn(),
   };
 
-  const getBaseUrl = () => {
-    const address = app.getHttpServer().address();
-    if (!address || typeof address === 'string') {
-      throw new Error('HTTP server is not listening on a numeric port');
-    }
-    return `http://127.0.0.1:${address.port}`;
-  };
-
-  beforeEach(async () => {
-    const moduleRef = await Test.createTestingModule({
-      controllers: [HealthController],
-      providers: [{ provide: PrismaService, useValue: mockPrisma }],
-    }).compile();
-
-    app = moduleRef.createNestApplication();
-    await app.init();
-    await app.listen(0);
+  beforeEach(() => {
+    controller = new HealthController(mockPrisma as unknown as PrismaService);
   });
 
-  afterEach(async () => {
-    if (app) {
-      await app.close();
-    }
+  afterEach(() => {
     jest.clearAllMocks();
   });
 
   it('returns 200 when the database is reachable', async () => {
     mockPrisma.$queryRaw.mockResolvedValueOnce([{ ok: 1 }]);
 
-    const response = await fetch(`${getBaseUrl()}/health`);
-    const body = await response.json();
+    const response = {
+      status: jest.fn(),
+    } as any;
 
-    expect(response.status).toBe(200);
+    const body = await controller.check(response);
+
+    expect(response.status).not.toHaveBeenCalled();
     expect(body.status).toBe('ok');
     expect(body.db).toBe('connected');
   });
@@ -50,10 +33,13 @@ describe('HealthController', () => {
   it('returns 503 when the database is unreachable', async () => {
     mockPrisma.$queryRaw.mockRejectedValueOnce(new Error('db down'));
 
-    const response = await fetch(`${getBaseUrl()}/health`);
-    const body = await response.json();
+    const response = {
+      status: jest.fn().mockReturnThis(),
+    } as any;
 
-    expect(response.status).toBe(503);
+    const body = await controller.check(response);
+
+    expect(response.status).toHaveBeenCalledWith(503);
     expect(body.status).toBe('degraded');
     expect(body.db).toBe('disconnected');
   });

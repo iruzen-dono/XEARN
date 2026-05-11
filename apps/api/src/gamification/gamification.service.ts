@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import type { BadgeCategory } from '@xearn/types';
-import type { Decimal } from '@prisma/client/runtime';
+import type { Decimal } from '@prisma/client/runtime/library';
 
 const BadgeCategories = {
   STREAK: 'STREAK',
