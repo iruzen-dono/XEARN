@@ -139,8 +139,12 @@ export interface WithdrawPayload {
 }
 
 export interface WalletOverview {
-  wallet: Wallet;
-  recentTransactions: Transaction[];
+  id: string;
+  userId: string;
+  balance: number;
+  totalEarned: number;
+  totalWithdrawn: number;
+  pendingWithdrawal: number;
 }
 
 export interface TierPricing {
