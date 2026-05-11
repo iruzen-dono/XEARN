@@ -17,6 +17,7 @@ import { Throttle } from '@nestjs/throttler';
 import { WalletService } from './wallet.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditLogService } from '../common/audit-log.service';
+import type { Decimal } from '@prisma/client/runtime';
 import { JwtAuthGuard, RolesGuard, Roles } from '../auth/guards';
 import { WithdrawDto } from './dto/withdraw.dto';
 import { UpgradeTierDto } from './dto/upgrade-tier.dto';
@@ -135,7 +136,7 @@ export class WalletController {
           user: { firstName: string; lastName: string; email: string | null };
           type: string;
           status: string;
-          amount: string | number;
+          amount: string | number | Decimal;
           description: string | null;
           createdAt: Date;
         }) =>
@@ -174,7 +175,7 @@ export class WalletController {
           id: string;
           userId: string;
           user: { firstName: string; lastName: string; email: string | null };
-          amount: string | number;
+          amount: string | number | Decimal;
           method: string;
           status: string;
           accountInfo: string;
