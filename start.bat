@@ -112,10 +112,22 @@ echo [1/6] PostgreSQL (Docker)...
 
 docker info >nul 2>&1
 if errorlevel 1 (
-    echo    ERREUR: Docker Desktop n'est pas demarre !
-    echo    Lancez Docker Desktop puis reessayez.
-    pause
-    exit /b 1
+    set "DOCKER_DESKTOP=%ProgramFiles%\Docker\Docker\Docker Desktop.exe"
+    if exist "%DOCKER_DESKTOP%" (
+        echo    Docker Desktop n'est pas demarre, lancement automatique...
+        start "" "%DOCKER_DESKTOP%"
+        call :WAIT_FOR_DOCKER
+        if errorlevel 1 (
+            echo    ERREUR: Docker Desktop n'a pas demarre a temps.
+            pause
+            exit /b 1
+        )
+    ) else (
+        echo    ERREUR: Docker Desktop n'est pas demarre et n'a pas ete trouve.
+        echo    Lancez Docker Desktop puis reessayez.
+        pause
+        exit /b 1
+    )
 )
 
 docker ps -q --filter "name=xearn-postgres" >nul 2>&1
@@ -209,13 +221,9 @@ echo.
 echo [4/6] Build API (NestJS)...
 
 pushd "%API_DIR%"
-REM Nettoyer le cache incremental pour eviter les builds vides
+REM Nettoyer completement le build pour eviter les artefacts incomplets
 del tsconfig.tsbuildinfo 2>nul
-if exist dist (
-    if not exist dist\main.js (
-        rd /s /q dist 2>nul
-    )
-)
+if exist dist rd /s /q dist 2>nul
 call npx nest build >nul 2>&1
 if errorlevel 1 (
     echo    ERREUR: Compilation API echouee !
@@ -227,15 +235,9 @@ if errorlevel 1 (
 )
 if not exist dist\main.js (
     echo    ERREUR: dist\main.js introuvable apres le build !
-    echo    Nettoyage et re-build...
-    rd /s /q dist 2>nul
-    call npx nest build >nul 2>&1
-    if not exist dist\main.js (
-        echo    ERREUR: Build API echoue meme apres nettoyage !
-        popd
-        pause
-        exit /b 1
-    )
+    popd
+    pause
+    exit /b 1
 )
 echo    OK: API compilee (dist/)
 popd
@@ -371,6 +373,22 @@ if not errorlevel 1 (
     exit /b 1
 )
 
+exit /b 0
+
+REM ============================================
+REM ATTENDRE DOCKER DESKTOP
+REM ============================================
+:WAIT_FOR_DOCKER
+set "ATTEMPTS=0"
+:WAIT_DOCKER
+set /a ATTEMPTS+=1
+if !ATTEMPTS! gtr 60 exit /b 1
+docker info >nul 2>&1
+if errorlevel 1 (
+    timeout /t 1 /nobreak >nul
+    goto :WAIT_DOCKER
+)
+echo    OK: Docker Desktop demarre
 exit /b 0
 
 REM ============================================

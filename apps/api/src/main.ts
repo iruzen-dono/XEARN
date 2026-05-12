@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import { ExpressAdapter } from '@nestjs/platform-express';
 import { ValidationPipe, RawBodyRequest, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Request, Response, NextFunction } from 'express';
@@ -18,7 +19,7 @@ type RequestWithCookies = Request & {
 };
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, {
+  const app = await NestFactory.create(AppModule, new ExpressAdapter(), {
     logger: new StructuredLogger(),
   });
   const httpLogger = new Logger('HTTP');
