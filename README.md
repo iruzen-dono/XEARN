@@ -172,6 +172,9 @@ npm run backup:db
 
 # Probe de santé API pour monitoring externe
 npm run monitor:health
+
+# Validation du contrat d'environnement de production
+npm run check:prod-env:example
 ```
 
 ---

@@ -8,7 +8,7 @@ Toutes les modifications notables du projet sont documentées dans ce fichier.
 
 > Date : Juin 2025  
 > Impact : 8 CRITICAL, 6 HIGH, 10 MEDIUM corrigés  
-> Tests : 10/10 suites, 89/89 tests — 0 erreurs TypeScript (API + Web)
+> Tests : 12 suites API, 99 tests — 0 erreurs TypeScript (API + Web)
 
 ### Sécurité (CRITICAL)
 
@@ -18,6 +18,7 @@ Toutes les modifications notables du projet sont documentées dans ce fichier.
 - **Service Worker** : Les chemins `/dashboard` et `/admin` sont exclus du cache pour empêcher l'accès hors-ligne aux données sensibles.
 - **CSP frontend** : Headers de sécurité ajoutés dans `next.config.js` : Content-Security-Policy, X-Frame-Options: DENY, X-Content-Type-Options: nosniff, Referrer-Policy, Permissions-Policy.
 - **Cookie Secure** : Le cookie de referral utilise le flag `Secure` en production.
+- **Referral OAuth cleanup** : Le cookie `xearn_referral` est supprimé une fois consommé dans le callback Google OAuth pour éviter les résidus après la synchronisation.
 - **bcrypt 12** : Les salt rounds sont passés de 10 à 12 dans `register()`, `changePassword()` et `resetPassword()`.
 
 ### Robustesse (HIGH)
@@ -42,6 +43,7 @@ Toutes les modifications notables du projet sont documentées dans ce fichier.
 - **Frontend types** : Tous les `any` remplacés par des interfaces typées (`WalletData`, `Transaction`, `FeesData`, `TierPricingData`, `Task`, `Withdrawal`) sur les pages wallet, tasks et withdrawals.
 - **Formulaires** : Attributs `autoComplete` ajoutés sur tous les champs (login, register).
 - **window.open** : `noopener,noreferrer` ajouté sur tous les appels `window.open()` (wallet, referrals).
+- **Playwright smoke CI** : Le flux web smoke est maintenant exécuté dans la CI, avec un serveur web auto-démarré pour les tests E2E de base.
 
 ---
 

@@ -18,7 +18,7 @@
 | **Paiements** | FedaPay (MTN, Moov, TMoney) | ✅ Intégré |
 | **Design** | Premium dark theme + framer-motion | ✅ Complet (pas de recharts/Radix) |
 | **PWA** | Service Worker + Manifest | ✅ Basique |
-| **Tests** | Jest (10 suites, 89 tests backend) + Playwright (frontend smoke) | ✅ Fonctionnel |
+| **Tests** | Jest (12 suites, 99 tests backend) + Playwright (frontend smoke + referral flow) | ✅ Fonctionnel |
 | **CI/CD** | GitHub Actions (lint → test → build) | ✅ Configuré |
 | **Déploiement** | Docker Compose (dev) | ⚠️ Pas de production |
 
@@ -112,6 +112,8 @@
 
 ### 2.3 Tests E2E frontend
 - [ ] Étendre Playwright au-delà du smoke test actuel
+- [x] Couvrir le préremplissage du code referral sur `/register?ref=...`
+- [x] Exécuter les smoke tests web dans la CI
 - [ ] Scénarios critiques: inscription → activation → tâche → retrait
 - [ ] Tests admin: gestion utilisateurs, approbation publicités
 - [ ] Tests responsive (mobile viewport)

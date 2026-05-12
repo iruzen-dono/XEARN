@@ -27,6 +27,8 @@
     "db:studio": "npm run db:studio --workspace=apps/api",
     "backup:db": "node scripts/backup-db.js",
     "backup:db:dry-run": "node scripts/backup-db.js --dry-run",
+    "check:prod-env": "node scripts/check-prod-env.js --ops --strict",
+    "check:prod-env:example": "node scripts/check-prod-env.js --example --ops --strict",
     "monitor:health": "node scripts/check-health.js",
     "monitor:health:dry-run": "node scripts/check-health.js --dry-run"
   },

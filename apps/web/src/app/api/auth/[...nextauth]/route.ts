@@ -65,6 +65,9 @@ const handler = NextAuth({
             token.apiAccessToken = data.accessToken;
             token.apiRefreshToken = data.refreshToken;
             token.apiUser = data.user;
+
+            // Referral cookie is only needed for the OAuth round-trip; clear it once consumed.
+            cookieStore.delete('xearn_referral');
           }
         } catch {
           // API unavailable — token returned without API data

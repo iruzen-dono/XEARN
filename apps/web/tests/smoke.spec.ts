@@ -68,6 +68,14 @@ test.describe('Auth navigation', () => {
     await forgotLink.click();
     await expect(page).toHaveURL(/\/forgot-password/);
   });
+
+  test('register page preserves referral code from query string', async ({ page }) => {
+    await page.goto('/register?ref=ABC123');
+    const referralInput = page.locator('#referral');
+    await expect(referralInput).toBeVisible();
+    await expect(referralInput).toHaveValue('ABC123');
+    await expect(referralInput).toHaveAttribute('readonly', '');
+  });
 });
 
 // ─── Form validation ──────────────────────────────────────────

@@ -43,6 +43,9 @@ jobs:
       - name: Install root dependencies
         run: npm ci
 
+      - name: Validate production env contract
+        run: npm run check:prod-env:example
+
       # --- API ---
       - name: Generate Prisma client
         run: npx prisma generate
@@ -67,4 +70,12 @@ jobs:
 
       - name: Build Web
         run: npx next build
+        working-directory: apps/web
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+        working-directory: apps/web
+
+      - name: Run Web E2E smoke tests
+        run: npm run test:e2e -- --reporter=line
         working-directory: apps/web
