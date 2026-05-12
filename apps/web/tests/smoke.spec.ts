@@ -78,10 +78,10 @@ test.describe('Auth navigation', () => {
   });
 
   test('register form omits empty phone values', async ({ page }) => {
-    let submittedBody: Record<string, unknown> | null = null;
+    let submittedBody: { phone?: unknown; email?: unknown } | null = null;
 
     await page.route('**/api/auth/register', async (route) => {
-      submittedBody = route.request().postDataJSON() as Record<string, unknown>;
+      submittedBody = route.request().postDataJSON() as { phone?: unknown; email?: unknown };
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -100,8 +100,9 @@ test.describe('Auth navigation', () => {
     await page.getByRole('button', { name: /Créer mon compte/i }).click();
 
     await expect(page).toHaveURL(/\/verify-email\/pending/);
-    expect(submittedBody?.phone).toBeUndefined();
-    expect(submittedBody?.email).toBe('qa+flow@example.com');
+    const receivedBody = submittedBody as { phone?: unknown; email?: unknown } | null;
+    expect(receivedBody?.phone).toBeUndefined();
+    expect(receivedBody?.email).toBe('qa+flow@example.com');
   });
 });
 
