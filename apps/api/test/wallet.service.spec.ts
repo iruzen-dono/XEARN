@@ -233,5 +233,61 @@ describe('WalletService', () => {
       expect(result.message).toBe('Retrait créé — en attente de traitement');
       expect(result.withdrawal).toEqual({ id: 'wd-1' });
     });
+
+    it('should apply the VIP fee and disburse the net amount', async () => {
+      const transactionalTx = {
+        $queryRaw: jest.fn().mockResolvedValue([{ balance: '10000' }]),
+        wallet: { update: jest.fn().mockResolvedValue({}) },
+        withdrawal: {
+          create: jest.fn().mockResolvedValue({ id: 'wd-vip' }),
+          update: jest.fn().mockResolvedValue({}),
+        },
+        transaction: {
+          create: jest.fn().mockResolvedValue({}),
+          updateMany: jest.fn().mockResolvedValue({}),
+        },
+      };
+
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: 'u-vip',
+        status: 'ACTIVATED',
+        tier: 'VIP',
+        firstName: 'V',
+        lastName: 'User',
+      });
+      mockPrisma.$transaction.mockImplementation(async (arg: any) => {
+        if (typeof arg === 'function') {
+          return arg(transactionalTx);
+        }
+        return Promise.all(arg);
+      });
+
+      const result = await service.requestWithdrawal('u-vip', 5000, 'MTN_MOMO', '+22890000000');
+
+      expect(mockPaymentProvider.disburse).toHaveBeenCalledWith(
+        expect.objectContaining({
+          amount: 4900,
+          method: 'MTN_MOMO',
+          accountInfo: '+22890000000',
+          recipientName: 'V User',
+          callbackMeta: { withdrawalId: 'wd-vip', userId: 'u-vip' },
+        }),
+      );
+      expect(transactionalTx.transaction.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            amount: 5000,
+            metadata: expect.objectContaining({
+              feePercent: 2,
+              feeAmount: 100,
+              netAmount: 4900,
+            }),
+          }),
+        }),
+      );
+      expect(result.paymentStatus).toBe('pending');
+      expect(result.message).toBe('Retrait créé — en attente de traitement');
+      expect(result.withdrawal).toEqual({ id: 'wd-vip' });
+    });
   });
 });
