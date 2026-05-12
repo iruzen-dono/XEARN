@@ -90,6 +90,7 @@ export interface RegisterResponse {
   user?: User;
   accessToken?: string;
   refreshToken?: string;
+  verificationUrl?: string;
 }
 
 export interface MessageResponse {

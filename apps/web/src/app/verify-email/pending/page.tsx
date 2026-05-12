@@ -11,6 +11,7 @@ import { getErrorMessage } from '@/lib/errors';
 function PendingContent() {
   const searchParams = useSearchParams();
   const email = searchParams.get('email') || '';
+  const previewUrl = searchParams.get('previewUrl') || '';
   const [resending, setResending] = useState(false);
   const [resendMsg, setResendMsg] = useState('');
 
@@ -48,18 +49,20 @@ function PendingContent() {
 
         <h1 className="text-2xl font-bold mb-4">Vérifiez votre email</h1>
 
-        <p className="text-dark-400 mb-2">
-          Un lien de confirmation a été envoyé à :
-        </p>
-        {email && (
-          <p className="text-white font-medium mb-6">{email}</p>
-        )}
+        <p className="text-dark-400 mb-2">Un lien de confirmation a été envoyé à :</p>
+        {email && <p className="text-white font-medium mb-6">{email}</p>}
 
         <p className="text-dark-400 text-sm mb-6">
           Cliquez sur le lien dans l&apos;email pour activer votre compte. Le lien expire dans 24h.
         </p>
 
         <div className="space-y-3">
+          {previewUrl && process.env.NODE_ENV !== 'production' && (
+            <a href={previewUrl} className="block w-full text-center btn-primary">
+              Ouvrir le lien de vérification
+            </a>
+          )}
+
           <button
             onClick={handleResend}
             disabled={resending || !email}
@@ -69,7 +72,9 @@ function PendingContent() {
           </button>
 
           {resendMsg && (
-            <p className={`text-sm ${resendMsg.includes('renvoyé') ? 'text-green-400' : 'text-red-400'}`}>
+            <p
+              className={`text-sm ${resendMsg.includes('renvoyé') ? 'text-green-400' : 'text-red-400'}`}
+            >
               {resendMsg}
             </p>
           )}
@@ -88,7 +93,13 @@ function PendingContent() {
 
 export default function VerifyEmailPendingPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="text-dark-400">Chargement...</div></div>}>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-dark-400">Chargement...</div>
+        </div>
+      }
+    >
       <PendingContent />
     </Suspense>
   );

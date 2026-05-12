@@ -135,14 +135,18 @@ export class AuthService {
         console.error('Erreur envoi email de confirmation de création de compte:', err);
       }
 
+      let verificationUrl: string | undefined;
       try {
-        await this.sendVerificationEmail(user.id, user.email, user.firstName);
+        verificationUrl = await this.sendVerificationEmail(user.id, user.email, user.firstName);
       } catch (err) {
         console.error('Erreur envoi email de vérification:', err);
       }
       return {
         message: 'Compte créé avec succès. Consultez votre boîte mail pour terminer l’activation.',
         requiresEmailVerification: true,
+        ...(this.configService.get('NODE_ENV') !== 'production' && verificationUrl
+          ? { verificationUrl }
+          : {}),
       };
     }
 
@@ -286,8 +290,13 @@ export class AuthService {
     if (user.emailVerifiedAt) {
       return { message: 'Email déjà vérifié' };
     }
-    await this.sendVerificationEmail(user.id, user.email, user.firstName);
-    return { message: 'Email de vérification renvoyé' };
+    const verificationUrl = await this.sendVerificationEmail(user.id, user.email, user.firstName);
+    return {
+      message: 'Email de vérification renvoyé',
+      ...(this.configService.get('NODE_ENV') !== 'production' && verificationUrl
+        ? { verificationUrl }
+        : {}),
+    };
   }
 
   async verifyEmail(token: string) {
@@ -523,7 +532,11 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
-  private async sendVerificationEmail(userId: string, email: string, firstName: string) {
+  private async sendVerificationEmail(
+    userId: string,
+    email: string,
+    firstName: string,
+  ): Promise<string> {
     const token = crypto.randomBytes(32).toString('hex');
     const tokenHash = this.hashToken(token);
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
@@ -570,6 +583,8 @@ export class AuthService {
       ].join('\n'),
       html,
     });
+
+    return verifyUrl;
   }
 
   private async sendAccountCreatedEmail(

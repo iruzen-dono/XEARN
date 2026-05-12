@@ -186,9 +186,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch {
         /* ignore */
       }
-      const data = (await authApi.register({ ...regData, fingerprint })) as RegisterResponse;
+      const normalizedPhone = regData.phone?.trim();
+      const data = (await authApi.register({
+        ...regData,
+        phone: normalizedPhone ? normalizedPhone : undefined,
+        referralCode: regData.referralCode?.trim() || undefined,
+        fingerprint,
+      })) as RegisterResponse;
       if (data?.requiresEmailVerification) {
-        router.push(`/verify-email/pending?email=${encodeURIComponent(regData.email)}`);
+        const pendingUrl = new URL('/verify-email/pending', window.location.origin);
+        pendingUrl.searchParams.set('email', regData.email);
+        if (data.verificationUrl && process.env.NODE_ENV !== 'production') {
+          pendingUrl.searchParams.set('previewUrl', data.verificationUrl);
+        }
+        router.push(`${pendingUrl.pathname}${pendingUrl.search}`);
         return { requiresEmailVerification: true, message: data.message };
       }
       if (!data.user) {

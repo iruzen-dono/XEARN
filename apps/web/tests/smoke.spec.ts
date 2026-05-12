@@ -76,6 +76,33 @@ test.describe('Auth navigation', () => {
     await expect(referralInput).toHaveValue('ABC123');
     await expect(referralInput).toHaveAttribute('readonly', '');
   });
+
+  test('register form omits empty phone values', async ({ page }) => {
+    let submittedBody: Record<string, unknown> | null = null;
+
+    await page.route('**/api/auth/register', async (route) => {
+      submittedBody = route.request().postDataJSON() as Record<string, unknown>;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          requiresEmailVerification: true,
+          message: 'Compte créé. Vérifiez votre email pour activer votre compte.',
+        }),
+      });
+    });
+
+    await page.goto('/register');
+    await page.locator('#firstName').fill('QA');
+    await page.locator('#lastName').fill('User');
+    await page.locator('#reg-email').fill('qa+flow@example.com');
+    await page.locator('#reg-password').fill('Password123!');
+    await page.getByRole('button', { name: /Créer mon compte/i }).click();
+
+    await expect(page).toHaveURL(/\/verify-email\/pending/);
+    expect(submittedBody?.phone).toBeUndefined();
+    expect(submittedBody?.email).toBe('qa+flow@example.com');
+  });
 });
 
 // ─── Form validation ──────────────────────────────────────────
