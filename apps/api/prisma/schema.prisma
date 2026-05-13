@@ -86,6 +86,7 @@ model User {
 
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
+  deletedAt     DateTime?
 
   @@index([referredById])
   @@index([status])
@@ -213,6 +214,7 @@ model Transaction {
 
   @@index([userId])
   @@index([userId, type, status])
+  @@index([createdAt])
   @@map("transactions")
 }
 
@@ -272,6 +274,7 @@ model Commission {
 
   @@index([beneficiaryId])
   @@index([sourceUserId])
+  @@index([createdAt])
   @@map("commissions")
 }
 
@@ -321,6 +324,7 @@ model Notification {
   createdAt DateTime         @default(now())
 
   @@index([userId, read])
+  @@index([userId, createdAt])
   @@map("notifications")
 }
 

@@ -283,16 +283,15 @@ export class AuthService {
   }
 
   async resendVerification(dto: ResendVerificationDto) {
+    const genericMessage =
+      'Si un compte existe avec cet email, un lien de vérification a été envoyé';
     const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
-    if (!user || !user.email) {
-      throw new BadRequestException('Utilisateur introuvable');
-    }
-    if (user.emailVerifiedAt) {
-      return { message: 'Email déjà vérifié' };
+    if (!user || !user.email || user.emailVerifiedAt) {
+      return { message: genericMessage };
     }
     const verificationUrl = await this.sendVerificationEmail(user.id, user.email, user.firstName);
     return {
-      message: 'Email de vérification renvoyé',
+      message: genericMessage,
       ...(this.configService.get('NODE_ENV') !== 'production' && verificationUrl
         ? { verificationUrl }
         : {}),

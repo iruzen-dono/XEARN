@@ -88,7 +88,8 @@ jobs:
             // Set via GitHub secret: RAILWAY_STAGING_WEBHOOK
 
       - name: 'Run smoke tests on staging'
-        run: npx playwright test tests/smoke.spec.ts
+        run: npx playwright install --with-deps chromium && npx playwright test --project=chromium
+        working-directory: apps/web
         env:
           API_URL: https://staging-api.xearn.railway.app
           WEB_URL: https://staging.xearn.vercel.app
@@ -146,12 +147,17 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22.13.0'
+          cache: 'npm'
 
       - name: 'Install dependencies'
         run: npm ci
 
+      - name: 'Install Playwright browsers'
+        run: npx playwright install --with-deps chromium
+
       - name: 'Run smoke tests'
-        run: npx playwright test tests/smoke.spec.ts
+        run: npx playwright test --project=chromium
+        working-directory: apps/web
         env:
           API_URL: ${{ github.ref == 'refs/heads/main' && 'https://api.xearn.com' || 'https://staging-api.xearn.railway.app' }}
           WEB_URL: ${{ github.ref == 'refs/heads/main' && 'https://xearn.com' || 'https://staging.xearn.vercel.app' }}

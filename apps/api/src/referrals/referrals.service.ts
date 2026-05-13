@@ -14,47 +14,41 @@ export class ReferralsService {
   ) {}
 
   async getReferralTree(userId: string) {
-    // Niveau 1 : filleuls directs
+    const MAX_PER_LEVEL = 100;
+
     const level1 = await this.prisma.user.findMany({
       where: { referredById: userId },
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        status: true,
-        createdAt: true,
-      },
+      select: { id: true, firstName: true, lastName: true, status: true, createdAt: true },
+      orderBy: { createdAt: 'desc' },
+      take: MAX_PER_LEVEL,
     });
 
-    // Niveau 2 : filleuls des filleuls
-    const level1Ids = level1.map((u: { id: string }) => u.id);
-    const level2 = await this.prisma.user.findMany({
-      where: { referredById: { in: level1Ids } },
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        status: true,
-        createdAt: true,
-        referredById: true,
-      },
-    });
+    const level1Ids = level1.map((u) => u.id);
+    const level2 =
+      level1Ids.length > 0
+        ? await this.prisma.user.findMany({
+            where: { referredById: { in: level1Ids } },
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              status: true,
+              createdAt: true,
+              referredById: true,
+            },
+            orderBy: { createdAt: 'desc' },
+            take: MAX_PER_LEVEL,
+          })
+        : [];
 
-    // Niveau 3 : filleuls des filleuls des filleuls (VIP only)
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { tier: true },
     });
-    let level3: Array<{
-      id: string;
-      firstName: string;
-      lastName: string;
-      status: string;
-      createdAt: Date;
-      referredById: string | null;
-    }> = [];
-    if (user?.tier === 'VIP') {
-      const level2Ids = level2.map((u: { id: string }) => u.id);
+
+    let level3: typeof level2 = [];
+    if (user?.tier === 'VIP' && level2.length > 0) {
+      const level2Ids = level2.map((u) => u.id);
       level3 = await this.prisma.user.findMany({
         where: { referredById: { in: level2Ids } },
         select: {
@@ -65,6 +59,8 @@ export class ReferralsService {
           createdAt: true,
           referredById: true,
         },
+        orderBy: { createdAt: 'desc' },
+        take: MAX_PER_LEVEL,
       });
     }
 
@@ -316,7 +312,10 @@ export class ReferralsService {
       }
     }
 
-    if (user.referredBy.referredBy?.status === 'ACTIVATED') {
+    if (
+      user.referredBy.referredBy?.status === 'ACTIVATED' &&
+      ['PREMIUM', 'VIP'].includes(user.referredBy.referredBy.tier)
+    ) {
       const commissionL2 = amount.mul(l2Percent).div(100);
       try {
         await this.notificationsService.notifyCommission(
@@ -325,7 +324,7 @@ export class ReferralsService {
           2,
           `${user.firstName} ${user.lastName}`,
         );
-      } catch (err) {
+      } catch {
         /* ignore */
       }
     }

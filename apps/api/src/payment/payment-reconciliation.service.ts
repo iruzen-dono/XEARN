@@ -15,6 +15,7 @@ type ReconciliationMetadata = {
 @Injectable()
 export class PaymentReconciliationService {
   private readonly logger = new Logger(PaymentReconciliationService.name);
+  private running = false;
 
   constructor(
     private prisma: PrismaService,
@@ -22,14 +23,22 @@ export class PaymentReconciliationService {
     private notificationsService: NotificationsService,
   ) {}
 
-  // Every 5 minutes
   @Cron('*/5 * * * *')
   async reconcile() {
-    await Promise.all([
-      this.reconcileActivations(),
-      this.reconcileTierUpgrades(),
-      this.reconcileWithdrawals(),
-    ]);
+    if (this.running) {
+      this.logger.warn('Reconciliation already running, skipping');
+      return;
+    }
+    this.running = true;
+    try {
+      await Promise.all([
+        this.reconcileActivations(),
+        this.reconcileTierUpgrades(),
+        this.reconcileWithdrawals(),
+      ]);
+    } finally {
+      this.running = false;
+    }
   }
 
   private async reconcileActivations() {
