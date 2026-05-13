@@ -1,6 +1,7 @@
 import NextAuth from 'next-auth';
 import GoogleProvider from 'next-auth/providers/google';
 import { cookies } from 'next/headers';
+import { getApiBaseUrl } from '@/lib/api-base-url';
 
 // Extend NextAuth types to include our custom fields
 declare module 'next-auth' {
@@ -20,7 +21,7 @@ declare module 'next-auth/jwt' {
 }
 
 // Server-side route handler: API_URL must use env directly (no client-side import)
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const API_URL = getApiBaseUrl(process.env.NEXT_PUBLIC_API_URL);
 
 const handler = NextAuth({
   secret: process.env.NEXTAUTH_SECRET,

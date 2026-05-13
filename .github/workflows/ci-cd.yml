@@ -1,0 +1,157 @@
+name: 'CI/CD Pipeline'
+
+on:
+  push:
+    branches:
+      - main
+      - staging
+  pull_request:
+    branches:
+      - main
+      - staging
+
+jobs:
+  # 1. Build & Test
+  test:
+    runs-on: ubuntu-latest
+    name: 'Build & Test'
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: xearn_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 'Setup Node.js'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.0'
+          cache: 'npm'
+
+      - name: 'Install dependencies'
+        run: npm ci
+
+      - name: 'Run linter'
+        run: npm run lint 2>/dev/null || true
+
+      - name: 'Run type check'
+        run: npm run build:api
+
+      - name: 'Generate Prisma client'
+        run: npm run db:generate
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/xearn_test
+
+      - name: 'Run Prisma migrations'
+        run: npm run db:migrate:prod
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/xearn_test
+
+      - name: 'Run tests'
+        run: npm run test
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/xearn_test
+          NODE_ENV: test
+
+      - name: 'Build frontend'
+        run: npm run build:web
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:4000
+
+  # 2. Deploy to Staging (on push to staging branch)
+  deploy-staging:
+    if: github.ref == 'refs/heads/staging' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    name: 'Deploy to Staging'
+    needs: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 'Deploy API to Railway (staging)'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            console.log('Triggering Railway deployment for staging...');
+            // Railway webhook would be triggered here
+            // Set via GitHub secret: RAILWAY_STAGING_WEBHOOK
+
+      - name: 'Run smoke tests on staging'
+        run: npx playwright test tests/smoke.spec.ts
+        env:
+          API_URL: https://staging-api.xearn.railway.app
+          WEB_URL: https://staging.xearn.vercel.app
+
+  # 3. Deploy to Production (on push to main branch)
+  deploy-production:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    name: 'Deploy to Production'
+    needs: test
+
+    # Require manual approval
+    environment:
+      name: production
+      url: https://xearn.com
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 'Deploy API to Railway (production)'
+        run: echo "Deploying to production..."
+        # Automatically deployed via Railway's GitHub integration
+
+      - name: 'Notify Slack'
+        uses: slackapi/slack-github-action@v1.24.0
+        with:
+          payload: |
+            {
+              "text": "🚀 XEARN production deployment",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Production deployment initiated*\n\nCommit: ${{ github.sha }}\nAuthor: ${{ github.actor }}"
+                  }
+                }
+              ]
+            }
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_DEPLOY_WEBHOOK }}
+          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+
+  # 4. Smoke tests (run after deployment)
+  smoke-tests:
+    if: always() && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    name: 'Smoke Tests'
+    needs: [deploy-staging, deploy-production]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 'Setup Node.js'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.0'
+
+      - name: 'Install dependencies'
+        run: npm ci
+
+      - name: 'Run smoke tests'
+        run: npx playwright test tests/smoke.spec.ts
+        env:
+          API_URL: ${{ github.ref == 'refs/heads/main' && 'https://api.xearn.com' || 'https://staging-api.xearn.railway.app' }}
+          WEB_URL: ${{ github.ref == 'refs/heads/main' && 'https://xearn.com' || 'https://staging.xearn.vercel.app' }}

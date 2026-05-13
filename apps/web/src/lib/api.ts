@@ -34,8 +34,9 @@ import type {
   Badge,
   LeaderboardEntry,
 } from '@/types';
+import { getApiBaseUrl } from './api-base-url';
 
-export const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+export const API_URL = getApiBaseUrl(process.env.NEXT_PUBLIC_API_URL);
 
 // Bootstrap CSRF token cookie on first load (idempotent GET request)
 let csrfBootstrapped = false;
