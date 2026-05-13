@@ -289,16 +289,19 @@ export class PaymentWebhookController {
     });
     const grossAmount = originalTx ? originalTx.amount : withdrawal.amount;
 
-    await this.prisma.$transaction([
-      this.prisma.wallet.update({
+    await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`
+        SELECT 1 FROM "Wallet" WHERE "userId" = ${userId} FOR UPDATE
+      `;
+      await tx.wallet.update({
         where: { userId },
         data: { balance: { increment: grossAmount } },
-      }),
-      this.prisma.withdrawal.update({
+      });
+      await tx.withdrawal.update({
         where: { id: withdrawalId },
         data: { status: 'FAILED' },
-      }),
-      this.prisma.transaction.updateMany({
+      });
+      await tx.transaction.updateMany({
         where: {
           userId,
           type: 'WITHDRAWAL',
@@ -306,8 +309,8 @@ export class PaymentWebhookController {
           metadata: { path: ['withdrawalId'], equals: withdrawalId },
         },
         data: { status: 'FAILED' },
-      }),
-    ]);
+      });
+    });
 
     this.logger.log(
       `Payout FedaPay ${withdrawalId} échoué — wallet de ${userId} remboursé de ${grossAmount} FCFA`,

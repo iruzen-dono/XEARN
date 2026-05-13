@@ -167,23 +167,26 @@ export class PaymentReconciliationService {
       } else if (status === 'failed') {
         // withdrawal.amount stores NET; tx.amount stores GROSS — refund GROSS
         const grossAmount = tx ? tx.amount : withdrawal.amount;
-        await this.prisma.$transaction([
-          this.prisma.withdrawal.update({
+        await this.prisma.$transaction(async (ptx) => {
+          await ptx.$queryRaw`
+            SELECT 1 FROM "Wallet" WHERE "userId" = ${withdrawal.userId} FOR UPDATE
+          `;
+          await ptx.withdrawal.update({
             where: { id: withdrawal.id },
             data: { status: 'FAILED' },
-          }),
-          this.prisma.wallet.update({
+          });
+          await ptx.wallet.update({
             where: { userId: withdrawal.userId },
             data: { balance: { increment: grossAmount } },
-          }),
-          this.prisma.transaction.updateMany({
+          });
+          await ptx.transaction.updateMany({
             where: {
               metadata: { path: ['withdrawalId'], equals: withdrawal.id },
               type: 'WITHDRAWAL',
             },
             data: { status: 'FAILED' },
-          }),
-        ]);
+          });
+        });
 
         try {
           await this.notificationsService.notifyWithdrawalRejected(

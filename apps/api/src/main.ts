@@ -26,6 +26,18 @@ async function bootstrap() {
 
   const configService = app.get(ConfigService);
 
+  // Fail-fast if critical secrets are missing
+  const requiredSecrets = ['JWT_SECRET', 'JWT_REFRESH_SECRET'];
+  for (const key of requiredSecrets) {
+    if (!configService.get(key)) {
+      throw new Error(`Missing required env var: ${key}`);
+    }
+  }
+
+  // Trust proxy (Railway, Vercel, etc.) for correct IP extraction
+  const expressApp = app.getHttpAdapter().getInstance();
+  expressApp.set('trust proxy', 1);
+
   // Cookies + raw body (webhooks)
   app.use(cookieParser());
   app.use(
@@ -155,14 +167,9 @@ async function bootstrap() {
       origin: string | undefined,
       callback: (error: Error | null, allow?: boolean) => void,
     ) => {
-      // En production, rejeter les requêtes sans origin (sauf healthcheck/curl)
-      const isProduction = configService.get('NODE_ENV') === 'production';
+      // No origin = server-to-server (health checks, webhooks, curl) — allow
       if (!origin) {
-        if (isProduction) {
-          callback(new Error('Origin manquante — requête rejetée en production'));
-        } else {
-          callback(null, true);
-        }
+        callback(null, true);
       } else if (allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
@@ -178,27 +185,26 @@ async function bootstrap() {
   // Prefix API
   app.setGlobalPrefix('api');
 
-  const swaggerConfig = new DocumentBuilder()
-    .setTitle('XEARN API')
-    .setDescription(
-      'API NestJS de XEARN, documentée à partir des DTOs et des contrôleurs du monorepo.',
-    )
-    .setVersion('1.0.0')
-    .addServer('/api')
-    .build();
+  if (configService.get('NODE_ENV') !== 'production') {
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle('XEARN API')
+      .setDescription('API documentation — disabled in production')
+      .setVersion('1.0.0')
+      .addServer('/api')
+      .build();
 
-  const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig, {
-    deepScanRoutes: true,
-  });
+    const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig, {
+      deepScanRoutes: true,
+    });
 
-  SwaggerModule.setup('docs', app, swaggerDocument, {
-    useGlobalPrefix: true,
-    swaggerOptions: {
-      persistAuthorization: true,
-    },
-  });
+    SwaggerModule.setup('docs', app, swaggerDocument, {
+      useGlobalPrefix: true,
+      swaggerOptions: { persistAuthorization: true },
+    });
+  }
 
-  const port = configService.get<number>('API_PORT') || configService.get<number>('PORT') || 4000;
+  // Railway/Render inject PORT; prefer it over API_PORT for PaaS compatibility
+  const port = configService.get<number>('PORT') || configService.get<number>('API_PORT') || 4000;
 
   const logger = new Logger('Bootstrap');
   await app.listen(port);

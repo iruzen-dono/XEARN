@@ -391,45 +391,49 @@ export class WalletService {
     return result;
   }
 
-  // Admin: rejeter un retrait (rembourser le montant brut débité)
   async rejectWithdrawal(withdrawalId: string) {
     const withdrawal = await this.prisma.withdrawal.findUnique({ where: { id: withdrawalId } });
     if (!withdrawal) throw new BadRequestException('Retrait introuvable');
     if (withdrawal.status !== 'PENDING') throw new BadRequestException('Retrait déjà traité');
 
-    // withdrawal.amount stores the NET amount; find the original GROSS from the transaction
     const originalTx = await this.prisma.transaction.findFirst({
       where: { type: 'WITHDRAWAL', metadata: { path: ['withdrawalId'], equals: withdrawalId } },
     });
     const grossAmount = originalTx ? originalTx.amount : withdrawal.amount;
 
-    const result = await this.prisma.$transaction([
-      this.prisma.withdrawal.update({
+    const result = await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      // Lock wallet row to prevent concurrent balance modifications
+      await tx.$queryRaw`
+        SELECT 1 FROM "Wallet" WHERE "userId" = ${withdrawal.userId} FOR UPDATE
+      `;
+
+      await tx.withdrawal.update({
         where: { id: withdrawalId },
         data: { status: 'FAILED' },
-      }),
-      this.prisma.wallet.update({
+      });
+
+      await tx.wallet.update({
         where: { userId: withdrawal.userId },
         data: { balance: { increment: grossAmount } },
-      }),
-      this.prisma.transaction.updateMany({
+      });
+
+      await tx.transaction.updateMany({
         where: {
           metadata: { path: ['withdrawalId'], equals: withdrawalId },
           type: 'WITHDRAWAL',
           status: 'PENDING',
         },
         data: { status: 'FAILED' },
-      }),
-    ]);
+      });
+    });
 
-    // Notification
     try {
       await this.notificationsService.notifyWithdrawalRejected(
         withdrawal.userId,
         Number(withdrawal.amount),
       );
-    } catch (err) {
-      /* ignore */
+    } catch {
+      /* notification failure is non-critical */
     }
 
     return result;

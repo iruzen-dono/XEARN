@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, Injectable, ExecutionContext } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { resolve } from 'path';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
@@ -16,6 +16,24 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { AdsModule } from './ads/ads.module';
 import { GamificationModule } from './gamification/gamification.module';
 import { HealthController } from './health.controller';
+
+@Injectable()
+class ProxyAwareThrottlerGuard extends ThrottlerGuard {
+  protected getTracker(req: Record<string, any>): Promise<string> {
+    const forwarded = req.headers?.['x-forwarded-for'];
+    const ip = forwarded
+      ? String(forwarded).split(',')[0].trim()
+      : req.ip || req.socket?.remoteAddress || 'unknown';
+    return Promise.resolve(ip);
+  }
+
+  protected async shouldSkip(context: ExecutionContext): Promise<boolean> {
+    const req = context.switchToHttp().getRequest();
+    // Don't rate-limit health checks
+    if (req.path === '/api/health') return true;
+    return false;
+  }
+}
 
 @Module({
   imports: [
@@ -62,7 +80,7 @@ import { HealthController } from './health.controller';
   providers: [
     {
       provide: APP_GUARD,
-      useClass: ThrottlerGuard,
+      useClass: ProxyAwareThrottlerGuard,
     },
   ],
 })
