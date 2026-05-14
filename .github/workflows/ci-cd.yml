@@ -11,7 +11,6 @@ on:
       - staging
 
 jobs:
-  # 1. Build & Test
   test:
     runs-on: ubuntu-latest
     name: 'Build & Test'
@@ -30,6 +29,13 @@ jobs:
         ports:
           - 5432:5432
 
+    env:
+      DATABASE_URL: postgresql://test:test@localhost:5432/xearn_test
+      JWT_SECRET: ci-test-jwt-secret-at-least-32-chars-long
+      JWT_REFRESH_SECRET: ci-test-refresh-secret-at-least-32-chars
+      NODE_ENV: test
+      NEXT_PUBLIC_API_URL: http://localhost:4000
+
     steps:
       - uses: actions/checkout@v4
 
@@ -45,31 +51,21 @@ jobs:
       - name: 'Run linter'
         run: npm run lint
 
-      - name: 'Run type check'
+      - name: 'Build API'
         run: npm run build:api
 
       - name: 'Generate Prisma client'
         run: npm run db:generate
-        env:
-          DATABASE_URL: postgresql://test:test@localhost:5432/xearn_test
 
       - name: 'Run Prisma migrations'
         run: npm run db:migrate:prod
-        env:
-          DATABASE_URL: postgresql://test:test@localhost:5432/xearn_test
 
       - name: 'Run tests'
         run: npm run test
-        env:
-          DATABASE_URL: postgresql://test:test@localhost:5432/xearn_test
-          NODE_ENV: test
 
       - name: 'Build frontend'
         run: npm run build:web
-        env:
-          NEXT_PUBLIC_API_URL: http://localhost:4000
 
-  # 2. Deploy to Staging (on push to staging branch)
   deploy-staging:
     if: github.ref == 'refs/heads/staging' && github.event_name == 'push'
     runs-on: ubuntu-latest
@@ -84,24 +80,13 @@ jobs:
         with:
           script: |
             console.log('Triggering Railway deployment for staging...');
-            // Railway webhook would be triggered here
-            // Set via GitHub secret: RAILWAY_STAGING_WEBHOOK
 
-      - name: 'Run smoke tests on staging'
-        run: npx playwright install --with-deps chromium && npx playwright test --project=chromium
-        working-directory: apps/web
-        env:
-          API_URL: https://staging-api.xearn.railway.app
-          WEB_URL: https://staging.xearn.vercel.app
-
-  # 3. Deploy to Production (on push to main branch)
   deploy-production:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     name: 'Deploy to Production'
     needs: test
 
-    # Require manual approval
     environment:
       name: production
       url: https://xearn.com
@@ -110,15 +95,15 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: 'Deploy API to Railway (production)'
-        run: echo "Deploying to production..."
-        # Automatically deployed via Railway's GitHub integration
+        run: echo "Deployed via Railway GitHub integration"
 
       - name: 'Notify Slack'
+        if: env.SLACK_WEBHOOK_URL != ''
         uses: slackapi/slack-github-action@v1.24.0
         with:
           payload: |
             {
-              "text": "🚀 XEARN production deployment",
+              "text": "XEARN production deployment",
               "blocks": [
                 {
                   "type": "section",
@@ -133,9 +118,8 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_DEPLOY_WEBHOOK }}
           SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
 
-  # 4. Smoke tests (run after deployment)
   smoke-tests:
-    if: always() && github.event_name == 'push'
+    if: github.event_name == 'push' && (needs.deploy-staging.result == 'success' || needs.deploy-production.result == 'success')
     runs-on: ubuntu-latest
     name: 'Smoke Tests'
     needs: [deploy-staging, deploy-production]

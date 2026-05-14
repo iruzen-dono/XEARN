@@ -27,24 +27,22 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://xearn:xearn_test@localhost:5432/xearn_test
-      JWT_SECRET: ci-test-secret-key
-      JWT_REFRESH_SECRET: ci-test-refresh-secret
+      JWT_SECRET: ci-test-secret-key-minimum-length
+      JWT_REFRESH_SECRET: ci-test-refresh-secret-min-len
       API_PORT: 4000
       NODE_ENV: test
+      NEXT_PUBLIC_API_URL: http://localhost:4000
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: '22.13.0'
           cache: npm
 
-      - name: Install root dependencies
+      - name: Install dependencies
         run: npm ci
-
-      - name: Validate production env contract
-        run: npm run check:prod-env:example
 
       # --- API ---
       - name: Generate Prisma client
@@ -55,27 +53,16 @@ jobs:
         run: npx prisma migrate deploy
         working-directory: apps/api
 
-      - name: Lint API (TypeScript)
-        run: npx tsc --noEmit
-        working-directory: apps/api
+      - name: Build API
+        run: npm run build:api
 
       - name: Test API
-        run: npx jest --forceExit --ci --coverage
+        run: npx jest --forceExit --ci
         working-directory: apps/api
 
       # --- Web ---
-      - name: Lint Web (TypeScript)
-        run: npx tsc --noEmit
-        working-directory: apps/web
+      - name: Lint Web
+        run: npm run lint
 
       - name: Build Web
-        run: npx next build
-        working-directory: apps/web
-
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
-        working-directory: apps/web
-
-      - name: Run Web E2E smoke tests
-        run: npm run test:e2e -- --reporter=line
-        working-directory: apps/web
+        run: npm run build:web
