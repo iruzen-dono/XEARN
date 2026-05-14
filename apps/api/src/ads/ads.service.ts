@@ -31,7 +31,7 @@ export class AdsService {
   }
 
   /** List active ads filtered by user tier and country */
-  async findActive(page = 1, limit = 20, userTier?: AccountTier, userCountry?: string) {
+  async findActive(page = 1, limit = 20, userTier?: AccountTier) {
     const take = Math.min(limit, 50);
     const skip = (page - 1) * take;
 
@@ -41,17 +41,9 @@ export class AdsService {
       OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
     };
 
-    // Filter by tier at DB level using Prisma array operators
     if (userTier) {
       andConditions.push({
         OR: [{ targetTiers: { isEmpty: true } }, { targetTiers: { has: userTier } }],
-      });
-    }
-
-    // Filter by country at DB level
-    if (userCountry) {
-      andConditions.push({
-        OR: [{ targetCountries: { isEmpty: true } }, { targetCountries: { has: userCountry } }],
       });
     }
 

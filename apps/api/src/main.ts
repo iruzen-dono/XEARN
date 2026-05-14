@@ -12,6 +12,7 @@ import { AppModule } from './app.module';
 import { ACCESS_TOKEN_COOKIE, CSRF_TOKEN_COOKIE } from './auth/auth.cookies';
 import { SanitizeInterceptor } from './common/sanitize.interceptor';
 import { StructuredLogger } from './common/structured-logger';
+import { initSentry } from './common/sentry';
 
 type RequestWithCookies = Request & {
   requestId?: string;
@@ -19,6 +20,8 @@ type RequestWithCookies = Request & {
 };
 
 async function bootstrap() {
+  initSentry();
+
   const app = await NestFactory.create(AppModule, new ExpressAdapter(), {
     logger: new StructuredLogger(),
   });

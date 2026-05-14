@@ -49,6 +49,7 @@ describe('ReferralsService', () => {
       mockPrisma as unknown as PrismaService,
       mockConfigService as unknown as ConfigService,
       mockNotifications as unknown as NotificationsService,
+      { checkReferralBadges: jest.fn().mockResolvedValue([]) } as any,
     );
   });
 

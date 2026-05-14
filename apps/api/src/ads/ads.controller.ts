@@ -27,13 +27,11 @@ export class AdsController {
   ) {}
 
   // ─── Public ─────────────────────────────────────────
-  /** List active advertisements (filtered by user tier if authenticated) */
   @Get()
   @UseGuards(JwtAuthGuard)
   async findActive(@Req() req: JwtRequest, @Query('page') page?: string) {
     const userTier = req.user?.tier || 'NORMAL';
-    const userCountry = req.user?.country;
-    return this.ads.findActive(parseInt(page || '1', 10) || 1, 20, userTier, userCountry);
+    return this.ads.findActive(parseInt(page || '1', 10) || 1, 20, userTier);
   }
 
   // ─── Authenticated publisher routes ─────────────────

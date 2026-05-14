@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
+import { GamificationService } from '../gamification/gamification.service';
 import { Decimal } from '@prisma/client/runtime/library';
 
 @Injectable()
@@ -11,6 +12,7 @@ export class ReferralsService {
     private prisma: PrismaService,
     private configService: ConfigService,
     private notificationsService: NotificationsService,
+    private gamificationService: GamificationService,
   ) {}
 
   async getReferralTree(userId: string) {
@@ -338,8 +340,23 @@ export class ReferralsService {
           3,
           `${user.firstName} ${user.lastName}`,
         );
-      } catch (err) {
+      } catch {
         /* ignore */
+      }
+    }
+
+    // Check referral badges for all beneficiaries
+    const beneficiaryIds = [
+      user.referredBy.id,
+      user.referredBy.referredBy?.id,
+      l3Beneficiary?.id,
+    ].filter(Boolean) as string[];
+
+    for (const beneficiaryId of beneficiaryIds) {
+      try {
+        await this.gamificationService.checkReferralBadges(beneficiaryId);
+      } catch {
+        /* non-critical */
       }
     }
   }

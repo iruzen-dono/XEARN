@@ -8,7 +8,6 @@ export interface JwtPayload {
   id: string;
   role: UserRole;
   tier?: AccountTier;
-  country?: string;
 }
 
 export interface JwtRequest {

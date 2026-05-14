@@ -15,6 +15,7 @@ import { PaymentModule } from './payment/payment.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AdsModule } from './ads/ads.module';
 import { GamificationModule } from './gamification/gamification.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 import { HealthController } from './health.controller';
 
 @Injectable()
@@ -75,6 +76,7 @@ class ProxyAwareThrottlerGuard extends ThrottlerGuard {
     NotificationsModule,
     AdsModule,
     GamificationModule,
+    AnalyticsModule,
   ],
   controllers: [HealthController],
   providers: [
