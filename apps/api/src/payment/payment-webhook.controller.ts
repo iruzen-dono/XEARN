@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { verifyFedapaySignature } from './fedapay-signature';
@@ -289,7 +290,7 @@ export class PaymentWebhookController {
     });
     const grossAmount = originalTx ? originalTx.amount : withdrawal.amount;
 
-    await this.prisma.$transaction(async (tx) => {
+    await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       await tx.$queryRaw`
         SELECT 1 FROM "Wallet" WHERE "userId" = ${userId} FOR UPDATE
       `;

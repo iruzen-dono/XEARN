@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentService } from './payment.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -176,7 +177,7 @@ export class PaymentReconciliationService {
       } else if (status === 'failed') {
         // withdrawal.amount stores NET; tx.amount stores GROSS — refund GROSS
         const grossAmount = tx ? tx.amount : withdrawal.amount;
-        await this.prisma.$transaction(async (ptx) => {
+        await this.prisma.$transaction(async (ptx: Prisma.TransactionClient) => {
           await ptx.$queryRaw`
             SELECT 1 FROM "Wallet" WHERE "userId" = ${withdrawal.userId} FOR UPDATE
           `;

@@ -25,7 +25,7 @@ export class ReferralsService {
       take: MAX_PER_LEVEL,
     });
 
-    const level1Ids = level1.map((u) => u.id);
+    const level1Ids = level1.map((u: { id: string }) => u.id);
     const level2 =
       level1Ids.length > 0
         ? await this.prisma.user.findMany({
@@ -41,7 +41,14 @@ export class ReferralsService {
             orderBy: { createdAt: 'desc' },
             take: MAX_PER_LEVEL,
           })
-        : [];
+        : ([] as {
+            id: string;
+            firstName: string;
+            lastName: string;
+            status: string;
+            createdAt: Date;
+            referredById: string | null;
+          }[]);
 
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -50,7 +57,7 @@ export class ReferralsService {
 
     let level3: typeof level2 = [];
     if (user?.tier === 'VIP' && level2.length > 0) {
-      const level2Ids = level2.map((u) => u.id);
+      const level2Ids = level2.map((u: { id: string }) => u.id);
       level3 = await this.prisma.user.findMany({
         where: { referredById: { in: level2Ids } },
         select: {
