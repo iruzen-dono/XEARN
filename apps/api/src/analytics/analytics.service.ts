@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, TransactionType } from '@prisma/client';
+import { TransactionType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -26,17 +26,16 @@ export class AnalyticsService {
     const safeDays = Math.max(1, Math.min(Math.floor(days), 365));
     const since = new Date(Date.now() - safeDays * 24 * 60 * 60 * 1000);
 
-    const result = await this.prisma.$queryRaw<{ date: Date; count: bigint }[]>(
-      Prisma.sql`
-        SELECT DATE("createdAt") as date, COUNT(*)::bigint as count
-        FROM users
-        WHERE "createdAt" >= ${since}
-        GROUP BY DATE("createdAt")
-        ORDER BY date ASC
-      `,
+    const result: { date: Date; count: bigint }[] = await this.prisma.$queryRawUnsafe(
+      `SELECT DATE("createdAt") as date, COUNT(*)::bigint as count
+       FROM users
+       WHERE "createdAt" >= $1
+       GROUP BY DATE("createdAt")
+       ORDER BY date ASC`,
+      since,
     );
 
-    return result.map((r) => ({
+    return result.map((r: { date: Date; count: bigint }) => ({
       date: new Date(r.date).toISOString().split('T')[0],
       users: Number(r.count),
     }));
@@ -82,12 +81,19 @@ export class AnalyticsService {
       take: safeLimit,
     });
 
-    return result.map((u) => ({
-      id: u.id,
-      email: u.email,
-      name: u.firstName,
-      totalEarned: u.wallet?.totalEarned?.toString() || '0',
-    }));
+    return result.map(
+      (u: {
+        id: string;
+        email: string | null;
+        firstName: string;
+        wallet: { totalEarned: any } | null;
+      }) => ({
+        id: u.id,
+        email: u.email,
+        name: u.firstName,
+        totalEarned: u.wallet?.totalEarned?.toString() || '0',
+      }),
+    );
   }
 
   async getReferralEarnings(): Promise<string> {
