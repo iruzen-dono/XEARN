@@ -160,12 +160,13 @@ export class TasksService {
     try {
       result = await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         // Lock the task row to serialize concurrent completions
-        const [freshTask] = await tx.$queryRaw<
+        const rows = await tx.$queryRaw<
           { maxCompletions: number | null; completionCount: number }[]
         >`
           SELECT "maxCompletions", "completionCount" FROM tasks WHERE id = ${taskId} FOR UPDATE
         `;
-        if (freshTask.maxCompletions && freshTask.completionCount >= freshTask.maxCompletions) {
+        if (!rows[0]) throw new NotFoundException('Tâche introuvable');
+        if (rows[0].maxCompletions && rows[0].completionCount >= rows[0].maxCompletions) {
           throw new BadRequestException('Nombre maximum de complétions atteint');
         }
 

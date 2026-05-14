@@ -401,8 +401,7 @@ export class WalletService {
     });
     const grossAmount = originalTx ? originalTx.amount : withdrawal.amount;
 
-    const result = await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      // Lock wallet row to prevent concurrent balance modifications
+    await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       await tx.$queryRaw`
         SELECT 1 FROM "Wallet" WHERE "userId" = ${withdrawal.userId} FOR UPDATE
       `;
@@ -435,8 +434,6 @@ export class WalletService {
     } catch {
       /* notification failure is non-critical */
     }
-
-    return result;
   }
 
   // ═══════════════════════════════════════════════════

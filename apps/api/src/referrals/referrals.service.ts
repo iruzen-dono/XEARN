@@ -352,19 +352,15 @@ export class ReferralsService {
       }
     }
 
-    // Check referral badges for all beneficiaries
+    // Check referral badges for all beneficiaries (parallel, non-critical)
     const beneficiaryIds = [
       user.referredBy.id,
       user.referredBy.referredBy?.id,
       l3Beneficiary?.id,
     ].filter(Boolean) as string[];
 
-    for (const beneficiaryId of beneficiaryIds) {
-      try {
-        await this.gamificationService.checkReferralBadges(beneficiaryId);
-      } catch {
-        /* non-critical */
-      }
-    }
+    await Promise.allSettled(
+      beneficiaryIds.map((id) => this.gamificationService.checkReferralBadges(id)),
+    );
   }
 }
