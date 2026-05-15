@@ -93,6 +93,28 @@ export class PaymentWebhookController {
       return { received: true };
     }
 
+    // C2 FIX: Anti-replay protection - vérifier si ce webhook a déjà été traité
+    const webhookId = `fedapay_${eventType || 'unknown'}_${entity.id}`;
+    const existing = await this.prisma.webhookEvent.findUnique({
+      where: { webhookId },
+    });
+
+    if (existing) {
+      this.logger.warn(
+        `Webhook ${webhookId} déjà traité le ${existing.processedAt.toISOString()} — ignoré (replay attack?)`,
+      );
+      return { received: true };
+    }
+
+    // Enregistrer le webhook AVANT de le traiter (idempotence)
+    await this.prisma.webhookEvent.create({
+      data: {
+        webhookId,
+        eventType: eventType || 'unknown',
+        payload: JSON.stringify(body).substring(0, 1000), // Premiers 1000 chars pour debug
+      },
+    });
+
     try {
       this.logger.log(`FedaPay event: ${eventType || 'unknown'}`);
 
@@ -136,7 +158,26 @@ export class PaymentWebhookController {
     }
 
     if (type === 'activation') {
-      const amount = entity.amount || 4000;
+      const receivedAmount = entity.amount || 0;
+      const expectedAmount = this.configService.get<number>('ACTIVATION_PRICE_FCFA') || 4000;
+
+      // CRITIQUE 3 FIX: Vérifier que le montant reçu correspond au prix d'activation
+      if (receivedAmount < expectedAmount) {
+        this.logger.error(
+          `🚨 FRAUDE DÉTECTÉE: Tentative d'activation avec ${receivedAmount} FCFA au lieu de ${expectedAmount} FCFA (TX: ${providerTxId}, user: ${userId})`,
+        );
+        await this.prisma.transaction.create({
+          data: {
+            userId,
+            type: 'ACTIVATION',
+            status: 'FAILED',
+            amount: receivedAmount,
+            description: `FRAUDE: Tentative d'activation avec montant insuffisant (${receivedAmount} < ${expectedAmount})`,
+            metadata: { providerTransactionId: providerTxId, fraud: true },
+          },
+        });
+        return; // NE PAS ACTIVER
+      }
 
       // Update existing PENDING transaction or create new one (idempotent)
       if (existing) {
@@ -164,7 +205,7 @@ export class PaymentWebhookController {
               userId,
               type: 'ACTIVATION',
               status: 'COMPLETED',
-              amount,
+              amount: receivedAmount,
               description: `Activation du compte (FedaPay #${providerTxId})`,
               metadata: { providerTransactionId: providerTxId },
             },
@@ -178,6 +219,36 @@ export class PaymentWebhookController {
       if (!targetTier) {
         this.logger.warn(`tier_upgrade sans targetTier dans metadata (TX: ${providerTxId})`);
         return;
+      }
+
+      const receivedAmount = entity.amount || 0;
+      const expectedAmount =
+        targetTier === 'PREMIUM'
+          ? this.configService.get<number>('PREMIUM_PRICE_FCFA') || 10000
+          : this.configService.get<number>('VIP_PRICE_FCFA') || 25000;
+
+      // CRITIQUE 3 FIX: Vérifier que le montant reçu correspond au prix du tier
+      if (receivedAmount < expectedAmount) {
+        this.logger.error(
+          `🚨 FRAUDE DÉTECTÉE: Tentative d'upgrade ${targetTier} avec ${receivedAmount} FCFA au lieu de ${expectedAmount} FCFA (TX: ${providerTxId}, user: ${userId})`,
+        );
+        await this.prisma.transaction.create({
+          data: {
+            userId,
+            type: 'TIER_UPGRADE',
+            status: 'FAILED',
+            amount: receivedAmount,
+            description: `FRAUDE: Tentative d'upgrade ${targetTier} avec montant insuffisant`,
+            metadata: {
+              providerTransactionId: providerTxId,
+              targetTier,
+              expectedAmount,
+              receivedAmount,
+              fraud: true,
+            },
+          },
+        });
+        return; // NE PAS UPGRADER
       }
 
       if (existing) {

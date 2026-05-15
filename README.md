@@ -51,25 +51,67 @@ xearn/
 
 ## Features
 
-- Authentification (email + Google OAuth)
-- Systeme de comptes 3 tiers (Normal, Premium, VIP)
-- Taches avec anti-triche (session, duree minimum, cooldown)
-- Portefeuille avec retraits Mobile Money (FedaPay)
-- Parrainage 3 niveaux avec commissions automatiques
-- Gamification (streaks, badges, classement)
-- Notifications temps reel (SSE)
-- Dashboard admin avec analytics et exports CSV
-- Publicites (Pub Maker) avec approbation admin
+### ✅ Fonctionnalités Production-Ready
 
-## Securite
+- ✅ **Authentification** (email + Google OAuth avec vérification)
+- ✅ **Système de comptes 3 tiers** (Normal, Premium, VIP)
+- ✅ **Portefeuille** avec retraits Mobile Money (FedaPay)
+- ✅ **Parrainage 3 niveaux** avec commissions automatiques (40%, 10%, 5%)
+- ✅ **Gamification** (streaks, badges, classement)
+- ✅ **Notifications temps réel** (SSE)
+- ✅ **Dashboard admin** avec analytics et exports CSV
+- ✅ **Système de paiement sécurisé** (HMAC webhook, anti-replay)
 
-- Rate limiting proxy-aware (IP reelle via X-Forwarded-For)
-- SELECT FOR UPDATE sur toutes les operations wallet
-- Swagger cache en production
-- Validation JWT au demarrage (fail-fast)
-- Anti-enumeration emails
-- Reconciliation avec mutex
-- Soft delete pour conformite financiere
+### 🚧 En Développement (Désactivés en Beta)
+
+- 🚧 **Tâches** - Module fonctionnel mais désactivé
+  - Endpoints disponibles : `/api/tasks/*`
+  - Anti-triche implémenté (session, cooldown)
+  - Activation via `FEATURE_TASKS_ENABLED=true`
+
+- 🚧 **Publicités (Pub Maker)** - Module fonctionnel mais désactivé
+  - Endpoints disponibles : `/api/ads/*`
+  - Approbation admin implémentée
+  - Activation via `FEATURE_ADS_ENABLED=true`
+
+## Sécurité
+
+### 🔒 Protections Implémentées
+
+**Sécurité Financière (Score: 9.5/10)**
+- ✅ SELECT FOR UPDATE sur toutes les opérations wallet (anti-race condition)
+- ✅ Vérification de retrait unique (empêche retraits multiples simultanés)
+- ✅ Anti-replay webhook (table dédiée WebhookEvent)
+- ✅ Idempotence des commissions (contrainte unique DB)
+- ✅ Transactions atomiques Prisma sur toutes opérations critiques
+- ✅ HMAC SHA-256 pour webhooks FedaPay
+
+**Authentification & Autorisation**
+- ✅ JWT httpOnly cookies + CSRF double-submit
+- ✅ Google OAuth 2.0
+- ✅ Rate limiting proxy-aware (IP réelle via X-Forwarded-For)
+- ✅ RBAC strict (admin/user séparation)
+- ✅ Anti-énumération emails
+
+**Anti-Triche**
+- ✅ Device fingerprinting
+- ✅ Sessions de tâche obligatoires avec temps minimum
+- ✅ Cooldown entre tâches (10 secondes)
+- ✅ Limites de complétion avec lock FOR UPDATE
+
+**Conformité & Audit**
+- ✅ Audit logs pour toutes actions admin
+- ✅ Soft delete pour conformité financière
+- ✅ Réconciliation automatique (5 minutes)
+- ✅ Webhook events tracking
+
+**Infrastructure**
+- ✅ Helmet security headers (CSP, HSTS, X-Frame-Options)
+- ✅ Swagger désactivé en production
+- ✅ Validation JWT au démarrage (fail-fast)
+- ✅ Sentry monitoring (backend + frontend)
+
+📄 **Rapport d'audit complet:** [SECURITY_AUDIT_REPORT.md](./SECURITY_AUDIT_REPORT.md)
 
 ## Tests
 

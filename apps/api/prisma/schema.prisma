@@ -267,14 +267,17 @@ model Commission {
   beneficiary   User     @relation("CommissionsReceived", fields: [beneficiaryId], references: [id], onDelete: Cascade)
   sourceUserId  String
   sourceUser    User     @relation("CommissionsGenerated", fields: [sourceUserId], references: [id], onDelete: Cascade)
-  level         Int      // 1 ou 2
+  level         Int      // 1, 2, ou 3
   percentage    Decimal  @db.Decimal(5, 2)
   amount        Decimal  @db.Decimal(12, 2)
+  sourceType    String?  // Type de source: "TASK_COMPLETION", "ACTIVATION", etc.
+  sourceId      String?  // ID de la TaskCompletion, Transaction, etc.
   createdAt     DateTime @default(now())
 
   @@index([beneficiaryId])
   @@index([sourceUserId])
   @@index([createdAt])
+  @@unique([sourceUserId, beneficiaryId, level, sourceType, sourceId], name: "unique_commission")
   @@map("commissions")
 }
 
@@ -413,6 +416,22 @@ model Advertisement {
   @@index([status, publisherId])
   @@index([status, expiresAt])
   @@map("advertisements")
+}
+
+// ==========================================
+// WEBHOOK EVENTS (Anti-Replay Protection)
+// ==========================================
+
+model WebhookEvent {
+  id          String   @id @default(cuid())
+  webhookId   String   @unique  // Format: "fedapay_{eventType}_{entityId}"
+  eventType   String   // ex: "transaction.approved", "payout.sent"
+  payload     String?  // JSON payload complet (optionnel, pour debug)
+  processedAt DateTime @default(now())
+
+  @@index([webhookId])
+  @@index([processedAt])
+  @@map("webhook_events")
 }
 
 // ==========================================

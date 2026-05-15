@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { Decimal } from '@prisma/client/runtime/library';
@@ -9,6 +9,8 @@ import type { AccountTier, PaymentMethod } from '@xearn/types';
 
 @Injectable()
 export class WalletService {
+  private readonly logger = new Logger(WalletService.name);
+
   constructor(
     private prisma: PrismaService,
     private configService: ConfigService,
@@ -162,9 +164,26 @@ export class WalletService {
     accountInfo: string,
   ) {
     const minWithdrawal = this.configService.get<number>('WITHDRAWAL_MIN_FCFA') || 2000;
+    const maxWithdrawal = 5000000; // 5 millions FCFA - limite sécurité
+
+    // CRITIQUE 1 FIX: Validation stricte des montants
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new BadRequestException('Montant invalide');
+    }
 
     if (amount < minWithdrawal) {
       throw new BadRequestException(`Montant minimum de retrait: ${minWithdrawal} FCFA`);
+    }
+
+    if (amount > maxWithdrawal) {
+      throw new BadRequestException(
+        `Montant maximum de retrait: ${maxWithdrawal.toLocaleString()} FCFA`,
+      );
+    }
+
+    // Vérifier que c'est un entier (FCFA n'a pas de centimes)
+    if (!Number.isInteger(amount)) {
+      throw new BadRequestException('Le montant doit être un nombre entier (FCFA)');
     }
 
     const user = await this.prisma.user.findUnique({
@@ -179,6 +198,42 @@ export class WalletService {
     const feeAmount = Math.round((amount * feePercent) / 100);
     const netAmount = amount - feeAmount;
     const provider = this.paymentService.getProvider();
+
+    // C1 FIX: Vérifier qu'aucun retrait n'est déjà en cours pour cet utilisateur
+    const pendingWithdrawal = await this.prisma.withdrawal.findFirst({
+      where: {
+        userId,
+        status: { in: ['PENDING', 'PROCESSING'] },
+      },
+    });
+
+    if (pendingWithdrawal) {
+      throw new BadRequestException(
+        "Vous avez déjà un retrait en cours. Veuillez attendre son traitement avant d'en demander un autre.",
+      );
+    }
+
+    // MODÉRÉ 2 FIX: Limites quotidiennes de retrait (anti-drainage)
+    const last24h = await this.prisma.withdrawal.findMany({
+      where: {
+        userId,
+        createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+        status: { in: ['PENDING', 'PROCESSING', 'COMPLETED'] },
+      },
+    });
+
+    // Limite: 3 retraits par 24h
+    if (last24h.length >= 3) {
+      throw new BadRequestException('Limite de 3 retraits par 24h atteinte. Réessayez demain.');
+    }
+
+    // Limite: 50,000 FCFA total par 24h
+    const totalLast24h = last24h.reduce((sum, w) => sum + Number(w.amount), 0);
+    if (totalLast24h + amount > 50000) {
+      throw new BadRequestException(
+        `Limite de 50,000 FCFA par 24h atteinte. Vous avez déjà retiré ${totalLast24h.toLocaleString()} FCFA aujourd'hui.`,
+      );
+    }
 
     // Transaction atomique : vérifier le solde + débiter le wallet + créer le retrait
     const result = await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
@@ -359,9 +414,40 @@ export class WalletService {
 
   // Admin: approuver un retrait
   async approveWithdrawal(withdrawalId: string) {
-    const withdrawal = await this.prisma.withdrawal.findUnique({ where: { id: withdrawalId } });
+    const withdrawal = await this.prisma.withdrawal.findUnique({
+      where: { id: withdrawalId },
+      include: { user: true },
+    });
     if (!withdrawal) throw new BadRequestException('Retrait introuvable');
-    if (withdrawal.status !== 'PENDING') throw new BadRequestException('Retrait déjà traité');
+    if (withdrawal.status !== 'PENDING') {
+      throw new BadRequestException('Retrait déjà traité');
+    }
+
+    // CRITIQUE 2 FIX: Vérifier qu'une transaction PENDING existe (montant débité)
+    const pendingTx = await this.prisma.transaction.findFirst({
+      where: {
+        metadata: { path: ['withdrawalId'], equals: withdrawalId },
+        type: 'WITHDRAWAL',
+        status: 'PENDING',
+      },
+    });
+
+    if (!pendingTx) {
+      this.logger.error(
+        `ALERTE: Tentative d'approbation du retrait ${withdrawalId} sans transaction PENDING. Possible fraude ou erreur.`,
+      );
+      throw new BadRequestException(
+        "Transaction de retrait introuvable. Le montant n'a peut-être pas été débité. Vérifiez le wallet avant d'approuver.",
+      );
+    }
+
+    // Vérifier que le montant correspond
+    if (Number(pendingTx.amount) !== Number(withdrawal.amount)) {
+      this.logger.error(
+        `ALERTE: Montant incohérent pour retrait ${withdrawalId}. Transaction: ${pendingTx.amount}, Retrait: ${withdrawal.amount}`,
+      );
+      throw new BadRequestException('Montant incohérent entre transaction et retrait');
+    }
 
     const result = await this.prisma.$transaction([
       this.prisma.withdrawal.update({
