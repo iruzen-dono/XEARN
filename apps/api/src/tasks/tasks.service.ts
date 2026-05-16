@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ReferralsService } from '../referrals/referrals.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -20,6 +20,8 @@ const TASK_COOLDOWN_SECONDS = 10;
 
 @Injectable()
 export class TasksService {
+  private readonly logger = new Logger(TasksService.name);
+
   constructor(
     private prisma: PrismaService,
     private referralsService: ReferralsService,
@@ -44,7 +46,7 @@ export class TasksService {
 
     const skip = (page - 1) * limit;
     const where: Record<string, unknown> = {
-      status: 'ACTIVE',
+      AND: [{ status: 'ACTIVE' }, { OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }],
       requiredTier: { in: accessibleTiers },
     };
     const [tasks, total] = await Promise.all([
@@ -224,14 +226,14 @@ export class TasksService {
         new Decimal(task.reward.toString()),
       );
     } catch (err) {
-      console.error('Erreur distribution commissions parrainage:', err);
+      this.logger.error('Erreur distribution commissions parrainage', err);
     }
 
     // Notification de tâche complétée
     try {
       await this.notificationsService.notifyTaskCompleted(userId, task.title, Number(task.reward));
     } catch (err) {
-      console.error('Erreur notification:', err);
+      this.logger.error('Erreur notification', err);
     }
 
     // Gamification: streak + badges
@@ -240,7 +242,7 @@ export class TasksService {
       await this.gamificationService.checkTaskBadges(userId);
       await this.gamificationService.checkEarningsBadges(userId);
     } catch (err) {
-      console.error('Erreur gamification:', err);
+      this.logger.error('Erreur gamification', err);
     }
 
     return result;

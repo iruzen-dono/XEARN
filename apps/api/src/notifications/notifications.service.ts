@@ -18,13 +18,15 @@ export class NotificationsService {
     message: string,
     metadata?: InputJsonValue,
   ) {
+    const sanitized = this.sanitizeMetadata(metadata);
+
     const notification = await this.prisma.notification.create({
       data: {
         userId,
         type,
         title,
         message,
-        metadata,
+        metadata: sanitized as InputJsonValue | undefined,
       },
     });
 
@@ -32,6 +34,44 @@ export class NotificationsService {
     this.eventEmitter.emit(`notification.${userId}`, notification);
 
     return notification;
+  }
+
+  /**
+   * Validates and sanitizes notification metadata.
+   * - Must be a plain object (not array, not null)
+   * - Max 20 keys
+   * - String values truncated to 500 chars
+   * - Keys starting with '__' are stripped (prototype pollution prevention)
+   */
+  private sanitizeMetadata(metadata: unknown): Record<string, unknown> | null {
+    if (metadata === undefined || metadata === null) {
+      return null;
+    }
+
+    if (typeof metadata !== 'object' || Array.isArray(metadata)) {
+      return null;
+    }
+
+    const raw = metadata as Record<string, unknown>;
+    const result: Record<string, unknown> = {};
+    let keyCount = 0;
+
+    for (const key of Object.keys(raw)) {
+      // Strip prototype-pollution-prone keys
+      if (key.startsWith('__')) {
+        continue;
+      }
+
+      if (keyCount >= 20) {
+        break;
+      }
+
+      const value = raw[key];
+      result[key] = typeof value === 'string' ? value.slice(0, 500) : value;
+      keyCount++;
+    }
+
+    return Object.keys(result).length > 0 ? result : null;
   }
 
   async getForUser(userId: string, page = 1, limit = 20) {

@@ -125,17 +125,17 @@ async function bootstrap() {
     if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') return next();
 
     // CSRF exempt: auth registration/login routes, password reset, email verification, and payment webhooks
-    // Note: /api/auth/logout is NOT exempted — it requires CSRF protection
+    // Note: /api/v1/auth/logout is NOT exempted — it requires CSRF protection
     const csrfExempt = [
-      '/api/auth/register',
-      '/api/auth/login',
-      '/api/auth/refresh',
-      '/api/auth/google',
-      '/api/auth/forgot-password',
-      '/api/auth/reset-password',
-      '/api/auth/resend-verification',
-      '/api/auth/verify-email',
-      '/api/payment/webhook',
+      '/api/v1/auth/register',
+      '/api/v1/auth/login',
+      '/api/v1/auth/refresh',
+      '/api/v1/auth/google',
+      '/api/v1/auth/forgot-password',
+      '/api/v1/auth/reset-password',
+      '/api/v1/auth/resend-verification',
+      '/api/v1/auth/verify-email',
+      '/api/v1/payment/webhook',
     ];
     if (csrfExempt.some((prefix) => req.path.startsWith(prefix))) return next();
 
@@ -185,15 +185,19 @@ async function bootstrap() {
     maxAge: 86400, // preflight cache 24h
   });
 
-  // Prefix API
-  app.setGlobalPrefix('api');
+  // Prefix API — versioned routes: /api/v1/auth/login, /api/v1/tasks, etc.
+  // NOTE: Frontend NEXT_PUBLIC_API_URL should be updated at deploy time to include /v1
+  // (e.g., the rawFetch base path changes from /api to /api/v1)
+  app.setGlobalPrefix('api/v1', {
+    exclude: ['health'],
+  });
 
-  if (configService.get('NODE_ENV') !== 'production') {
+  if (configService.get('NODE_ENV') === 'development') {
     const swaggerConfig = new DocumentBuilder()
       .setTitle('XEARN API')
-      .setDescription('API documentation — disabled in production')
+      .setDescription('API documentation — enabled in development only')
       .setVersion('1.0.0')
-      .addServer('/api')
+      .addServer('/api/v1')
       .build();
 
     const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig, {

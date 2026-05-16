@@ -76,7 +76,11 @@ describe('TasksService', () => {
       expect(result.tasks).toHaveLength(1);
       expect(result.total).toBe(1);
       expect(mockPrisma.task.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ where: expect.objectContaining({ status: 'ACTIVE' }) }),
+        expect.objectContaining({
+          where: expect.objectContaining({
+            AND: expect.arrayContaining([expect.objectContaining({ status: 'ACTIVE' })]),
+          }),
+        }),
       );
     });
   });

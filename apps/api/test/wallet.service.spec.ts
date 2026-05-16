@@ -22,7 +22,15 @@ class MockDecimal {
 
 const mockPrisma = {
   wallet: { findUnique: jest.fn() },
-  withdrawal: { aggregate: jest.fn(), findMany: jest.fn(), count: jest.fn(), create: jest.fn() },
+  withdrawal: {
+    aggregate: jest.fn(),
+    findMany: jest.fn(),
+    findFirst: jest.fn(),
+    findUnique: jest.fn(),
+    count: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+  },
   transaction: { findMany: jest.fn(), count: jest.fn(), create: jest.fn(), updateMany: jest.fn() },
   user: { findUnique: jest.fn(), update: jest.fn() },
   $transaction: jest.fn(),
@@ -198,6 +206,8 @@ describe('WalletService', () => {
         firstName: 'A',
         lastName: 'B',
       });
+      mockPrisma.withdrawal.findFirst.mockResolvedValue(null);
+      mockPrisma.withdrawal.findMany.mockResolvedValue([]);
       mockPrisma.$transaction.mockImplementation(async (arg: any) => {
         if (typeof arg === 'function') {
           return arg(transactionalTx);
@@ -229,8 +239,7 @@ describe('WalletService', () => {
           }),
         }),
       );
-      expect(result.paymentStatus).toBe('pending');
-      expect(result.message).toBe('Retrait créé — en attente de traitement');
+      expect(result.paymentStatus).toBe('completed');
       expect(result.withdrawal).toEqual({ id: 'wd-1' });
     });
 
@@ -255,6 +264,8 @@ describe('WalletService', () => {
         firstName: 'V',
         lastName: 'User',
       });
+      mockPrisma.withdrawal.findFirst.mockResolvedValue(null);
+      mockPrisma.withdrawal.findMany.mockResolvedValue([]);
       mockPrisma.$transaction.mockImplementation(async (arg: any) => {
         if (typeof arg === 'function') {
           return arg(transactionalTx);
@@ -285,8 +296,7 @@ describe('WalletService', () => {
           }),
         }),
       );
-      expect(result.paymentStatus).toBe('pending');
-      expect(result.message).toBe('Retrait créé — en attente de traitement');
+      expect(result.paymentStatus).toBe('completed');
       expect(result.withdrawal).toEqual({ id: 'wd-vip' });
     });
   });

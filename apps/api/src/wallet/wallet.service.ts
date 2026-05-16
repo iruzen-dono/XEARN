@@ -222,16 +222,20 @@ export class WalletService {
       },
     });
 
-    // Limite: 3 retraits par 24h
-    if (last24h.length >= 3) {
-      throw new BadRequestException('Limite de 3 retraits par 24h atteinte. Réessayez demain.');
+    // Limite: retraits par 24h (configurable via env)
+    const dailyCountLimit = this.configService.get<number>('WITHDRAWAL_DAILY_COUNT_LIMIT') || 3;
+    if (last24h.length >= dailyCountLimit) {
+      throw new BadRequestException(
+        `Limite de ${dailyCountLimit} retraits par 24h atteinte. Réessayez demain.`,
+      );
     }
 
-    // Limite: 50,000 FCFA total par 24h
+    // Limite: FCFA total par 24h (configurable via env)
+    const dailyAmountLimit = this.configService.get<number>('WITHDRAWAL_DAILY_LIMIT_FCFA') || 50000;
     const totalLast24h = last24h.reduce((sum, w) => sum + Number(w.amount), 0);
-    if (totalLast24h + amount > 50000) {
+    if (totalLast24h + amount > dailyAmountLimit) {
       throw new BadRequestException(
-        `Limite de 50,000 FCFA par 24h atteinte. Vous avez déjà retiré ${totalLast24h.toLocaleString()} FCFA aujourd'hui.`,
+        `Limite de ${dailyAmountLimit.toLocaleString()} FCFA par 24h atteinte. Vous avez déjà retiré ${totalLast24h.toLocaleString()} FCFA aujourd'hui.`,
       );
     }
 
@@ -239,7 +243,7 @@ export class WalletService {
     const result = await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // C3 fix: Use SELECT FOR UPDATE to prevent concurrent withdrawal race conditions
       const [lockedWallet] = await tx.$queryRaw<{ balance: Decimal | number | string }[]>`
-        SELECT balance FROM "Wallet" WHERE "userId" = ${userId} FOR UPDATE
+        SELECT balance FROM "wallets" WHERE "userId" = ${userId} FOR UPDATE
       `;
       if (
         !lockedWallet ||
@@ -441,10 +445,12 @@ export class WalletService {
       );
     }
 
-    // Vérifier que le montant correspond
-    if (Number(pendingTx.amount) !== Number(withdrawal.amount)) {
+    // Vérifier que le montant net correspond (pendingTx.amount = brut, withdrawal.amount = net)
+    const txMetadata = pendingTx.metadata as Record<string, unknown> | null;
+    const expectedNet = txMetadata?.netAmount != null ? Number(txMetadata.netAmount) : null;
+    if (expectedNet !== null && expectedNet !== Number(withdrawal.amount)) {
       this.logger.error(
-        `ALERTE: Montant incohérent pour retrait ${withdrawalId}. Transaction: ${pendingTx.amount}, Retrait: ${withdrawal.amount}`,
+        `ALERTE: Montant incohérent pour retrait ${withdrawalId}. Net attendu: ${expectedNet}, Retrait: ${withdrawal.amount}`,
       );
       throw new BadRequestException('Montant incohérent entre transaction et retrait');
     }
@@ -489,7 +495,7 @@ export class WalletService {
 
     await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       await tx.$queryRaw`
-        SELECT 1 FROM "Wallet" WHERE "userId" = ${withdrawal.userId} FOR UPDATE
+        SELECT 1 FROM "wallets" WHERE "userId" = ${withdrawal.userId} FOR UPDATE
       `;
 
       await tx.withdrawal.update({

@@ -35,6 +35,7 @@ import type {
   LeaderboardEntry,
 } from '@/types';
 import { getApiBaseUrl } from './api-base-url';
+import { ApiError } from './errors';
 
 export const API_URL = getApiBaseUrl(process.env.NEXT_PUBLIC_API_URL);
 
@@ -125,13 +126,13 @@ export async function api<T>(endpoint: string, options: FetchOptions = {}): Prom
       if (!options.skipAuthRedirect) {
         window.location.href = '/login';
       }
-      throw new Error('Session expirée, veuillez vous reconnecter');
+      throw new ApiError('Session expirée, veuillez vous reconnecter', 401, 'SESSION_EXPIRED');
     }
   }
 
   if (!res.ok) {
-    const error = await res.json().catch(() => ({ message: 'Erreur réseau' }));
-    throw new Error(error.message || 'Une erreur est survenue');
+    const body = await res.json().catch(() => ({ message: 'Erreur réseau' }));
+    throw new ApiError(body.message || 'Une erreur est survenue', res.status, body.code);
   }
 
   return res.json();

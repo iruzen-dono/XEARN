@@ -47,8 +47,7 @@
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "swagger-ui-express": "^5.0.1",
-    "web": "file:../web",
-    "xearn": "file:../.."
+    "@xearn/types": "*"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.21",

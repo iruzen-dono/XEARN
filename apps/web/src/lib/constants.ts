@@ -1,0 +1,45 @@
+export const USER_ROLES = {
+  ADMIN: 'ADMIN',
+  USER: 'USER',
+} as const;
+
+export const ACCOUNT_STATUS = {
+  FREE: 'FREE',
+  ACTIVATED: 'ACTIVATED',
+  SUSPENDED: 'SUSPENDED',
+  BANNED: 'BANNED',
+} as const;
+
+export const ACCOUNT_TIER = {
+  NORMAL: 'NORMAL',
+  PREMIUM: 'PREMIUM',
+  VIP: 'VIP',
+} as const;
+
+export const TASK_TYPES = {
+  VIDEO_AD: 'VIDEO_AD',
+  CLICK_AD: 'CLICK_AD',
+  SURVEY: 'SURVEY',
+  SOCIAL_MEDIA: 'SOCIAL_MEDIA',
+  APP_INSTALL: 'APP_INSTALL',
+} as const;
+
+export const TASK_STATUS = {
+  ACTIVE: 'ACTIVE',
+  PAUSED: 'PAUSED',
+  COMPLETED: 'COMPLETED',
+  EXPIRED: 'EXPIRED',
+} as const;
+
+export const TRANSACTION_STATUS = {
+  PENDING: 'PENDING',
+  COMPLETED: 'COMPLETED',
+  FAILED: 'FAILED',
+} as const;
+
+export const WITHDRAWAL_STATUS = {
+  PENDING: 'PENDING',
+  PROCESSING: 'PROCESSING',
+  COMPLETED: 'COMPLETED',
+  FAILED: 'FAILED',
+} as const;

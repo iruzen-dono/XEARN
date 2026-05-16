@@ -66,20 +66,66 @@ jobs:
       - name: 'Build frontend'
         run: npm run build:web
 
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.13.0'
+          cache: 'npm'
+      - run: npm ci
+      - name: Check for known vulnerabilities (critical = fail, high = warn)
+        run: |
+          npm audit --audit-level=critical
+          npm audit --audit-level=high || echo "::warning::High severity vulnerabilities found"
+      - name: Check for secrets in code
+        run: |
+          if grep -rn "AKIA\|sk_live\|password\s*=\s*['\"][^'\"]*['\"]" --include="*.ts" --include="*.js" --exclude-dir=node_modules --exclude-dir=dist .; then
+            echo "::warning::Potential secrets found in code"
+          fi
+
   deploy-staging:
     if: github.ref == 'refs/heads/staging' && github.event_name == 'push'
     runs-on: ubuntu-latest
     name: 'Deploy to Staging'
     needs: test
 
+    environment:
+      name: staging
+      url: https://staging.xearn.railway.app
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: 'Deploy API to Railway (staging)'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            console.log('Triggering Railway deployment for staging...');
+      # Railway auto-deploys when commits are pushed to the staging branch
+      # via its GitHub integration. This job waits for the deployment to
+      # become healthy before marking the pipeline as successful.
+      - name: 'Wait for Railway staging deployment'
+        run: |
+          echo "Railway auto-deploys via GitHub integration..."
+          echo "Waiting for staging services to become healthy..."
+          sleep 30
+          for i in $(seq 1 10); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://staging-api.xearn.railway.app/api/health || true)
+            if [ "$STATUS" = "200" ]; then
+              echo "Staging API is healthy (attempt $i)"
+              exit 0
+            fi
+            echo "Attempt $i: API returned $STATUS, retrying in 15s..."
+            sleep 15
+          done
+          echo "Staging API did not become healthy in time"
+          exit 1
+
+      - name: 'Verify staging frontend'
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://staging.xearn.railway.app/api/health || true)
+          if [ "$STATUS" != "200" ]; then
+            echo "Warning: Staging frontend health check returned $STATUS"
+          else
+            echo "Staging frontend is healthy"
+          fi
 
   deploy-production:
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
@@ -94,8 +140,34 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: 'Deploy API to Railway (production)'
-        run: echo "Deployed via Railway GitHub integration"
+      # Railway auto-deploys when commits are pushed to main via its GitHub
+      # integration. This job gates on the "production" environment approval,
+      # then waits for the deployment to become healthy.
+      - name: 'Wait for Railway production deployment'
+        run: |
+          echo "Railway auto-deploys via GitHub integration..."
+          echo "Waiting for production services to become healthy..."
+          sleep 30
+          for i in $(seq 1 10); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://api.xearn.com/api/health || true)
+            if [ "$STATUS" = "200" ]; then
+              echo "Production API is healthy (attempt $i)"
+              exit 0
+            fi
+            echo "Attempt $i: API returned $STATUS, retrying in 15s..."
+            sleep 15
+          done
+          echo "Production API did not become healthy in time"
+          exit 1
+
+      - name: 'Verify production frontend'
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" https://xearn.com/api/health || true)
+          if [ "$STATUS" != "200" ]; then
+            echo "Warning: Production frontend health check returned $STATUS"
+          else
+            echo "Production frontend is healthy"
+          fi
 
       - name: 'Notify Slack'
         if: env.SLACK_WEBHOOK_URL != ''

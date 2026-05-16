@@ -16,7 +16,9 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { AdsModule } from './ads/ads.module';
 import { GamificationModule } from './gamification/gamification.module';
 import { AnalyticsModule } from './analytics/analytics.module';
+import { AdminModule } from './admin/admin.module';
 import { HealthController } from './health.controller';
+import { CleanupCronService } from './common/cleanup.cron';
 
 @Injectable()
 class ProxyAwareThrottlerGuard extends ThrottlerGuard {
@@ -77,6 +79,7 @@ class ProxyAwareThrottlerGuard extends ThrottlerGuard {
     AdsModule,
     GamificationModule,
     AnalyticsModule,
+    AdminModule,
   ],
   controllers: [HealthController],
   providers: [
@@ -84,6 +87,7 @@ class ProxyAwareThrottlerGuard extends ThrottlerGuard {
       provide: APP_GUARD,
       useClass: ProxyAwareThrottlerGuard,
     },
+    CleanupCronService,
   ],
 })
 export class AppModule {}

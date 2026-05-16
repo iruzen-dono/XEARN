@@ -1,13 +1,21 @@
-name: CI
+# -----------------------------------------------------------------
+# Lightweight PR Check
+# -----------------------------------------------------------------
+# This workflow runs lint and tests on pull requests only.
+# It is NOT the primary CI/CD pipeline. See ci-cd.yml for the full
+# pipeline that handles push-to-main builds, deployments, and smoke
+# tests. The push trigger was removed here to prevent double-runs
+# when commits land on main (ci-cd.yml already covers that).
+# -----------------------------------------------------------------
+
+name: CI - PR Check
 
 on:
-  push:
-    branches: [main, develop]
   pull_request:
-    branches: [main]
+    branches: [main, develop]
 
 jobs:
-  lint-test-build:
+  lint-and-test:
     runs-on: ubuntu-latest
 
     services:
@@ -44,7 +52,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # --- API ---
       - name: Generate Prisma client
         run: npx prisma generate
         working-directory: apps/api
@@ -53,16 +60,9 @@ jobs:
         run: npx prisma migrate deploy
         working-directory: apps/api
 
-      - name: Build API
-        run: npm run build:api
+      - name: Lint
+        run: npm run lint
 
       - name: Test API
         run: npx jest --forceExit --ci
         working-directory: apps/api
-
-      # --- Web ---
-      - name: Lint Web
-        run: npm run lint
-
-      - name: Build Web
-        run: npm run build:web

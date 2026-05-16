@@ -118,7 +118,7 @@ export class AuthService {
           userAgent: ctx?.userAgent,
         });
         if (check?.suspicious) {
-          console.warn(
+          this.logger.warn(
             `[AntiCheat] Multi-compte détecté à l'inscription : user=${user.id}, comptes liés=${check.matchedAccounts.join(',')}`,
           );
         }
@@ -132,21 +132,17 @@ export class AuthService {
       try {
         await this.sendAccountCreatedEmail(user.email, user.firstName, true);
       } catch (err) {
-        console.error('Erreur envoi email de confirmation de création de compte:', err);
+        this.logger.error('Erreur envoi email de confirmation de creation de compte', err);
       }
 
-      let verificationUrl: string | undefined;
       try {
-        verificationUrl = await this.sendVerificationEmail(user.id, user.email, user.firstName);
+        await this.sendVerificationEmail(user.id, user.email, user.firstName);
       } catch (err) {
-        console.error('Erreur envoi email de vérification:', err);
+        this.logger.error('Erreur envoi email de verification', err);
       }
       return {
-        message: 'Compte créé avec succès. Consultez votre boîte mail pour terminer l’activation.',
+        message: 'Verifiez votre email',
         requiresEmailVerification: true,
-        ...(this.configService.get('NODE_ENV') !== 'production' && verificationUrl
-          ? { verificationUrl }
-          : {}),
       };
     }
 
@@ -216,7 +212,7 @@ export class AuthService {
           userAgent: ctx?.userAgent,
         });
         if (check?.suspicious) {
-          console.warn(
+          this.logger.warn(
             `[AntiCheat] Multi-compte détecté au login : user=${user.id}, comptes liés=${check.matchedAccounts.join(',')}`,
           );
         }
@@ -289,12 +285,9 @@ export class AuthService {
     if (!user || !user.email || user.emailVerifiedAt) {
       return { message: genericMessage };
     }
-    const verificationUrl = await this.sendVerificationEmail(user.id, user.email, user.firstName);
+    await this.sendVerificationEmail(user.id, user.email, user.firstName);
     return {
       message: genericMessage,
-      ...(this.configService.get('NODE_ENV') !== 'production' && verificationUrl
-        ? { verificationUrl }
-        : {}),
     };
   }
 
@@ -426,7 +419,7 @@ export class AuthService {
       try {
         await this.sendAccountCreatedEmail(user.email!, user.firstName, false);
       } catch (err) {
-        console.error('Erreur envoi email de confirmation de création de compte:', err);
+        this.logger.error('Erreur envoi email de confirmation de création de compte', err);
       }
     }
 
@@ -479,7 +472,7 @@ export class AuthService {
     try {
       await this.sendPasswordResetEmail(user.email, user.firstName, token);
     } catch (err) {
-      console.error('Erreur envoi email reset password:', err);
+      this.logger.error('Erreur envoi email reset password', err);
     }
 
     return { message: 'Si cette adresse existe, un email de réinitialisation a été envoyé.' };

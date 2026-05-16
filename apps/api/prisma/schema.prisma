@@ -73,10 +73,6 @@ model User {
   userBadges           UserBadge[]
   advertisements       Advertisement[]
 
-  // OTP
-  otpCode       String?
-  otpExpiresAt  DateTime?
-
   // Password reset
   passwordResetToken     String?
   passwordResetExpiresAt DateTime?

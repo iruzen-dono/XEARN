@@ -42,6 +42,10 @@ export class AdsService {
     };
 
     if (userTier) {
+      // PERF NOTE: targetTiers is a JSON array column filtered with Prisma `has`.
+      // JSON array fields cannot be efficiently indexed in most databases, resulting
+      // in full-table scans on large datasets. For scale, consider migrating to a
+      // junction table (e.g. ad_target_tiers) with a composite index.
       andConditions.push({
         OR: [{ targetTiers: { isEmpty: true } }, { targetTiers: { has: userTier } }],
       });
@@ -176,27 +180,28 @@ export class AdsService {
 
   /** Get publisher stats for their ads */
   async getPublisherStats(publisherId: string) {
-    const ads = await this.prisma.advertisement.findMany({
-      where: { publisherId },
-    });
-
-    const totalAds = ads.length;
-    const activeAds = ads.filter((a: AdvertisementRecord) => a.status === 'ACTIVE').length;
-    const totalSpent = ads.reduce(
-      (sum: number, a: AdvertisementRecord) => sum + Number(a.spent),
-      0,
-    );
-    const totalBudget = ads.reduce(
-      (sum: number, a: AdvertisementRecord) => sum + (a.budget ? Number(a.budget) : 0),
-      0,
-    );
+    const [totals, activeCount, ads] = await Promise.all([
+      this.prisma.advertisement.aggregate({
+        where: { publisherId },
+        _count: true,
+        _sum: { spent: true, budget: true },
+      }),
+      this.prisma.advertisement.count({
+        where: { publisherId, status: 'ACTIVE' },
+      }),
+      this.prisma.advertisement.findMany({
+        where: { publisherId },
+        select: { id: true, title: true, status: true, spent: true, budget: true, createdAt: true },
+        orderBy: { createdAt: 'desc' },
+      }),
+    ]);
 
     return {
-      totalAds,
-      activeAds,
-      totalSpent: totalSpent.toFixed(2),
-      totalBudget: totalBudget.toFixed(2),
-      ads: ads.map((ad: AdvertisementRecord) => ({
+      totalAds: totals._count,
+      activeAds: activeCount,
+      totalSpent: Number(totals._sum.spent || 0).toFixed(2),
+      totalBudget: Number(totals._sum.budget || 0).toFixed(2),
+      ads: ads.map((ad) => ({
         ...ad,
         spent: Number(ad.spent).toFixed(2),
         budget: ad.budget ? Number(ad.budget).toFixed(2) : null,

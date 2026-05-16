@@ -5,6 +5,7 @@ import { SessionProvider } from 'next-auth/react';
 import * as Sentry from '@sentry/react';
 import { AuthProvider } from '@/lib/auth';
 import { ToastProvider } from '@/lib/toast';
+import { SWRProvider } from '@/lib/swr-config';
 
 if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
   Sentry.init({
@@ -49,7 +50,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <SessionProvider>
       <AuthProvider>
-        <ToastProvider>{children}</ToastProvider>
+        <SWRProvider>
+          <ToastProvider>{children}</ToastProvider>
+        </SWRProvider>
       </AuthProvider>
     </SessionProvider>
   );
