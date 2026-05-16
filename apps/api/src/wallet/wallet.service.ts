@@ -18,6 +18,11 @@ export class WalletService {
     private notificationsService: NotificationsService,
   ) {}
 
+  // H3 FIX: Sanitize user names before sending to external APIs to prevent XSS
+  private sanitizeName(name: string): string {
+    return name.replace(/[<>'"]/g, '');
+  }
+
   // ── Fee rates by tier (percentage of withdrawal amount) ──
   private getWithdrawalFeePercent(tier: AccountTier): number {
     switch (tier) {
@@ -101,7 +106,7 @@ export class WalletService {
       amount: price,
       description: `Activation du compte XEARN — ${user.firstName} ${user.lastName}`,
       customerEmail: user.email || undefined,
-      customerName: `${user.firstName} ${user.lastName}`,
+      customerName: this.sanitizeName(`${user.firstName} ${user.lastName}`),
       customerPhone: user.phone || undefined,
       callbackMeta: { userId, type: 'activation' },
     });
@@ -289,7 +294,7 @@ export class WalletService {
         amount: netAmount,
         method,
         accountInfo,
-        recipientName: `${user.firstName} ${user.lastName}`,
+        recipientName: this.sanitizeName(`${user.firstName} ${user.lastName}`),
         callbackMeta: { withdrawalId: result.id, userId },
       });
 

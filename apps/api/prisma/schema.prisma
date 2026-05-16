@@ -159,6 +159,8 @@ model TaskCompletion {
   @@unique([userId, taskId])
   @@index([userId])
   @@index([taskId])
+  // H1 FIX: Add index for timeline queries
+  @@index([createdAt])
   @@map("task_completions")
 }
 
@@ -211,6 +213,8 @@ model Transaction {
   @@index([userId])
   @@index([userId, type, status])
   @@index([createdAt])
+  // H1 FIX: Add GIN index for JSONB metadata path queries (used in reconciliation)
+  @@index([metadata], type: Gin)
   @@map("transactions")
 }
 

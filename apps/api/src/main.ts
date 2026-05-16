@@ -29,11 +29,18 @@ async function bootstrap() {
 
   const configService = app.get(ConfigService);
 
-  // Fail-fast if critical secrets are missing
+  // Fail-fast if critical secrets are missing or weak
   const requiredSecrets = ['JWT_SECRET', 'JWT_REFRESH_SECRET'];
   for (const key of requiredSecrets) {
-    if (!configService.get(key)) {
+    const secret = configService.get(key);
+    if (!secret) {
       throw new Error(`Missing required env var: ${key}`);
+    }
+    // M3 FIX: Validate JWT secret strength (minimum 32 characters)
+    if (secret.length < 32) {
+      throw new Error(
+        `${key} must be at least 32 characters long for security. Current length: ${secret.length}`,
+      );
     }
   }
 

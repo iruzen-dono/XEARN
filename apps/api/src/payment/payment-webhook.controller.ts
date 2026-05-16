@@ -11,6 +11,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { Request } from 'express';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -52,6 +53,8 @@ export class PaymentWebhookController {
     private configService: ConfigService,
   ) {}
 
+  // M1 FIX: Rate limit webhooks to prevent HMAC verification DoS
+  @Throttle({ default: { ttl: 60000, limit: 100 } }) // 100 webhooks per minute max
   @Post('webhook')
   @HttpCode(200)
   async handleWebhook(

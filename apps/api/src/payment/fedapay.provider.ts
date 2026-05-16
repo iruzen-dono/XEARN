@@ -206,25 +206,40 @@ export class FedaPayProvider implements PaymentProvider {
     body: Record<string, unknown> | null,
   ): Promise<FedaPayApiResponse> {
     const url = `${this.apiBase}${path}`;
-    const options: RequestInit = {
-      method,
-      headers: {
-        Authorization: `Bearer ${this.secretKey}`,
-        'Content-Type': 'application/json',
-      },
-    };
 
-    if (body && method !== 'GET') {
-      options.body = JSON.stringify(body);
+    // M2 FIX: Add 30-second timeout to prevent hung requests
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
+
+    try {
+      const options: RequestInit = {
+        method,
+        headers: {
+          Authorization: `Bearer ${this.secretKey}`,
+          'Content-Type': 'application/json',
+        },
+        signal: controller.signal,
+      };
+
+      if (body && method !== 'GET') {
+        options.body = JSON.stringify(body);
+      }
+
+      const response = await fetch(url, options);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`FedaPay API ${method} ${path}: ${response.status} — ${errorText}`);
+      }
+
+      return (await response.json()) as FedaPayApiResponse;
+    } catch (error: unknown) {
+      if ((error as Error).name === 'AbortError') {
+        throw new Error(`FedaPay API ${method} ${path}: Request timeout after 30s`);
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeout);
     }
-
-    const response = await fetch(url, options);
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`FedaPay API ${method} ${path}: ${response.status} — ${errorText}`);
-    }
-
-    return (await response.json()) as FedaPayApiResponse;
   }
 }

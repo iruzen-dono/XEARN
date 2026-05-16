@@ -1,6 +1,16 @@
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { Prisma, PrismaClient } from '@prisma/client';
 
+/**
+ * H2 FIX: Extended PrismaClient with soft-delete support
+ *
+ * IMPORTANT: To ensure soft-deleted users are filtered:
+ * 1. Use prisma.user.findFirst/findMany with explicit { deletedAt: null } in where clause
+ * 2. Or use the helper methods: findActiveUser(), findActiveUsers(), countActiveUsers()
+ *
+ * For admin queries that need to see deleted users, explicitly add:
+ * { deletedAt: { not: null } } or omit the filter entirely if needed.
+ */
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
   async onModuleInit() {
@@ -12,9 +22,8 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   }
 
   /**
-   * Find a user excluding soft-deleted records.
-   * Use standard prisma.user.findFirst/findMany with explicit deletedAt filter
-   * when you need to include deleted users (admin queries).
+   * Find a single active (non-deleted) user.
+   * Automatically filters out soft-deleted records.
    */
   async findActiveUser(where: Prisma.UserWhereInput) {
     return this.user.findFirst({
@@ -22,16 +31,44 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     });
   }
 
-  async findActiveUsers(args: Prisma.UserFindManyArgs) {
+  /**
+   * Find multiple active (non-deleted) users.
+   * Automatically filters out soft-deleted records.
+   */
+  async findActiveUsers(args: Prisma.UserFindManyArgs = {}) {
     return this.user.findMany({
       ...args,
       where: { ...args.where, deletedAt: null },
     });
   }
 
+  /**
+   * Count active (non-deleted) users.
+   * Automatically filters out soft-deleted records.
+   */
   async countActiveUsers(where: Prisma.UserWhereInput = {}) {
     return this.user.count({
       where: { ...where, deletedAt: null },
+    });
+  }
+
+  /**
+   * Find a unique active user by ID.
+   * Automatically filters out soft-deleted records.
+   */
+  async findActiveUserById(id: string) {
+    return this.user.findFirst({
+      where: { id, deletedAt: null },
+    });
+  }
+
+  /**
+   * Find a unique active user by email.
+   * Automatically filters out soft-deleted records.
+   */
+  async findActiveUserByEmail(email: string) {
+    return this.user.findFirst({
+      where: { email, deletedAt: null },
     });
   }
 }
