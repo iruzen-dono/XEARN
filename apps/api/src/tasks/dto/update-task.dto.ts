@@ -65,4 +65,26 @@ export class UpdateTaskDto {
   @IsOptional()
   @IsEnum(AccountTierDto, { message: 'Tier requis invalide (NORMAL, PREMIUM, VIP)' })
   requiredTier?: SharedAccountTier;
+
+  @ApiPropertyOptional({ example: 'ysense-signup' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  @Transform(({ value }) => sanitize(value))
+  slug?: string;
+
+  @ApiPropertyOptional({ example: 'https://www.ysense.com/?rb=234640632' })
+  @IsOptional()
+  @IsUrl({}, { message: 'Lien de parrainage invalide' })
+  referralLink?: string;
+
+  @ApiPropertyOptional({ example: 'Instructions détaillées...' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(5000)
+  instructions?: string;
+
+  @ApiPropertyOptional({ example: true })
+  @IsOptional()
+  requiresCode?: boolean;
 }

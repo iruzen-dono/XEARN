@@ -61,8 +61,22 @@ export class TasksController {
   @UseGuards(JwtAuthGuard)
   @Throttle({ default: { ttl: 60000, limit: 5 } })
   @Post(':id/complete')
-  async completeTask(@Request() req: JwtRequest, @Param('id') taskId: string) {
-    return this.tasksService.completeTask(req.user.id, taskId);
+  async completeTask(
+    @Request() req: JwtRequest,
+    @Param('id') taskId: string,
+    @Body() body?: { verificationCode?: string },
+  ) {
+    return this.tasksService.completeTask(req.user.id, taskId, body?.verificationCode);
+  }
+
+  /**
+   * Get task landing page data for /go/:slug route
+   * Returns task info + verification code
+   */
+  @UseGuards(JwtAuthGuard)
+  @Get('go/:slug')
+  async getTaskLandingPage(@Request() req: JwtRequest, @Param('slug') slug: string) {
+    return this.tasksService.getTaskLandingPage(slug, req.user.id);
   }
 
   // Admin routes

@@ -13,6 +13,7 @@ const MIN_DURATION_SECONDS: Record<TaskType, number> = {
   CLICK_AD: 10,
   SURVEY: 30,
   SPONSORED: 15,
+  EXTERNAL: 10, // Tâches externes (inscriptions, etc.)
 };
 
 // Cooldown entre deux tâches (en secondes)
@@ -33,6 +34,15 @@ export class TasksService {
 
   private tierSatisfied(userTier: AccountTier, requiredTier: AccountTier): boolean {
     return this.TIER_ORDER.indexOf(userTier) >= this.TIER_ORDER.indexOf(requiredTier);
+  }
+
+  /**
+   * Generate a unique verification code in format XE-XXXX
+   * Example: XE-2847, XE-1093
+   */
+  private generateVerificationCode(): string {
+    const randomNum = Math.floor(1000 + Math.random() * 9000); // 1000-9999
+    return `XE-${randomNum}`;
   }
 
   async findAll(userId: string, page = 1, limit = 20) {
@@ -83,7 +93,57 @@ export class TasksService {
     return this.prisma.task.create({ data });
   }
 
-  async completeTask(userId: string, taskId: string) {
+  /**
+   * Get task landing page data (for /go/:slug route)
+   * Returns task details + verification code from active session
+   */
+  async getTaskLandingPage(slug: string, userId: string) {
+    const task = await this.prisma.task.findUnique({
+      where: { slug },
+    });
+
+    if (!task) {
+      throw new NotFoundException('Tâche introuvable');
+    }
+
+    // Check if user has an active session with verification code
+    const session = await this.prisma.taskSession.findUnique({
+      where: { userId_taskId: { userId, taskId: task.id } },
+    });
+
+    if (!session || !session.verificationCode) {
+      throw new BadRequestException(
+        'Aucune session active. Veuillez démarrer la tâche depuis la page des tâches.',
+      );
+    }
+
+    // Mark that user has viewed the code
+    if (!session.codeViewedAt) {
+      await this.prisma.taskSession.update({
+        where: { id: session.id },
+        data: { codeViewedAt: new Date() },
+      });
+    }
+
+    return {
+      task: {
+        id: task.id,
+        title: task.title,
+        description: task.description,
+        instructions: task.instructions,
+        reward: Number(task.reward),
+        externalUrl: task.referralLink || task.externalUrl,
+        requiresCode: task.requiresCode,
+      },
+      session: {
+        verificationCode: session.verificationCode,
+        startedAt: session.startedAt,
+        codeGeneratedAt: session.codeGeneratedAt,
+      },
+    };
+  }
+
+  async completeTask(userId: string, taskId: string, verificationCode?: string) {
     const task = await this.prisma.task.findUnique({ where: { id: taskId } });
     if (!task) throw new NotFoundException('Tâche introuvable');
     if (task.status !== 'ACTIVE') throw new BadRequestException('Tâche non disponible');
@@ -121,6 +181,40 @@ export class TasksService {
     }
     if (session.completed) {
       throw new BadRequestException('Session déjà utilisée');
+    }
+
+    // ANTI-FRAUD: Validate verification code if required
+    if (task.requiresCode) {
+      if (!verificationCode) {
+        throw new BadRequestException('Code de vérification requis pour cette tâche');
+      }
+
+      if (!session.verificationCode) {
+        throw new BadRequestException('Aucun code de vérification généré pour cette session');
+      }
+
+      if (verificationCode.toUpperCase() !== session.verificationCode.toUpperCase()) {
+        this.logger.warn(
+          `Tentative de fraude détectée: userId=${userId}, taskId=${taskId}, code fourni=${verificationCode}, code attendu=${session.verificationCode}`,
+        );
+        throw new BadRequestException('Code de vérification incorrect');
+      }
+
+      // Verify user has viewed the landing page
+      if (!session.codeViewedAt) {
+        throw new BadRequestException(
+          'Vous devez voir le code sur la page intermédiaire avant de valider',
+        );
+      }
+
+      // Ensure minimum time has passed since code was viewed (10 seconds)
+      const timeSinceViewed = Date.now() - session.codeViewedAt.getTime();
+      if (timeSinceViewed < 10000) {
+        const remaining = Math.ceil((10000 - timeSinceViewed) / 1000);
+        throw new BadRequestException(
+          `Veuillez attendre encore ${remaining} seconde(s) après avoir vu le code`,
+        );
+      }
     }
 
     // Vérifier le temps minimum selon le type de tâche
@@ -272,11 +366,26 @@ export class TasksService {
     });
     if (existing) throw new BadRequestException('Tâche déjà complétée');
 
+    // Generate verification code if task requires it
+    const verificationCode = task.requiresCode ? this.generateVerificationCode() : null;
+    const now = new Date();
+
     // Créer ou reset la session (upsert pour supporter le retry)
     const session = await this.prisma.taskSession.upsert({
       where: { userId_taskId: { userId, taskId } },
-      update: { startedAt: new Date(), completed: false },
-      create: { userId, taskId },
+      update: {
+        startedAt: now,
+        completed: false,
+        verificationCode,
+        codeGeneratedAt: verificationCode ? now : null,
+        codeViewedAt: null, // Reset when restarting
+      },
+      create: {
+        userId,
+        taskId,
+        verificationCode,
+        codeGeneratedAt: verificationCode ? now : null,
+      },
     });
 
     const taskType = task.type as TaskType;

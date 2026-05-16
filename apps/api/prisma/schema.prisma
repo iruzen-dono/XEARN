@@ -114,6 +114,7 @@ enum TaskType {
   CLICK_AD      // Clic sur publicité
   SURVEY        // Sondage sponsorisé
   SPONSORED     // Tâche sponsorisée
+  EXTERNAL      // Tâche externe (inscriptions, parrainage, etc.)
 }
 
 enum TaskStatus {
@@ -127,15 +128,19 @@ model Task {
   id              String      @id @default(cuid())
   title           String
   description     String?
+  slug            String?     @unique // URL-friendly identifier (ex: "ysense-signup")
   type            TaskType
   status          TaskStatus  @default(ACTIVE)
   reward          Decimal     @db.Decimal(10, 2)  // Rémunération en FCFA
   mediaUrl        String?     // URL de la vidéo/image
-  externalUrl     String?     // Lien externe
+  externalUrl     String?     // Lien externe (peut être un lien de parrainage)
+  referralLink    String?     // Lien de parrainage spécifique (prioritaire sur externalUrl)
+  instructions    String?     @db.Text // Instructions détaillées pour la landing page
   requiredTier    AccountTier @default(NORMAL) // Tier minimum requis
   maxCompletions  Int?        // Nombre max de complétions
   completionCount Int         @default(0)
   expiresAt       DateTime?
+  requiresCode    Boolean     @default(false) // Si true, nécessite un code de vérification
 
   completions     TaskCompletion[]
 
@@ -144,6 +149,7 @@ model Task {
 
   @@index([status, requiredTier])
   @@index([status, expiresAt])
+  @@index([slug])
   @@map("tasks")
 }
 
@@ -166,13 +172,17 @@ model TaskCompletion {
 
 // Session de tâche : track le début pour validation anti-triche
 model TaskSession {
-  id        String   @id @default(cuid())
-  userId    String
-  taskId    String
-  startedAt DateTime @default(now())
-  completed Boolean  @default(false)
+  id                String    @id @default(cuid())
+  userId            String
+  taskId            String
+  startedAt         DateTime  @default(now())
+  completed         Boolean   @default(false)
+  verificationCode  String?   // Code unique à entrer pour valider (ex: XE-2847)
+  codeGeneratedAt   DateTime? // Timestamp de génération du code
+  codeViewedAt      DateTime? // Timestamp quand l'utilisateur a vu le code (landing page)
 
   @@unique([userId, taskId])
+  @@index([verificationCode])
   @@map("task_sessions")
 }
 

@@ -7,7 +7,7 @@ export type AccountStatus = 'FREE' | 'ACTIVATED' | 'SUSPENDED' | 'BANNED';
 export type AccountTier = 'NORMAL' | 'PREMIUM' | 'VIP';
 export type AuthProvider = 'LOCAL' | 'GOOGLE';
 
-export type TaskType = 'VIDEO_AD' | 'CLICK_AD' | 'SURVEY' | 'SPONSORED';
+export type TaskType = 'VIDEO_AD' | 'CLICK_AD' | 'SURVEY' | 'SPONSORED' | 'EXTERNAL';
 export type TaskStatus = 'ACTIVE' | 'PAUSED' | 'COMPLETED' | 'EXPIRED';
 
 export type TransactionType =
@@ -152,15 +152,19 @@ export interface Task {
   id: string;
   title: string;
   description: string | null;
+  slug: string | null;
   type: TaskType;
   status: TaskStatus;
   reward: string;
   mediaUrl: string | null;
   externalUrl: string | null;
+  referralLink: string | null;
+  instructions: string | null;
   requiredTier: AccountTier;
   maxCompletions: number | null;
   completionCount: number;
   expiresAt: string | null;
+  requiresCode: boolean;
   createdAt: string;
 }
 
@@ -168,6 +172,9 @@ export interface TaskSession {
   sessionId: string;
   startedAt: string;
   minDurationSeconds: number;
+  verificationCode?: string | null;
+  codeGeneratedAt?: string | null;
+  codeViewedAt?: string | null;
   task: {
     id: string;
     title: string;
@@ -176,6 +183,24 @@ export interface TaskSession {
     mediaUrl: string | null;
     externalUrl: string | null;
     reward: string;
+    requiresCode?: boolean;
+  };
+}
+
+export interface TaskLandingPageData {
+  task: {
+    id: string;
+    title: string;
+    description: string | null;
+    instructions: string | null;
+    reward: number;
+    externalUrl: string | null;
+    requiresCode: boolean;
+  };
+  session: {
+    verificationCode: string;
+    startedAt: string;
+    codeGeneratedAt: string | null;
   };
 }
 
@@ -356,14 +381,22 @@ export interface PaginatedResponse<T> {
 
 export interface CreateTaskPayload {
   title: string;
+  slug?: string;
   description?: string;
+  instructions?: string;
   type: TaskType;
   reward: number;
   mediaUrl?: string;
   externalUrl?: string;
+  referralLink?: string;
   requiredTier?: AccountTier;
   maxCompletions?: number;
   expiresAt?: string;
+  requiresCode?: boolean;
+}
+
+export interface CompleteTaskPayload {
+  verificationCode?: string;
 }
 
 export interface UpdateTaskPayload extends Partial<CreateTaskPayload> {

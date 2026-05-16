@@ -186,8 +186,12 @@ export const tasksApi = {
   getAll: (token: string, page = 1) => api<TasksPage>(`/tasks?page=${page}`, { token }),
   start: (token: string, taskId: string) =>
     api<TaskSession>(`/tasks/${taskId}/start`, { method: 'POST', token }),
-  complete: (token: string, taskId: string) =>
-    api<MessageResponse>(`/tasks/${taskId}/complete`, { method: 'POST', token }),
+  complete: (token: string, taskId: string, verificationCode?: string) =>
+    api<MessageResponse>(`/tasks/${taskId}/complete`, {
+      method: 'POST',
+      token,
+      body: verificationCode ? JSON.stringify({ verificationCode }) : undefined,
+    }),
   getMyCompletions: (token: string) =>
     api<{ completions: TaskCompletion[] }>('/tasks/my-completions', { token }),
 };

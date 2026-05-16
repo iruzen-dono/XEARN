@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Play, CheckCircle, Loader2, ExternalLink, Timer, X, ListTodo } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
@@ -16,6 +17,7 @@ const TYPE_LABELS: Record<string, string> = {
   CLICK_AD: 'Clic publicitaire',
   SURVEY: 'Sondage',
   SPONSORED: 'Tâche sponsorisée',
+  EXTERNAL: 'Tâche externe',
 };
 
 const TYPE_COLORS: Record<string, string> = {
@@ -23,6 +25,7 @@ const TYPE_COLORS: Record<string, string> = {
   CLICK_AD: 'from-blue-500/20 to-blue-500/5 text-blue-400',
   SURVEY: 'from-green-500/20 to-green-500/5 text-green-400',
   SPONSORED: 'from-purple-500/20 to-purple-500/5 text-purple-400',
+  EXTERNAL: 'from-indigo-500/20 to-indigo-500/5 text-indigo-400',
 };
 
 const TYPE_ICONS: Record<string, string> = {
@@ -30,9 +33,11 @@ const TYPE_ICONS: Record<string, string> = {
   CLICK_AD: '🔗',
   SURVEY: '📋',
   SPONSORED: '⭐',
+  EXTERNAL: '🌐',
 };
 
 export default function TasksPage() {
+  const router = useRouter();
   const { token } = useAuth();
   const toast = useToast();
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -40,6 +45,8 @@ export default function TasksPage() {
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState<string | null>(null);
   const [completing, setCompleting] = useState(false);
+  const [verificationCode, setVerificationCode] = useState('');
+  const [showCodeModal, setShowCodeModal] = useState(false);
 
   const [activeSession, setActiveSession] = useState<TaskSession | null>(null);
   const [countdown, setCountdown] = useState(0);
@@ -87,11 +94,19 @@ export default function TasksPage() {
   }, [activeSession]);
 
   const handleStart = useCallback(
-    async (taskId: string) => {
+    async (task: Task) => {
       if (!token || starting) return;
-      setStarting(taskId);
+      setStarting(task.id);
       try {
-        const session = (await tasksApi.start(token, taskId)) as TaskSession;
+        const session = (await tasksApi.start(token, task.id)) as TaskSession;
+
+        // Si la tâche nécessite un code de vérification, rediriger vers /go/:slug
+        if (task.requiresCode && task.slug) {
+          router.push(`/go/${task.slug}?session=${session.sessionId}`);
+          return;
+        }
+
+        // Sinon, comportement normal
         setActiveSession(session);
         setLinkOpened(false);
         setCountdown(session.minDurationSeconds);
@@ -101,7 +116,7 @@ export default function TasksPage() {
         setStarting(null);
       }
     },
-    [token, starting, toast],
+    [token, starting, toast, router],
   );
 
   const handleOpenLink = useCallback(() => {
@@ -115,6 +130,14 @@ export default function TasksPage() {
 
   const handleComplete = useCallback(async () => {
     if (!token || !activeSession || completing) return;
+
+    // Si la tâche nécessite un code, afficher la modale
+    if (activeSession.task.requiresCode) {
+      setShowCodeModal(true);
+      return;
+    }
+
+    // Sinon, compléter directement
     setCompleting(true);
     try {
       await tasksApi.complete(token, activeSession.task.id);
@@ -128,6 +151,24 @@ export default function TasksPage() {
       setCompleting(false);
     }
   }, [token, activeSession, completing, toast]);
+
+  const handleCompleteWithCode = useCallback(async () => {
+    if (!token || !activeSession || completing || !verificationCode.trim()) return;
+    setCompleting(true);
+    try {
+      await tasksApi.complete(token, activeSession.task.id, verificationCode.trim());
+      setCompletedIds((prev) => new Set(prev).add(activeSession.task.id));
+      toast.success('Tâche complétée ! Récompense créditée.');
+      setActiveSession(null);
+      setLinkOpened(false);
+      setShowCodeModal(false);
+      setVerificationCode('');
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Code invalide ou erreur'));
+    } finally {
+      setCompleting(false);
+    }
+  }, [token, activeSession, completing, verificationCode, toast]);
 
   const handleCancel = useCallback(() => {
     setActiveSession(null);
@@ -294,6 +335,65 @@ export default function TasksPage() {
             </button>
           </div>
         </motion.div>
+
+        {/* Code Verification Modal */}
+        {showCodeModal && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-dark-900 rounded-2xl shadow-2xl max-w-md w-full p-6 border border-white/[0.08]"
+            >
+              <div className="text-center mb-6">
+                <div className="text-5xl mb-4">🔐</div>
+                <h2 className="text-2xl font-bold mb-2">Code de vérification</h2>
+                <p className="text-dark-400 text-sm">
+                  Entrez le code affiché sur la page intermédiaire pour valider cette tâche
+                </p>
+              </div>
+
+              <input
+                type="text"
+                value={verificationCode}
+                onChange={(e) => setVerificationCode(e.target.value.toUpperCase())}
+                placeholder="XE-XXXX"
+                className="w-full px-4 py-3 bg-dark-800 border border-white/[0.08] rounded-xl text-center text-2xl font-mono font-bold tracking-wider focus:border-primary-500 focus:outline-none transition-colors mb-4"
+                maxLength={7}
+                autoFocus
+              />
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowCodeModal(false);
+                    setVerificationCode('');
+                  }}
+                  className="flex-1 py-3 px-6 bg-dark-800 hover:bg-dark-700 rounded-xl font-medium transition-colors"
+                  disabled={completing}
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={handleCompleteWithCode}
+                  disabled={completing || !verificationCode.trim()}
+                  className="flex-1 btn-primary py-3 px-6 flex items-center justify-center gap-2 disabled:opacity-40"
+                >
+                  {completing ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Validation...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="w-5 h-5" />
+                      Valider
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
       </div>
     );
   }
@@ -370,7 +470,7 @@ export default function TasksPage() {
                       <span className="badge-success px-4 py-2">Complétée ✓</span>
                     ) : (
                       <button
-                        onClick={() => handleStart(task.id)}
+                        onClick={() => handleStart(task)}
                         disabled={starting === task.id}
                         className="btn-primary btn-sm flex items-center gap-2"
                       >
