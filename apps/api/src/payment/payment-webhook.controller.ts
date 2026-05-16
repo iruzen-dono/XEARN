@@ -363,7 +363,7 @@ export class PaymentWebhookController {
 
     await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       await tx.$queryRaw`
-        SELECT 1 FROM "Wallet" WHERE "userId" = ${userId} FOR UPDATE
+        SELECT 1 FROM "wallets" WHERE "userId" = ${userId} FOR UPDATE
       `;
       await tx.wallet.update({
         where: { userId },

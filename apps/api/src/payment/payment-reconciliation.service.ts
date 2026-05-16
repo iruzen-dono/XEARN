@@ -17,6 +17,8 @@ type ReconciliationMetadata = {
 export class PaymentReconciliationService {
   private readonly logger = new Logger(PaymentReconciliationService.name);
   private running = false;
+  private runningStartedAt: number | null = null;
+  private readonly RECONCILIATION_TIMEOUT_MS = 4 * 60 * 1000; // 4 minutes (cron runs every 5 min)
 
   constructor(
     private prisma: PrismaService,
@@ -26,11 +28,26 @@ export class PaymentReconciliationService {
 
   @Cron('*/5 * * * *')
   async reconcile() {
+    // R1 fix: Reset the running flag if it's been stuck for too long
+    if (this.running && this.runningStartedAt) {
+      const elapsed = Date.now() - this.runningStartedAt;
+      if (elapsed > this.RECONCILIATION_TIMEOUT_MS) {
+        this.logger.error(
+          `Reconciliation has been running for ${elapsed}ms, forcing reset. Previous run may have crashed.`,
+        );
+        this.running = false;
+        this.runningStartedAt = null;
+      }
+    }
+
     if (this.running) {
       this.logger.warn('Reconciliation already running, skipping');
       return;
     }
+
     this.running = true;
+    this.runningStartedAt = Date.now();
+
     try {
       await Promise.all([
         this.reconcileActivations(),
@@ -39,6 +56,7 @@ export class PaymentReconciliationService {
       ]);
     } finally {
       this.running = false;
+      this.runningStartedAt = null;
     }
   }
 
@@ -179,7 +197,7 @@ export class PaymentReconciliationService {
         const grossAmount = tx ? tx.amount : withdrawal.amount;
         await this.prisma.$transaction(async (ptx: Prisma.TransactionClient) => {
           await ptx.$queryRaw`
-            SELECT 1 FROM "Wallet" WHERE "userId" = ${withdrawal.userId} FOR UPDATE
+            SELECT 1 FROM "wallets" WHERE "userId" = ${withdrawal.userId} FOR UPDATE
           `;
           await ptx.withdrawal.update({
             where: { id: withdrawal.id },

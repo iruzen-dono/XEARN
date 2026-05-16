@@ -48,10 +48,19 @@ export class FedaPayProvider implements PaymentProvider {
 
   constructor(private configService: ConfigService) {
     const env = this.configService.get('FEDAPAY_ENV') || 'sandbox';
+    const paymentMode = this.configService.get('PAYMENT_MODE');
+
     this.apiBase =
       env === 'live' ? 'https://api.fedapay.com/v1' : 'https://sandbox-api.fedapay.com/v1';
     this.secretKey = this.configService.get('FEDAPAY_SECRET_KEY') || '';
     this.callbackUrl = this.configService.get('FEDAPAY_CALLBACK_URL') || '';
+
+    // E7 fix: Block initialization if FedaPay is active but secret key is missing
+    if (!this.secretKey && paymentMode === 'fedapay') {
+      throw new Error(
+        'FEDAPAY_SECRET_KEY is required when PAYMENT_MODE=fedapay. Please configure it in your environment.',
+      );
+    }
 
     if (!this.secretKey) {
       this.logger.warn('FEDAPAY_SECRET_KEY non définie — les paiements réels échoueront');

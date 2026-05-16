@@ -8,7 +8,16 @@ async function main() {
 
   // Admin credentials from environment or defaults
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@xearn.local';
-  const adminPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'Admin1234', 12);
+  const rawPassword = process.env.ADMIN_PASSWORD || 'CHANGE_ME_BEFORE_DEPLOY';
+
+  // Validation: refuse weak placeholder passwords in production-like environments
+  if (rawPassword === 'CHANGE_ME_BEFORE_DEPLOY' || rawPassword === 'Admin1234') {
+    throw new Error(
+      'ADMIN_PASSWORD must be changed before deployment. Set a strong password in your .env file.',
+    );
+  }
+
+  const adminPassword = await bcrypt.hash(rawPassword, 12);
   const adminFirstName = process.env.ADMIN_FIRST_NAME || 'Admin';
   const adminLastName = process.env.ADMIN_LAST_NAME || 'XEARN';
 
