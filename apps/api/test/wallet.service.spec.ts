@@ -141,7 +141,9 @@ describe('WalletService', () => {
         status: 'ACTIVATED',
         wallet: { balance: '10000' },
       });
-      await expect(service.activateAccount('u1')).rejects.toThrow('Compte déjà activé');
+      await expect(service.activateAccount('u1')).rejects.toThrow(
+        'Opération déjà effectuée: activation de compte',
+      );
     });
 
     it('should throw for suspended users', async () => {

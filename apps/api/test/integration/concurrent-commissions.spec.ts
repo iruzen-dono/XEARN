@@ -82,7 +82,7 @@ describe('ReferralsService - Concurrent Commissions (Integration)', () => {
         id: 'test-task-concurrent-commissions',
         title: 'Test Task',
         type: 'EXTERNAL',
-        earned: new Decimal(1000),
+        reward: new Decimal(1000),
         status: 'ACTIVE',
       },
     });

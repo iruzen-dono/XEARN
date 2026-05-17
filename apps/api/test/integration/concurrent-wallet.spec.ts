@@ -4,6 +4,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../src/prisma/prisma.service';
 import { WalletService } from '../../src/wallet/wallet.service';
 import { PaymentService } from '../../src/payment/payment.service';
+import { MockPaymentProvider } from '../../src/payment/providers/mock.provider';
+import { FedaPayProvider } from '../../src/payment/providers/fedapay.provider';
 import { NotificationsService } from '../../src/notifications/notifications.service';
 import { InsufficientBalanceException } from '../../src/common/exceptions';
 import { Decimal } from '@prisma/client/runtime/library';
@@ -29,6 +31,8 @@ describe('WalletService - Concurrent Withdrawals (Integration)', () => {
         PrismaService,
         WalletService,
         PaymentService,
+        MockPaymentProvider,
+        FedaPayProvider,
         NotificationsService,
         ConfigService,
       ],

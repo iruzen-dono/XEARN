@@ -67,7 +67,7 @@ describe('TasksService - Daily Limit Enforcement (Integration)', () => {
           title: `Daily Limit Test Task ${i}`,
           description: 'Test task',
           type: 'CLICK_AD',
-          earned: new Decimal(100),
+          reward: new Decimal(100),
           status: 'ACTIVE',
           requiresCode: false, // Simplify testing
         },

@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { TasksService } from '../src/tasks/tasks.service';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { ReferralsService } from '../src/referrals/referrals.service';
@@ -18,6 +19,7 @@ const mockPrisma = {
     findUnique: jest.fn(),
     findFirst: jest.fn(),
     create: jest.fn(),
+    count: jest.fn(),
   },
   taskSession: {
     findUnique: jest.fn(),
@@ -45,6 +47,10 @@ const mockGamification = {
   checkEarningsBadges: jest.fn().mockResolvedValue([]),
 };
 
+const mockEventEmitter = {
+  emit: jest.fn(),
+};
+
 describe('TasksService', () => {
   let service: TasksService;
 
@@ -58,6 +64,7 @@ describe('TasksService', () => {
         { provide: ReferralsService, useValue: mockReferrals },
         { provide: NotificationsService, useValue: mockNotifications },
         { provide: GamificationService, useValue: mockGamification },
+        { provide: EventEmitter2, useValue: mockEventEmitter },
       ],
     }).compile();
 

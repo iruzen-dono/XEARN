@@ -20,7 +20,7 @@ describe('ReferralsService', () => {
     notifyCommission: jest.fn(),
   };
 
-  const mockPrisma = {
+  const mockPrisma: any = {
     user: {
       findMany: jest.fn(),
       findUnique: jest.fn(),
@@ -38,7 +38,19 @@ describe('ReferralsService', () => {
     transaction: {
       create: jest.fn(),
     },
-    $transaction: jest.fn(),
+    $queryRaw: jest.fn().mockResolvedValue([]),
+    $transaction: jest.fn((cb: any) => {
+      // Execute the callback function when $transaction is called
+      if (typeof cb === 'function') {
+        // Create a transaction client with the same methods
+        const tx = {
+          ...mockPrisma,
+          $queryRaw: jest.fn().mockResolvedValue([]),
+        };
+        return cb(tx);
+      }
+      return Promise.resolve([]);
+    }),
   };
 
   let service: ReferralsService;
@@ -159,7 +171,6 @@ describe('ReferralsService', () => {
       mockPrisma.commission.create.mockResolvedValue({});
       mockPrisma.wallet.update.mockResolvedValue({});
       mockPrisma.transaction.create.mockResolvedValue({});
-      mockPrisma.$transaction.mockResolvedValue([]);
 
       await service.distributeCommissions('child-user', new Decimal(100));
 
