@@ -57,8 +57,8 @@ jobs:
       - name: 'Build API'
         run: npm run build:api
 
-      - name: 'Run Prisma migrations'
-        run: npm run db:migrate:prod
+      - name: 'Sync database schema'
+        run: npm run db:push
 
       - name: 'Run tests'
         run: npm run test

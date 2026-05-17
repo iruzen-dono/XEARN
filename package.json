@@ -23,6 +23,7 @@
     "prepare": "husky",
     "db:migrate": "npm run db:migrate --workspace=apps/api",
     "db:migrate:prod": "npm run db:migrate:prod --workspace=apps/api",
+    "db:push": "npm run db:push --workspace=apps/api",
     "db:generate": "npm run db:generate --workspace=apps/api",
     "db:seed": "npm run db:seed --workspace=apps/api",
     "db:seed-prod": "cd apps/api && npx ts-node prisma/seed-prod.ts",
