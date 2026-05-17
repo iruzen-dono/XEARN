@@ -128,7 +128,7 @@ jobs:
           fi
 
   deploy-production:
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: false  # Temporarily disabled - not ready for production deployment
     runs-on: ubuntu-latest
     name: 'Deploy to Production'
     needs: test
