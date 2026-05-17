@@ -48,7 +48,7 @@ describe('TasksService - Daily Limit Enforcement (Integration)', () => {
         email: `daily-limit-test-${Date.now()}@example.com`,
         firstName: 'Test',
         lastName: 'DailyLimit',
-        phoneNumber: `+225000${Math.random().toString().slice(2, 10)}`,
+        phone: `+225000${Math.random().toString().slice(2, 10)}`,
         password: 'hashed',
         status: 'ACTIVATED',
         tier: 'NORMAL',
@@ -67,7 +67,7 @@ describe('TasksService - Daily Limit Enforcement (Integration)', () => {
           title: `Daily Limit Test Task ${i}`,
           description: 'Test task',
           type: 'CLICK_AD',
-          reward: new Decimal(100),
+          earned: new Decimal(100),
           status: 'ACTIVE',
           requiresCode: false, // Simplify testing
         },
@@ -134,7 +134,7 @@ describe('TasksService - Daily Limit Enforcement (Integration)', () => {
       data: {
         userId: testUserId,
         taskId: testTaskIds[0],
-        reward: new Decimal(100),
+        earned: new Decimal(100),
         createdAt: yesterday,
       },
     });

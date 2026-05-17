@@ -40,7 +40,7 @@ export default function WalletPageRefactored() {
         return;
       }
 
-      await walletApi.requestWithdrawal({
+      await walletApi.withdraw('', {
         amount,
         method: withdrawForm.method as any,
         accountInfo: withdrawForm.accountInfo,

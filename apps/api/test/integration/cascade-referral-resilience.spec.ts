@@ -75,7 +75,7 @@ describe('ReferralsService - Cascade Failure Resilience (Integration)', () => {
         email: `${name}-${Date.now()}@example.com`,
         firstName: name,
         lastName: 'Test',
-        phoneNumber: `+225000${Math.random().toString().slice(2, 10)}`,
+        phone: `+225000${Math.random().toString().slice(2, 10)}`,
         password: 'hashed',
         status,
         tier,
@@ -93,7 +93,7 @@ describe('ReferralsService - Cascade Failure Resilience (Integration)', () => {
       data: {
         userId: userChild,
         taskId: 'test-task-cascade',
-        reward: new Decimal(1000),
+        earned: new Decimal(1000),
       },
     });
 
@@ -138,7 +138,7 @@ describe('ReferralsService - Cascade Failure Resilience (Integration)', () => {
       data: {
         userId: userChild,
         taskId: 'test-task-cascade-2',
-        reward: new Decimal(500),
+        earned: new Decimal(500),
       },
     });
 

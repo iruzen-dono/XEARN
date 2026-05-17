@@ -8,9 +8,8 @@ import type { Task, ApiError } from '@xearn/types';
 export function useTasks() {
   const { data, error, isLoading, mutate } = useSWR<Task[], ApiError>(
     '/tasks',
-    async (url) => {
-      const response = await api.get(url);
-      return response.data;
+    async (url: string) => {
+      return await api<Task[]>(url);
     },
     {
       refreshInterval: 60000, // Refresh every 60s
@@ -32,9 +31,8 @@ export function useTasks() {
 export function useTask(slug: string) {
   const { data, error, isLoading } = useSWR<Task, ApiError>(
     slug ? `/tasks/${slug}` : null,
-    async (url) => {
-      const response = await api.get(url);
-      return response.data;
+    async (url: string) => {
+      return await api<Task>(url);
     },
   );
 

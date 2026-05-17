@@ -8,9 +8,8 @@ import type { DashboardData, ApiError } from '@xearn/types';
 export function useDashboard() {
   const { data, error, isLoading, mutate } = useSWR<DashboardData, ApiError>(
     '/users/me',
-    async (url) => {
-      const response = await api.get(url);
-      return response.data;
+    async (url: string) => {
+      return await api<DashboardData>(url);
     },
     {
       refreshInterval: 30000, // Refresh every 30s

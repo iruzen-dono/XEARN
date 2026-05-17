@@ -16,52 +16,16 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   async onModuleInit() {
     await this.$connect();
 
-    // Middleware: automatically filter soft-deleted users in findMany/findFirst/findUnique queries
-    this.$use(async (params, next) => {
-      // Only apply to User model queries
-      if (params.model === 'User') {
-        // For read operations, automatically exclude soft-deleted records
-        if (params.action === 'findUnique' || params.action === 'findFirst') {
-          // Convert findUnique to findFirst if deletedAt filter is needed
-          if (params.action === 'findUnique') {
-            params.action = 'findFirst';
-          }
-          params.args.where = {
-            ...params.args.where,
-            deletedAt: null,
-          };
-        }
-
-        if (params.action === 'findMany') {
-          if (!params.args) {
-            params.args = {};
-          }
-          if (!params.args.where) {
-            params.args.where = {};
-          }
-          // Only add deletedAt filter if not explicitly overridden
-          if (!params.args.where.deletedAt) {
-            params.args.where.deletedAt = null;
-          }
-        }
-
-        // Convert delete/deleteMany to soft delete (update deletedAt)
-        if (params.action === 'delete') {
-          params.action = 'update';
-          params.args.data = { deletedAt: new Date() };
-        }
-
-        if (params.action === 'deleteMany') {
-          params.action = 'updateMany';
-          if (!params.args.data) {
-            params.args.data = {};
-          }
-          params.args.data.deletedAt = new Date();
-        }
-      }
-
-      return next(params);
-    });
+    // Note: Prisma middleware ($use) was removed in Prisma 5.
+    // Soft-delete pattern is now implemented via helper methods below:
+    // - findActiveUser()
+    // - findActiveUsers()
+    // - countActiveUsers()
+    // - findActiveUserById()
+    // - findActiveUserByEmail()
+    //
+    // For actual soft-delete (setting deletedAt), use service methods
+    // that call prisma.user.update({ data: { deletedAt: new Date() } })
   }
 
   async onModuleDestroy() {

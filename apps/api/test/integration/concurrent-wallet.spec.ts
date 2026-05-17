@@ -46,7 +46,7 @@ describe('WalletService - Concurrent Withdrawals (Integration)', () => {
         email: `concurrent-test-${Date.now()}@example.com`,
         firstName: 'Test',
         lastName: 'Concurrent',
-        phoneNumber: '+22500000000',
+        phone: '+22500000000',
         password: 'hashed',
         status: 'ACTIVATED',
         tier: 'PREMIUM',
@@ -80,16 +80,14 @@ describe('WalletService - Concurrent Withdrawals (Integration)', () => {
     const withdrawal1 = walletService.requestWithdrawal(
       testUserId,
       3000,
-      'MOBILE_MONEY',
-      'Orange Money',
+      'MTN_MOMO',
       '+22500000000',
     );
 
     const withdrawal2 = walletService.requestWithdrawal(
       testUserId,
       3000,
-      'MOBILE_MONEY',
-      'Orange Money',
+      'MTN_MOMO',
       '+22500000000',
     );
 

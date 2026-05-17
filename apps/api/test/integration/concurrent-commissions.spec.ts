@@ -50,7 +50,7 @@ describe('ReferralsService - Concurrent Commissions (Integration)', () => {
           email: `${email}-${Date.now()}@example.com`,
           firstName: email,
           lastName: 'Test',
-          phoneNumber: `+225000${Math.random().toString().slice(2, 10)}`,
+          phone: `+225000${Math.random().toString().slice(2, 10)}`,
           password: 'hashed',
           status: 'ACTIVATED',
           tier: 'PREMIUM',
@@ -82,7 +82,7 @@ describe('ReferralsService - Concurrent Commissions (Integration)', () => {
         id: 'test-task-concurrent-commissions',
         title: 'Test Task',
         type: 'EXTERNAL',
-        reward: new Decimal(1000),
+        earned: new Decimal(1000),
         status: 'ACTIVE',
       },
     });
@@ -119,7 +119,7 @@ describe('ReferralsService - Concurrent Commissions (Integration)', () => {
       data: {
         userId: userA,
         taskId: 'test-task-concurrent-commissions',
-        reward: new Decimal(1000),
+        earned: new Decimal(1000),
       },
     });
 
@@ -127,7 +127,7 @@ describe('ReferralsService - Concurrent Commissions (Integration)', () => {
       data: {
         userId: userE,
         taskId: 'test-task-concurrent-commissions',
-        reward: new Decimal(1000),
+        earned: new Decimal(1000),
       },
     });
 

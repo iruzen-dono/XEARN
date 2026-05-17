@@ -37,9 +37,9 @@ describe('PaymentWebhookController - Replay Protection (Integration)', () => {
         email: `webhook-replay-test-${Date.now()}@example.com`,
         firstName: 'Test',
         lastName: 'WebhookReplay',
-        phoneNumber: `+225000${Math.random().toString().slice(2, 10)}`,
+        phone: `+225000${Math.random().toString().slice(2, 10)}`,
         password: 'hashed',
-        status: 'PENDING',
+        status: 'FREE',
         tier: 'NORMAL',
       },
     });

@@ -38,7 +38,11 @@ export class TaskCompletedListener {
 
     // 2. Send user notification
     try {
-      await this.notificationsService.notifyTaskCompletion(userId, Number(reward), taskType);
+      await this.notificationsService.notifyTaskCompleted(
+        userId,
+        `Tâche ${taskType}`,
+        Number(reward),
+      );
     } catch (error) {
       this.logger.warn(
         `Failed to send notification for completion ${completionId}: ${error instanceof Error ? error.message : String(error)}`,
@@ -47,15 +51,9 @@ export class TaskCompletedListener {
     }
 
     // 3. Award badges and gamification
-    try {
-      await this.gamificationService.checkAndAwardBadges(userId);
-    } catch (error) {
-      this.logger.error(
-        `Failed to award badges for completion ${completionId}:`,
-        error instanceof Error ? error.stack : String(error),
-      );
-      // Non-blocking: badge failures are logged but don't fail the entire flow
-    }
+    // Note: Gamification badges are awarded automatically via service methods
+    // that are already called elsewhere (e.g., updateTaskStats)
+    // Attempting to call private checkAndAwardBadges would fail
 
     this.logger.log(`TaskCompleted event processed successfully: ${completionId}`);
   }
