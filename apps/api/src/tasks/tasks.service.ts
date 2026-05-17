@@ -1,11 +1,19 @@
 import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { randomBytes } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
-import { ReferralsService } from '../referrals/referrals.service';
-import { NotificationsService } from '../notifications/notifications.service';
-import { GamificationService } from '../gamification/gamification.service';
 import { Decimal } from '@prisma/client/runtime/library';
 import { Prisma } from '@prisma/client';
 import type { AccountTier, TaskStatus, TaskType } from '@xearn/types';
+import { TaskCompletedEvent } from '../events/task-completed.event';
+import {
+  DailyLimitExceededException,
+  SessionExpiredException,
+  SessionLockedException,
+  InvalidVerificationCodeException,
+  TaskAlreadyCompletedException,
+  AccountNotActivatedException,
+} from '../common/exceptions';
 
 // Durée minimum en secondes par type de tâche
 const MIN_DURATION_SECONDS: Record<TaskType, number> = {
@@ -19,15 +27,22 @@ const MIN_DURATION_SECONDS: Record<TaskType, number> = {
 // Cooldown entre deux tâches (en secondes)
 const TASK_COOLDOWN_SECONDS = 10;
 
+// Maximum de tâches complétées par jour par utilisateur
+const MAX_DAILY_COMPLETIONS = 30;
+
+// Durée maximale d'une session (24h) — au-delà, la session expire
+const SESSION_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+// Cooldown après session invalidée (5 min) avant de pouvoir redémarrer
+const SESSION_LOCKOUT_COOLDOWN_MS = 5 * 60 * 1000;
+
 @Injectable()
 export class TasksService {
   private readonly logger = new Logger(TasksService.name);
 
   constructor(
     private prisma: PrismaService,
-    private referralsService: ReferralsService,
-    private notificationsService: NotificationsService,
-    private gamificationService: GamificationService,
+    private eventEmitter: EventEmitter2,
   ) {}
 
   private readonly TIER_ORDER: readonly AccountTier[] = ['NORMAL', 'PREMIUM', 'VIP'];
@@ -36,13 +51,14 @@ export class TasksService {
     return this.TIER_ORDER.indexOf(userTier) >= this.TIER_ORDER.indexOf(requiredTier);
   }
 
-  /**
-   * Generate a unique verification code in format XE-XXXX
-   * Example: XE-2847, XE-1093
-   */
   private generateVerificationCode(): string {
-    const randomNum = Math.floor(1000 + Math.random() * 9000); // 1000-9999
-    return `XE-${randomNum}`;
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const bytes = randomBytes(8);
+    let code = '';
+    for (let i = 0; i < 8; i++) {
+      code += chars[bytes[i] % chars.length];
+    }
+    return `XE-${code}`;
   }
 
   async findAll(userId: string, page = 1, limit = 20) {
@@ -156,9 +172,7 @@ export class TasksService {
     // Vérifier que l'utilisateur est activé
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user || user.status !== 'ACTIVATED') {
-      throw new BadRequestException(
-        'Compte non activé — activez votre compte pour gagner des récompenses',
-      );
+      throw new AccountNotActivatedException();
     }
 
     // Vérifier le tier requis
@@ -166,11 +180,21 @@ export class TasksService {
       throw new BadRequestException(`Cette tâche nécessite le niveau ${task.requiredTier}`);
     }
 
+    // Daily completion limit check
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const dailyCount = await this.prisma.taskCompletion.count({
+      where: { userId, createdAt: { gte: startOfDay } },
+    });
+    if (dailyCount >= MAX_DAILY_COMPLETIONS) {
+      throw new DailyLimitExceededException(MAX_DAILY_COMPLETIONS);
+    }
+
     // Vérifier si déjà complétée (preliminary check — authoritative check inside $transaction)
     const existing = await this.prisma.taskCompletion.findUnique({
       where: { userId_taskId: { userId, taskId } },
     });
-    if (existing) throw new BadRequestException('Tâche déjà complétée');
+    if (existing) throw new TaskAlreadyCompletedException();
 
     // Vérifier que la tâche a été démarrée (anti-triche)
     const session = await this.prisma.taskSession.findUnique({
@@ -183,6 +207,12 @@ export class TasksService {
       throw new BadRequestException('Session déjà utilisée');
     }
 
+    // Session expiry check (24h max)
+    const sessionAge = Date.now() - session.startedAt.getTime();
+    if (sessionAge > SESSION_MAX_AGE_MS) {
+      throw new SessionExpiredException();
+    }
+
     // ANTI-FRAUD: Validate verification code if required
     if (task.requiresCode) {
       if (!verificationCode) {
@@ -193,11 +223,25 @@ export class TasksService {
         throw new BadRequestException('Aucun code de vérification généré pour cette session');
       }
 
+      // M3 fix: Check if session is already invalidated due to too many failed attempts
+      if (session.failedAttempts >= 3) {
+        throw new InvalidVerificationCodeException(0);
+      }
+
       if (verificationCode.toUpperCase() !== session.verificationCode.toUpperCase()) {
+        // M3 fix: Increment failed attempts counter
+        await this.prisma.taskSession.update({
+          where: { userId_taskId: { userId, taskId } },
+          data: { failedAttempts: { increment: 1 } },
+        });
+
+        const newFailedAttempts = session.failedAttempts + 1;
         this.logger.warn(
-          `Tentative de fraude détectée: userId=${userId}, taskId=${taskId}, code fourni=${verificationCode}, code attendu=${session.verificationCode}`,
+          `Code de vérification incorrect: userId=${userId}, taskId=${taskId}, tentative=${newFailedAttempts}/3`,
         );
-        throw new BadRequestException('Code de vérification incorrect');
+
+        const attemptsLeft = 3 - newFailedAttempts;
+        throw new InvalidVerificationCodeException(attemptsLeft);
       }
 
       // Verify user has viewed the landing page
@@ -255,16 +299,18 @@ export class TasksService {
     let result;
     try {
       result = await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-        // Lock the task row to serialize concurrent completions
+        // Lock the task row and re-read reward to prevent TOCTOU
         const rows = await tx.$queryRaw<
-          { maxCompletions: number | null; completionCount: number }[]
+          { maxCompletions: number | null; completionCount: number; reward: number }[]
         >`
-          SELECT "maxCompletions", "completionCount" FROM tasks WHERE id = ${taskId} FOR UPDATE
+          SELECT "maxCompletions", "completionCount", "reward" FROM tasks WHERE id = ${taskId} FOR UPDATE
         `;
         if (!rows[0]) throw new NotFoundException('Tâche introuvable');
         if (rows[0].maxCompletions && rows[0].completionCount >= rows[0].maxCompletions) {
           throw new BadRequestException('Nombre maximum de complétions atteint');
         }
+
+        const lockedReward = rows[0].reward;
 
         // Marquer la session comme utilisée
         await tx.taskSession.update({
@@ -274,7 +320,7 @@ export class TasksService {
 
         // Créer la complétion (unique constraint handles concurrent duplicates)
         const completion = await tx.taskCompletion.create({
-          data: { userId, taskId, earned: task.reward },
+          data: { userId, taskId, earned: lockedReward },
         });
 
         // Incrémenter le compteur de la tâche
@@ -283,12 +329,12 @@ export class TasksService {
           data: { completionCount: { increment: 1 } },
         });
 
-        // Créditer le wallet
+        // Créditer le wallet avec le reward vérifié sous lock
         await tx.wallet.update({
           where: { userId },
           data: {
-            balance: { increment: task.reward },
-            totalEarned: { increment: task.reward },
+            balance: { increment: lockedReward },
+            totalEarned: { increment: lockedReward },
           },
         });
 
@@ -298,7 +344,7 @@ export class TasksService {
             userId,
             type: 'TASK_EARNING',
             status: 'COMPLETED',
-            amount: task.reward,
+            amount: lockedReward,
             description: `Gain tâche: ${task.title}`,
           },
         });
@@ -308,36 +354,23 @@ export class TasksService {
     } catch (error: unknown) {
       // Handle Prisma unique constraint violation (P2002) — concurrent duplicate completion
       if (this.isUniqueConstraintError(error)) {
-        throw new BadRequestException('Tâche déjà complétée');
+        throw new TaskAlreadyCompletedException();
       }
       throw error;
     }
 
-    // Distribuer les commissions de parrainage (hors transaction pour ne pas bloquer)
-    try {
-      await this.referralsService.distributeCommissions(
+    // Emit event for async side-effects (commissions, notifications, gamification)
+    // This decouples the main transaction from non-critical operations
+    this.eventEmitter.emit(
+      'task.completed',
+      new TaskCompletedEvent(
         userId,
+        taskId,
+        result.id,
         new Decimal(task.reward.toString()),
-      );
-    } catch (err) {
-      this.logger.error('Erreur distribution commissions parrainage', err);
-    }
-
-    // Notification de tâche complétée
-    try {
-      await this.notificationsService.notifyTaskCompleted(userId, task.title, Number(task.reward));
-    } catch (err) {
-      this.logger.error('Erreur notification', err);
-    }
-
-    // Gamification: streak + badges
-    try {
-      await this.gamificationService.recordActivity(userId);
-      await this.gamificationService.checkTaskBadges(userId);
-      await this.gamificationService.checkEarningsBadges(userId);
-    } catch (err) {
-      this.logger.error('Erreur gamification', err);
-    }
+        task.type,
+      ),
+    );
 
     return result;
   }
@@ -350,9 +383,7 @@ export class TasksService {
     // Vérifier que l'utilisateur est activé
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user || user.status !== 'ACTIVATED') {
-      throw new BadRequestException(
-        'Compte non activé — activez votre compte pour gagner des récompenses',
-      );
+      throw new AccountNotActivatedException();
     }
 
     // Vérifier le tier requis
@@ -365,6 +396,18 @@ export class TasksService {
       where: { userId_taskId: { userId, taskId } },
     });
     if (existing) throw new BadRequestException('Tâche déjà complétée');
+
+    // Check if previous session was invalidated — enforce cooldown before restart
+    const previousSession = await this.prisma.taskSession.findUnique({
+      where: { userId_taskId: { userId, taskId } },
+    });
+    if (previousSession && previousSession.failedAttempts >= 3) {
+      const timeSinceLockout = Date.now() - previousSession.startedAt.getTime();
+      if (timeSinceLockout < SESSION_LOCKOUT_COOLDOWN_MS) {
+        const remainingMs = SESSION_LOCKOUT_COOLDOWN_MS - timeSinceLockout;
+        throw new SessionLockedException(remainingMs);
+      }
+    }
 
     // Generate verification code if task requires it
     const verificationCode = task.requiresCode ? this.generateVerificationCode() : null;
@@ -379,6 +422,7 @@ export class TasksService {
         verificationCode,
         codeGeneratedAt: verificationCode ? now : null,
         codeViewedAt: null, // Reset when restarting
+        failedAttempts: 0, // M3: Reset failed attempts on restart
       },
       create: {
         userId,

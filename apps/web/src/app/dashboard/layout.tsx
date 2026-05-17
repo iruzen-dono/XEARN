@@ -190,32 +190,40 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
 
         <div className="p-4 sm:p-6 lg:p-8">
-          {/* Account status banners */}
-          {user?.status === 'SUSPENDED' && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-6 p-4 rounded-xl bg-warning-500/10 border border-warning-500/20 text-warning-400 text-sm flex items-center gap-3"
-            >
-              <span className="font-semibold">Compte suspendu</span>
-              <span className="text-warning-400/70">
-                — Certaines fonctionnalités sont restreintes.
-              </span>
-            </motion.div>
+          {/* H5: Block content for BANNED/SUSPENDED users */}
+          {user?.status === 'SUSPENDED' ? (
+            <div className="min-h-[60vh] flex items-center justify-center">
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="max-w-md w-full p-8 rounded-2xl bg-warning-500/10 border border-warning-500/20 text-center"
+              >
+                <div className="text-4xl mb-4">⚠️</div>
+                <h2 className="text-xl font-bold text-warning-400 mb-2">Compte suspendu</h2>
+                <p className="text-warning-400/70 text-sm">
+                  Votre compte est actuellement suspendu. Toutes les fonctionnalités sont
+                  restreintes. Veuillez contacter le support pour plus d&apos;informations.
+                </p>
+              </motion.div>
+            </div>
+          ) : user?.status === 'BANNED' ? (
+            <div className="min-h-[60vh] flex items-center justify-center">
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="max-w-md w-full p-8 rounded-2xl bg-danger-500/10 border border-danger-500/20 text-center"
+              >
+                <div className="text-4xl mb-4">🚫</div>
+                <h2 className="text-xl font-bold text-danger-400 mb-2">Compte banni</h2>
+                <p className="text-danger-400/70 text-sm">
+                  Votre compte a été désactivé de façon permanente. Vous ne pouvez plus accéder aux
+                  fonctionnalités de la plateforme.
+                </p>
+              </motion.div>
+            </div>
+          ) : (
+            <PageTransition>{children}</PageTransition>
           )}
-          {user?.status === 'BANNED' && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-6 p-4 rounded-xl bg-danger-500/10 border border-danger-500/20 text-danger-400 text-sm flex items-center gap-3"
-            >
-              <span className="font-semibold">Compte banni</span>
-              <span className="text-danger-400/70">
-                — Votre compte a été désactivé de façon permanente.
-              </span>
-            </motion.div>
-          )}
-          <PageTransition>{children}</PageTransition>
         </div>
       </main>
     </div>

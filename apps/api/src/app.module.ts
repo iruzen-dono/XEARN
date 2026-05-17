@@ -23,10 +23,7 @@ import { CleanupCronService } from './common/cleanup.cron';
 @Injectable()
 class ProxyAwareThrottlerGuard extends ThrottlerGuard {
   protected getTracker(req: Record<string, any>): Promise<string> {
-    const forwarded = req.headers?.['x-forwarded-for'];
-    const ip = forwarded
-      ? String(forwarded).split(',')[0].trim()
-      : req.ip || req.socket?.remoteAddress || 'unknown';
+    const ip = req.ip || req.socket?.remoteAddress || 'unknown';
     return Promise.resolve(ip);
   }
 

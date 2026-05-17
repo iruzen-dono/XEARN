@@ -118,9 +118,9 @@ export class PaymentWebhookController {
       },
     });
 
-    try {
-      this.logger.log(`FedaPay event: ${eventType || 'unknown'}`);
+    this.logger.log(`FedaPay event: ${eventType || 'unknown'}`);
 
+    try {
       if (eventType === 'transaction.approved' || eventType === 'transaction.completed') {
         await this.handleTransactionApproved(entity);
       } else if (eventType === 'payout.sent' || eventType === 'payout.completed') {
@@ -133,8 +133,13 @@ export class PaymentWebhookController {
         this.logger.log(`FedaPay event non géré: ${eventType}`);
       }
     } catch (error: unknown) {
+      if (error instanceof BadRequestException || error instanceof ForbiddenException) {
+        this.logger.warn(`Webhook business error: ${error.message}`);
+        return { received: true };
+      }
       const err = error instanceof Error ? error : new Error(String(error));
       this.logger.error(`Erreur traitement webhook FedaPay: ${err.message}`, err.stack);
+      throw error;
     }
 
     return { received: true };
@@ -164,10 +169,21 @@ export class PaymentWebhookController {
       const receivedAmount = entity.amount || 0;
       const expectedAmount = this.configService.get<number>('ACTIVATION_PRICE_FCFA') || 4000;
 
-      // CRITIQUE 3 FIX: Vérifier que le montant reçu correspond au prix d'activation
+      // Reject if user is banned/suspended
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { status: true },
+      });
+      if (user?.status === 'BANNED' || user?.status === 'SUSPENDED') {
+        this.logger.warn(
+          `Activation refusée: utilisateur ${userId} est ${user.status} (TX: ${providerTxId})`,
+        );
+        return;
+      }
+
       if (receivedAmount < expectedAmount) {
         this.logger.error(
-          `🚨 FRAUDE DÉTECTÉE: Tentative d'activation avec ${receivedAmount} FCFA au lieu de ${expectedAmount} FCFA (TX: ${providerTxId}, user: ${userId})`,
+          `FRAUDE: Tentative d'activation avec ${receivedAmount} FCFA au lieu de ${expectedAmount} FCFA (TX: ${providerTxId}, user: ${userId})`,
         );
         await this.prisma.transaction.create({
           data: {
@@ -179,10 +195,9 @@ export class PaymentWebhookController {
             metadata: { providerTransactionId: providerTxId, fraud: true },
           },
         });
-        return; // NE PAS ACTIVER
+        return;
       }
 
-      // Update existing PENDING transaction or create new one (idempotent)
       if (existing) {
         await this.prisma.$transaction([
           this.prisma.user.update({
@@ -221,6 +236,18 @@ export class PaymentWebhookController {
       const targetTier = metadata.targetTier;
       if (!targetTier) {
         this.logger.warn(`tier_upgrade sans targetTier dans metadata (TX: ${providerTxId})`);
+        return;
+      }
+
+      // Reject if user is banned/suspended
+      const upgradeUser = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { status: true },
+      });
+      if (upgradeUser?.status === 'BANNED' || upgradeUser?.status === 'SUSPENDED') {
+        this.logger.warn(
+          `Upgrade refusé: utilisateur ${userId} est ${upgradeUser.status} (TX: ${providerTxId})`,
+        );
         return;
       }
 
@@ -356,7 +383,7 @@ export class PaymentWebhookController {
     if (!withdrawalId || !userId) return;
 
     const withdrawal = await this.prisma.withdrawal.findUnique({ where: { id: withdrawalId } });
-    if (!withdrawal || withdrawal.status === 'FAILED') return;
+    if (!withdrawal || withdrawal.status === 'FAILED' || withdrawal.status === 'COMPLETED') return;
 
     // withdrawal.amount stores NET; find GROSS from the transaction record
     const originalTx = await this.prisma.transaction.findFirst({

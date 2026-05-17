@@ -85,6 +85,17 @@ function RegisterForm() {
     setError('');
     setInfo('');
 
+    // M13: Validate phone number format (West African numbers) if provided
+    if (form.phone) {
+      const phoneRegex = /^\+?(228|229|225|233|234|221|226|227)\d{8,}$/;
+      const cleanedPhone = form.phone.replace(/\s+/g, '');
+      if (!phoneRegex.test(cleanedPhone)) {
+        setError('Numéro de téléphone invalide. Utilisez un format valide (ex: +228 90 00 00 00).');
+        setLoading(false);
+        return;
+      }
+    }
+
     try {
       const result = await register(form);
       if (result?.requiresEmailVerification) {

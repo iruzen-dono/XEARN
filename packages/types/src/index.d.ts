@@ -137,6 +137,71 @@ export interface WalletOverview {
   recentTransactions: Transaction[];
 }
 
+// API Response types for frontend
+export interface WalletData {
+  wallet: Wallet;
+  recentWithdrawals: Withdrawal[];
+  fees: FeesInfo;
+}
+
+export interface DashboardData {
+  user: User;
+  wallet: Wallet;
+  stats: {
+    totalEarned: string;
+    todayEarnings: string;
+    pendingWithdrawals: number;
+    activeReferrals: number;
+  };
+  recentTasks: TaskCompletion[];
+}
+
+export interface TaskCompletion {
+  id: string;
+  taskId: string;
+  userId: string;
+  reward: string;
+  createdAt: string;
+  task?: {
+    id: string;
+    title: string;
+    type: TaskType;
+  };
+}
+
+export interface ReferralTreeData {
+  level1: ReferralUser[];
+  level2: ReferralUser[];
+  level3: ReferralUser[];
+  stats: {
+    totalReferrals: number;
+    activeReferrals: number;
+    totalCommissions: string;
+  };
+}
+
+export interface ReferralUser {
+  id: string;
+  firstName: string;
+  lastName: string;
+  status: AccountStatus;
+  createdAt: string;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+  hasMore: boolean;
+}
+
+export interface ApiError {
+  message: string;
+  code?: string;
+  statusCode: number;
+}
+
 export interface TierPricing {
   tier: AccountTier;
   price: number;
@@ -201,6 +266,7 @@ export interface TaskLandingPageData {
     verificationCode: string;
     startedAt: string;
     codeGeneratedAt: string | null;
+    minDurationSeconds?: number;
   };
 }
 

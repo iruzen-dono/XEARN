@@ -192,7 +192,8 @@ export class AuthService {
       throw new UnauthorizedException('Identifiants incorrects');
     }
 
-    if (dto.email && !user.emailVerifiedAt) {
+    // M2 fix: Check email verification regardless of login method (email or phone)
+    if (user.email && !user.emailVerifiedAt) {
       throw new UnauthorizedException('Email non vérifié. Vérifiez votre boîte mail.');
     }
 
@@ -252,8 +253,8 @@ export class AuthService {
         throw new UnauthorizedException('Compte suspendu ou banni');
       }
 
-      // C1 fix: Reject refresh tokens issued before a password/security change
-      if (payload.tokenVersion !== undefined && payload.tokenVersion !== user.tokenVersion) {
+      // Reject refresh tokens without tokenVersion or with mismatched version
+      if (payload.tokenVersion === undefined || payload.tokenVersion !== user.tokenVersion) {
         throw new UnauthorizedException('Session expirée, veuillez vous reconnecter');
       }
 

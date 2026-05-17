@@ -9,6 +9,7 @@ import {
   Query,
   UseGuards,
   Request,
+  BadRequestException,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
@@ -16,7 +17,9 @@ import { TasksService } from './tasks.service';
 import { JwtAuthGuard, RolesGuard, Roles } from '../auth/guards';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
+import { CompleteTaskDto } from './dto/complete-task.dto';
 import { JwtRequest } from '../common/types';
+import { CuidValidationPipe } from '../common/pipes/cuid-validation.pipe';
 
 @Controller('tasks')
 @ApiTags('Tasks')
@@ -54,7 +57,7 @@ export class TasksController {
   @UseGuards(JwtAuthGuard)
   @Throttle({ default: { ttl: 60000, limit: 10 } })
   @Post(':id/start')
-  async startTask(@Request() req: JwtRequest, @Param('id') taskId: string) {
+  async startTask(@Request() req: JwtRequest, @Param('id', CuidValidationPipe) taskId: string) {
     return this.tasksService.startTask(req.user.id, taskId);
   }
 
@@ -63,8 +66,8 @@ export class TasksController {
   @Post(':id/complete')
   async completeTask(
     @Request() req: JwtRequest,
-    @Param('id') taskId: string,
-    @Body() body?: { verificationCode?: string },
+    @Param('id', CuidValidationPipe) taskId: string,
+    @Body() body?: CompleteTaskDto,
   ) {
     return this.tasksService.completeTask(req.user.id, taskId, body?.verificationCode);
   }
@@ -76,6 +79,9 @@ export class TasksController {
   @UseGuards(JwtAuthGuard)
   @Get('go/:slug')
   async getTaskLandingPage(@Request() req: JwtRequest, @Param('slug') slug: string) {
+    if (!slug || !/^[a-z0-9-]{1,100}$/.test(slug)) {
+      throw new BadRequestException('Format de slug invalide');
+    }
     return this.tasksService.getTaskLandingPage(slug, req.user.id);
   }
 
@@ -100,21 +106,21 @@ export class TasksController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
   @Patch('admin/:id')
-  async updateTask(@Param('id') id: string, @Body() dto: UpdateTaskDto) {
+  async updateTask(@Param('id', CuidValidationPipe) id: string, @Body() dto: UpdateTaskDto) {
     return this.tasksService.updateTask(id, dto);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
   @Patch('admin/:id/toggle')
-  async toggleTask(@Param('id') id: string) {
+  async toggleTask(@Param('id', CuidValidationPipe) id: string) {
     return this.tasksService.toggleTask(id);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
   @Delete('admin/:id')
-  async deleteTask(@Param('id') id: string) {
+  async deleteTask(@Param('id', CuidValidationPipe) id: string) {
     return this.tasksService.deleteTask(id);
   }
 }

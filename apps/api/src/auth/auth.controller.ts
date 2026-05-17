@@ -50,8 +50,8 @@ export class AuthController {
     return this.filterAuthResponse(result);
   }
 
-  // 10 tentatives par minute pour login (anti brute-force)
-  @Throttle({ default: { ttl: 60000, limit: 10 } })
+  // 5 tentatives par minute pour login (anti brute-force)
+  @Throttle({ default: { ttl: 60000, limit: 5 } })
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(

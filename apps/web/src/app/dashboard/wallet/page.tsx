@@ -147,6 +147,23 @@ export default function WalletPage() {
   const handleWithdraw = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token) return;
+
+    // M12: Validate minimum withdrawal amount
+    if (Number(withdrawForm.amount) < 2000) {
+      toast.error('Le montant minimum de retrait est de 2 000 FCFA.');
+      return;
+    }
+
+    // M13: Validate phone number format (West African numbers)
+    const phoneRegex = /^\+?(228|229|225|233|234|221|226|227)\d{8,}$/;
+    const cleanedPhone = withdrawForm.accountInfo.replace(/\s+/g, '');
+    if (!phoneRegex.test(cleanedPhone)) {
+      toast.error(
+        'Numéro de téléphone invalide. Utilisez un format valide (ex: +228 90 00 00 00).',
+      );
+      return;
+    }
+
     setWithdrawing(true);
     try {
       const result = (await walletApi.withdraw(token, {

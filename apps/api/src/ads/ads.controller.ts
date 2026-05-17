@@ -16,6 +16,7 @@ import { CreateAdDto, UpdateAdDto } from './dto/ads.dto';
 import { JwtAuthGuard, RolesGuard, Roles } from '../auth/guards';
 import { AuditLogService } from '../common/audit-log.service';
 import { JwtRequest } from '../common/types';
+import { CuidValidationPipe } from '../common/pipes/cuid-validation.pipe';
 import type { AdStatus } from '@xearn/types';
 
 @Controller('ads')
@@ -61,7 +62,11 @@ export class AdsController {
   /** Update my ad */
   @Patch(':id')
   @UseGuards(JwtAuthGuard)
-  update(@Req() req: JwtRequest, @Param('id') id: string, @Body() dto: UpdateAdDto) {
+  update(
+    @Req() req: JwtRequest,
+    @Param('id', CuidValidationPipe) id: string,
+    @Body() dto: UpdateAdDto,
+  ) {
     const isAdmin = req.user.role === 'ADMIN';
     return this.ads.update(id, req.user.id, isAdmin, dto);
   }
@@ -69,7 +74,7 @@ export class AdsController {
   /** Delete my ad */
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
-  remove(@Req() req: JwtRequest, @Param('id') id: string) {
+  remove(@Req() req: JwtRequest, @Param('id', CuidValidationPipe) id: string) {
     const isAdmin = req.user.role === 'ADMIN';
     return this.ads.remove(id, req.user.id, isAdmin);
   }
@@ -87,7 +92,7 @@ export class AdsController {
   @Patch('admin/:id/approve')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
-  async approve(@Req() req: JwtRequest, @Param('id') id: string) {
+  async approve(@Req() req: JwtRequest, @Param('id', CuidValidationPipe) id: string) {
     const result = await this.ads.approve(id);
     await this.auditLog.log(req.user.id, 'APPROVE_AD', 'Advertisement', id);
     return result;
@@ -97,7 +102,7 @@ export class AdsController {
   @Patch('admin/:id/reject')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
-  async reject(@Req() req: JwtRequest, @Param('id') id: string) {
+  async reject(@Req() req: JwtRequest, @Param('id', CuidValidationPipe) id: string) {
     const result = await this.ads.reject(id);
     await this.auditLog.log(req.user.id, 'REJECT_AD', 'Advertisement', id);
     return result;
@@ -107,7 +112,7 @@ export class AdsController {
   @Patch('admin/:id/pause')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
-  async pause(@Req() req: JwtRequest, @Param('id') id: string) {
+  async pause(@Req() req: JwtRequest, @Param('id', CuidValidationPipe) id: string) {
     const result = await this.ads.pause(id);
     await this.auditLog.log(req.user.id, 'PAUSE_AD', 'Advertisement', id);
     return result;

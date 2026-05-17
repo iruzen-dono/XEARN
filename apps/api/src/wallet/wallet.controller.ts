@@ -22,6 +22,7 @@ import { JwtAuthGuard, RolesGuard, Roles } from '../auth/guards';
 import { WithdrawDto } from './dto/withdraw.dto';
 import { UpgradeTierDto } from './dto/upgrade-tier.dto';
 import { JwtRequest } from '../common/types';
+import { CuidValidationPipe } from '../common/pipes/cuid-validation.pipe';
 
 @Controller('wallet')
 @ApiTags('Wallet')
@@ -102,7 +103,7 @@ export class WalletController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
   @Patch('admin/withdrawals/:id/approve')
-  async approveWithdrawal(@Request() req: JwtRequest, @Param('id') id: string) {
+  async approveWithdrawal(@Request() req: JwtRequest, @Param('id', CuidValidationPipe) id: string) {
     const result = await this.walletService.approveWithdrawal(id);
     await this.auditLog.log(req.user.id, 'APPROVE_WITHDRAWAL', 'Withdrawal', id);
     return result;
@@ -111,7 +112,7 @@ export class WalletController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
   @Patch('admin/withdrawals/:id/reject')
-  async rejectWithdrawal(@Request() req: JwtRequest, @Param('id') id: string) {
+  async rejectWithdrawal(@Request() req: JwtRequest, @Param('id', CuidValidationPipe) id: string) {
     const result = await this.walletService.rejectWithdrawal(id);
     await this.auditLog.log(req.user.id, 'REJECT_WITHDRAWAL', 'Withdrawal', id);
     return result;

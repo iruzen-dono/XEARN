@@ -78,6 +78,7 @@ export class AdminService {
 
     await this.auditLog.log(adminId, 'ACTIVATE_USER', 'User', targetId, {
       previousStatus: user.status,
+      activationMethod: 'MANUAL',
     });
 
     return { message: 'Utilisateur activé avec succès', user: updated };

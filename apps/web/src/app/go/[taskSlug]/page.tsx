@@ -4,12 +4,13 @@ import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { TaskLandingPageData } from '@xearn/types';
 import { useAuth } from '@/lib/auth';
+import { api } from '@/lib/api';
 import { getErrorMessage } from '@/lib/errors';
 
 export default function TaskLandingPage() {
   const params = useParams();
   const router = useRouter();
-  const { token } = useAuth();
+  const { isAuthenticated } = useAuth();
   const taskSlug = params.taskSlug as string;
 
   const [data, setData] = useState<TaskLandingPageData | null>(null);
@@ -20,28 +21,19 @@ export default function TaskLandingPage() {
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!token) {
+      if (!isAuthenticated) {
         setError('Vous devez être connecté');
         setLoading(false);
         return;
       }
 
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-        const response = await fetch(`${apiUrl}/api/v1/tasks/go/${taskSlug}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.message || 'Erreur lors du chargement de la tâche');
-        }
-
-        const taskData: TaskLandingPageData = await response.json();
+        const taskData = await api<TaskLandingPageData>(`/v1/tasks/go/${taskSlug}`);
         setData(taskData);
+        // L9: Use server-provided minimum duration instead of hardcoded 10s
+        if (taskData.session?.minDurationSeconds) {
+          setTimeLeft(taskData.session.minDurationSeconds);
+        }
       } catch (err) {
         setError(getErrorMessage(err, 'Erreur lors du chargement'));
       } finally {
@@ -50,7 +42,7 @@ export default function TaskLandingPage() {
     };
 
     fetchData();
-  }, [taskSlug, token]);
+  }, [taskSlug, isAuthenticated]);
 
   useEffect(() => {
     if (timeLeft <= 0) {

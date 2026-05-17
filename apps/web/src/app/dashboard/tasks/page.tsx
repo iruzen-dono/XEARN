@@ -358,7 +358,7 @@ export default function TasksPage() {
                 onChange={(e) => setVerificationCode(e.target.value.toUpperCase())}
                 placeholder="XE-XXXX"
                 className="w-full px-4 py-3 bg-dark-800 border border-white/[0.08] rounded-xl text-center text-2xl font-mono font-bold tracking-wider focus:border-primary-500 focus:outline-none transition-colors mb-4"
-                maxLength={7}
+                maxLength={11}
                 autoFocus
               />
 

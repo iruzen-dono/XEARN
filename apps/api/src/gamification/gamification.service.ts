@@ -356,48 +356,62 @@ export class GamificationService {
     const newBadgeNames: string[] = [];
 
     for (const badge of unearned) {
-      // Atomically create badge + award bonus to prevent accounting discrepancies
-      if (badge.reward) {
-        await this.prisma.$transaction([
-          this.prisma.userBadge.create({
-            data: { userId, badgeId: badge.id },
-          }),
-          this.prisma.wallet.updateMany({
-            where: { userId },
-            data: {
-              balance: { increment: badge.reward },
-              totalEarned: { increment: badge.reward },
-            },
-          }),
-          this.prisma.transaction.create({
-            data: {
-              userId,
-              type: 'TASK_EARNING',
-              status: 'COMPLETED',
-              amount: badge.reward,
-              description: `Bonus badge: ${badge.name}`,
-            },
-          }),
-        ]);
-      } else {
-        await this.prisma.userBadge.create({
-          data: { userId, badgeId: badge.id },
-        });
-      }
-
-      newBadgeNames.push(badge.name);
-
-      // Notify user
       try {
-        await this.notificationsService.create(
-          userId,
-          'SYSTEM',
-          `Badge débloqué : ${badge.name}`,
-          `Félicitations ! Vous avez obtenu le badge "${badge.name}" — ${badge.description}${badge.reward ? `. Bonus : ${badge.reward} FCFA` : ''}`,
-          { badgeCode: badge.code, badgeIcon: badge.icon },
-        );
-      } catch (err) {
-        this.logger.error(`Failed to notify badge: ${err}`);
+        // Atomically create badge + award bonus to prevent accounting discrepancies
+        if (badge.reward) {
+          await this.prisma.$transaction([
+            this.prisma.userBadge.create({
+              data: { userId, badgeId: badge.id },
+            }),
+            this.prisma.wallet.updateMany({
+              where: { userId },
+              data: {
+                balance: { increment: badge.reward },
+                totalEarned: { increment: badge.reward },
+              },
+            }),
+            this.prisma.transaction.create({
+              data: {
+                userId,
+                type: 'TASK_EARNING',
+                status: 'COMPLETED',
+                amount: badge.reward,
+                description: `Bonus badge: ${badge.name}`,
+              },
+            }),
+          ]);
+        } else {
+          await this.prisma.userBadge.create({
+            data: { userId, badgeId: badge.id },
+          });
+        }
+
+        newBadgeNames.push(badge.name);
+
+        // Notify user
+        try {
+          await this.notificationsService.create(
+            userId,
+            'SYSTEM',
+            `Badge débloqué : ${badge.name}`,
+            `Félicitations ! Vous avez obtenu le badge "${badge.name}" — ${badge.description}${badge.reward ? `. Bonus : ${badge.reward} FCFA` : ''}`,
+            { badgeCode: badge.code, badgeIcon: badge.icon },
+          );
+        } catch (err) {
+          this.logger.error(`Failed to notify badge: ${err}`);
+        }
+      } catch (err: unknown) {
+        // P2002 = unique constraint violation — badge already awarded by concurrent request
+        if (
+          typeof err === 'object' &&
+          err !== null &&
+          'code' in err &&
+          (err as { code?: string }).code === 'P2002'
+        ) {
+          this.logger.debug(`Badge ${badge.code} already awarded to ${userId} (concurrent)`);
+          continue;
+        }
+        throw err;
       }
     }
 

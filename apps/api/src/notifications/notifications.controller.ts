@@ -15,6 +15,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { JwtAuthGuard } from '../auth/guards';
 import { NotificationsService } from './notifications.service';
 import { JwtRequest } from '../common/types';
+import { CuidValidationPipe } from '../common/pipes/cuid-validation.pipe';
 
 @Controller('notifications')
 @UseGuards(JwtAuthGuard)
@@ -63,7 +64,7 @@ export class NotificationsController {
   }
 
   @Patch(':id/read')
-  async markAsRead(@Request() req: JwtRequest, @Param('id') id: string) {
+  async markAsRead(@Request() req: JwtRequest, @Param('id', CuidValidationPipe) id: string) {
     await this.notificationsService.markAsRead(req.user.id, id);
     return { success: true };
   }

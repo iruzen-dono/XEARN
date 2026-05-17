@@ -3,6 +3,7 @@ import { ApiTags } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
 import { JwtAuthGuard, RolesGuard, Roles } from '../auth/guards';
 import { JwtRequest } from '../common/types';
+import { CuidValidationPipe } from '../common/pipes/cuid-validation.pipe';
 
 @Controller('admin/users')
 @ApiTags('Admin')
@@ -12,17 +13,17 @@ export class AdminController {
   constructor(private adminService: AdminService) {}
 
   @Patch(':id/suspend')
-  async suspendUser(@Request() req: JwtRequest, @Param('id') id: string) {
+  async suspendUser(@Request() req: JwtRequest, @Param('id', CuidValidationPipe) id: string) {
     return this.adminService.suspendUser(id, req.user.id);
   }
 
   @Patch(':id/ban')
-  async banUser(@Request() req: JwtRequest, @Param('id') id: string) {
+  async banUser(@Request() req: JwtRequest, @Param('id', CuidValidationPipe) id: string) {
     return this.adminService.banUser(id, req.user.id);
   }
 
   @Patch(':id/activate')
-  async activateUser(@Request() req: JwtRequest, @Param('id') id: string) {
+  async activateUser(@Request() req: JwtRequest, @Param('id', CuidValidationPipe) id: string) {
     return this.adminService.activateUser(id, req.user.id);
   }
 }

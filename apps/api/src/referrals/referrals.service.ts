@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
@@ -8,12 +8,25 @@ import { Decimal } from '@prisma/client/runtime/library';
 
 @Injectable()
 export class ReferralsService {
+  private readonly logger = new Logger(ReferralsService.name);
+
   constructor(
     private prisma: PrismaService,
     private configService: ConfigService,
     private notificationsService: NotificationsService,
     private gamificationService: GamificationService,
-  ) {}
+  ) {
+    // Validate commission percentages at startup
+    const l1 = this.configService.get<number>('REFERRAL_LEVEL1_PERCENT') || 40;
+    const l2 = this.configService.get<number>('REFERRAL_LEVEL2_PERCENT') || 10;
+    const l3 = this.configService.get<number>('REFERRAL_LEVEL3_PERCENT') || 5;
+    if (l1 < 0 || l1 > 50 || l2 < 0 || l2 > 50 || l3 < 0 || l3 > 50) {
+      throw new Error('REFERRAL_LEVEL*_PERCENT must be between 0 and 50');
+    }
+    if (l1 + l2 + l3 > 100) {
+      throw new Error('Total referral commission percentages must not exceed 100%');
+    }
+  }
 
   async getReferralTree(userId: string) {
     const MAX_PER_LEVEL = 100;
@@ -161,7 +174,7 @@ export class ReferralsService {
   }
 
   // Distribuer les commissions quand un filleul gagne de l'argent
-  async distributeCommissions(userId: string, amount: Decimal) {
+  async distributeCommissions(userId: string, amount: Decimal, completionId?: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: {
@@ -195,102 +208,122 @@ export class ReferralsService {
     const l2Percent = this.configService.get<number>('REFERRAL_LEVEL2_PERCENT') || 10;
     const l3Percent = this.configService.get<number>('REFERRAL_LEVEL3_PERCENT') || 5;
 
-    // Single atomic transaction for both L1 and L2 commissions
-    const operations: Prisma.PrismaPromise<unknown>[] = [];
+    // Determine eligible beneficiaries upfront
+    const l1Beneficiary = user.referredBy!.status === 'ACTIVATED' ? user.referredBy! : null;
+    const l2Beneficiary =
+      user.referredBy!.referredBy?.status === 'ACTIVATED' &&
+      user.referredBy!.referredBy?.tier &&
+      ['PREMIUM', 'VIP'].includes(user.referredBy!.referredBy.tier)
+        ? user.referredBy!.referredBy
+        : null;
+    const l3Beneficiary =
+      user.referredBy!.referredBy?.referredBy?.status === 'ACTIVATED' &&
+      user.referredBy!.referredBy?.referredBy?.tier === 'VIP'
+        ? user.referredBy!.referredBy.referredBy
+        : null;
 
-    // Commission niveau 1
-    if (user.referredBy.status === 'ACTIVATED') {
-      const commissionL1 = amount.mul(l1Percent).div(100);
+    // Collect unique beneficiary IDs and sort for deterministic lock ordering (deadlock prevention)
+    const beneficiaryIdsToLock = [
+      ...(l1Beneficiary ? [l1Beneficiary.id] : []),
+      ...(l2Beneficiary ? [l2Beneficiary.id] : []),
+      ...(l3Beneficiary ? [l3Beneficiary.id] : []),
+    ];
+    const uniqueSortedIds = [...new Set(beneficiaryIdsToLock)].sort();
 
-      operations.push(
-        this.prisma.commission.create({
+    if (uniqueSortedIds.length === 0) return;
+
+    await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      // Lock ALL wallets upfront in sorted order to prevent deadlocks
+      for (const id of uniqueSortedIds) {
+        await tx.$queryRaw`SELECT 1 FROM "wallets" WHERE "userId" = ${id} FOR UPDATE`;
+      }
+
+      // Commission niveau 1
+      if (l1Beneficiary) {
+        const commissionL1 = amount.mul(l1Percent).div(100);
+        await tx.commission.create({
           data: {
-            beneficiaryId: user.referredBy.id,
+            beneficiaryId: l1Beneficiary.id,
             sourceUserId: userId,
             level: 1,
             percentage: l1Percent,
             amount: commissionL1,
+            sourceType: 'TASK_COMPLETION',
+            sourceId: completionId || userId,
           },
-        }),
-        this.prisma.wallet.update({
-          where: { userId: user.referredBy.id },
+        });
+        await tx.wallet.update({
+          where: { userId: l1Beneficiary.id },
           data: {
             balance: { increment: commissionL1 },
             totalEarned: { increment: commissionL1 },
           },
-        }),
-        this.prisma.transaction.create({
+        });
+        await tx.transaction.create({
           data: {
-            userId: user.referredBy.id,
+            userId: l1Beneficiary.id,
             type: 'REFERRAL_L1',
             status: 'COMPLETED',
             amount: commissionL1,
             description: `Commission N1 - ${user.firstName} ${user.lastName}`,
           },
-        }),
-      );
-    }
+        });
+      }
 
-    // Commission niveau 2 (H3 fix: requires PREMIUM or VIP tier for L2 beneficiary)
-    if (
-      user.referredBy.referredBy?.status === 'ACTIVATED' &&
-      user.referredBy.referredBy?.tier &&
-      ['PREMIUM', 'VIP'].includes(user.referredBy.referredBy.tier)
-    ) {
-      const commissionL2 = amount.mul(l2Percent).div(100);
-
-      operations.push(
-        this.prisma.commission.create({
+      // Commission niveau 2
+      if (l2Beneficiary) {
+        const commissionL2 = amount.mul(l2Percent).div(100);
+        await tx.commission.create({
           data: {
-            beneficiaryId: user.referredBy.referredBy.id,
+            beneficiaryId: l2Beneficiary.id,
             sourceUserId: userId,
             level: 2,
             percentage: l2Percent,
             amount: commissionL2,
+            sourceType: 'TASK_COMPLETION',
+            sourceId: completionId || userId,
           },
-        }),
-        this.prisma.wallet.update({
-          where: { userId: user.referredBy.referredBy.id },
+        });
+        await tx.wallet.update({
+          where: { userId: l2Beneficiary.id },
           data: {
             balance: { increment: commissionL2 },
             totalEarned: { increment: commissionL2 },
           },
-        }),
-        this.prisma.transaction.create({
+        });
+        await tx.transaction.create({
           data: {
-            userId: user.referredBy.referredBy.id,
+            userId: l2Beneficiary.id,
             type: 'REFERRAL_L2',
             status: 'COMPLETED',
             amount: commissionL2,
             description: `Commission N2 - ${user.firstName} ${user.lastName}`,
           },
-        }),
-      );
-    }
+        });
+      }
 
-    // Commission niveau 3 (VIP uniquement)
-    const l3Beneficiary = user.referredBy.referredBy?.referredBy;
-    if (l3Beneficiary?.status === 'ACTIVATED' && l3Beneficiary.tier === 'VIP') {
-      const commissionL3 = amount.mul(l3Percent).div(100);
-
-      operations.push(
-        this.prisma.commission.create({
+      // Commission niveau 3 (VIP uniquement)
+      if (l3Beneficiary) {
+        const commissionL3 = amount.mul(l3Percent).div(100);
+        await tx.commission.create({
           data: {
             beneficiaryId: l3Beneficiary.id,
             sourceUserId: userId,
             level: 3,
             percentage: l3Percent,
             amount: commissionL3,
+            sourceType: 'TASK_COMPLETION',
+            sourceId: completionId || userId,
           },
-        }),
-        this.prisma.wallet.update({
+        });
+        await tx.wallet.update({
           where: { userId: l3Beneficiary.id },
           data: {
             balance: { increment: commissionL3 },
             totalEarned: { increment: commissionL3 },
           },
-        }),
-        this.prisma.transaction.create({
+        });
+        await tx.transaction.create({
           data: {
             userId: l3Beneficiary.id,
             type: 'REFERRAL_L3',
@@ -298,15 +331,13 @@ export class ReferralsService {
             amount: commissionL3,
             description: `Commission N3 VIP - ${user.firstName} ${user.lastName}`,
           },
-        }),
-      );
-    }
-
-    if (operations.length > 0) {
-      await this.prisma.$transaction(operations);
-    }
+        });
+      }
+    });
 
     // Notifications (outside transaction — non-critical)
+    const l3BeneficiaryNotif = user.referredBy.referredBy?.referredBy;
+
     if (user.referredBy.status === 'ACTIVATED') {
       const commissionL1 = amount.mul(l1Percent).div(100);
       try {
@@ -338,11 +369,11 @@ export class ReferralsService {
       }
     }
 
-    if (l3Beneficiary?.status === 'ACTIVATED' && l3Beneficiary.tier === 'VIP') {
+    if (l3BeneficiaryNotif?.status === 'ACTIVATED' && l3BeneficiaryNotif.tier === 'VIP') {
       const commissionL3 = amount.mul(l3Percent).div(100);
       try {
         await this.notificationsService.notifyCommission(
-          l3Beneficiary.id,
+          l3BeneficiaryNotif.id,
           Number(commissionL3),
           3,
           `${user.firstName} ${user.lastName}`,
@@ -356,7 +387,7 @@ export class ReferralsService {
     const beneficiaryIds = [
       user.referredBy.id,
       user.referredBy.referredBy?.id,
-      l3Beneficiary?.id,
+      l3BeneficiaryNotif?.id,
     ].filter(Boolean) as string[];
 
     await Promise.allSettled(

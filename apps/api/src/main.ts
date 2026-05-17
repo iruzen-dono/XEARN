@@ -183,7 +183,7 @@ async function bootstrap() {
       } else if (allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        callback(new Error(`Origin ${origin} non autorisée par CORS`));
+        callback(new Error('CORS policy violation'));
       }
     },
     credentials: true,
@@ -199,7 +199,7 @@ async function bootstrap() {
     exclude: ['health'],
   });
 
-  if (configService.get('NODE_ENV') === 'development') {
+  if (configService.get('NODE_ENV') !== 'production') {
     const swaggerConfig = new DocumentBuilder()
       .setTitle('XEARN API')
       .setDescription('API documentation — enabled in development only')

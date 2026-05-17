@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { Decimal } from '@prisma/client/runtime/library';
@@ -6,6 +6,12 @@ import { Prisma } from '@prisma/client';
 import { PaymentService } from '../payment/payment.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import type { AccountTier, PaymentMethod } from '@xearn/types';
+import {
+  InsufficientBalanceException,
+  AccountNotActivatedException,
+  WithdrawalMinimumException,
+  DuplicateOperationException,
+} from '../common/exceptions';
 
 @Injectable()
 export class WalletService {
@@ -93,8 +99,8 @@ export class WalletService {
       where: { id: userId },
       include: { wallet: true },
     });
-    if (!user) throw new BadRequestException('Utilisateur introuvable');
-    if (user.status === 'ACTIVATED') throw new BadRequestException('Compte déjà activé');
+    if (!user) throw new NotFoundException('Utilisateur introuvable');
+    if (user.status === 'ACTIVATED') throw new DuplicateOperationException('activation de compte');
     if (user.status === 'SUSPENDED' || user.status === 'BANNED') {
       throw new BadRequestException('Compte suspendu ou banni — contactez le support');
     }
@@ -177,7 +183,7 @@ export class WalletService {
     }
 
     if (amount < minWithdrawal) {
-      throw new BadRequestException(`Montant minimum de retrait: ${minWithdrawal} FCFA`);
+      throw new WithdrawalMinimumException(minWithdrawal);
     }
 
     if (amount > maxWithdrawal) {
@@ -196,7 +202,7 @@ export class WalletService {
     });
 
     if (!user || user.status !== 'ACTIVATED') {
-      throw new BadRequestException('Compte non activé');
+      throw new AccountNotActivatedException();
     }
     // Calculate withdrawal fee based on tier
     const feePercent = this.getWithdrawalFeePercent(user.tier);
@@ -213,9 +219,7 @@ export class WalletService {
     });
 
     if (pendingWithdrawal) {
-      throw new BadRequestException(
-        "Vous avez déjà un retrait en cours. Veuillez attendre son traitement avant d'en demander un autre.",
-      );
+      throw new DuplicateOperationException('retrait en cours');
     }
 
     // MODÉRÉ 2 FIX: Limites quotidiennes de retrait (anti-drainage)
@@ -254,7 +258,8 @@ export class WalletService {
         !lockedWallet ||
         new Decimal(String(lockedWallet.balance)).lessThan(new Decimal(amount))
       ) {
-        throw new BadRequestException('Solde insuffisant');
+        const available = lockedWallet ? Number(lockedWallet.balance) : 0;
+        throw new InsufficientBalanceException(available, amount);
       }
 
       // Débiter le wallet

@@ -17,6 +17,7 @@ import { AuditLogService } from '../common/audit-log.service';
 import { JwtAuthGuard, RolesGuard, Roles } from '../auth/guards';
 import { UpdateProfileDto, ChangePasswordDto } from './dto/update-profile.dto';
 import { JwtRequest } from '../common/types';
+import { CuidValidationPipe } from '../common/pipes/cuid-validation.pipe';
 import type { AccountStatus } from '@xearn/types';
 
 @Controller('users')
@@ -129,7 +130,7 @@ export class UsersController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
   @Patch(':id/activate')
-  async reactivateUser(@Request() req: JwtRequest, @Param('id') id: string) {
+  async reactivateUser(@Request() req: JwtRequest, @Param('id', CuidValidationPipe) id: string) {
     const result = await this.usersService.reactivateUser(id);
     await this.auditLog.log(req.user.id, 'REACTIVATE_USER', 'User', id);
     return result;
@@ -138,7 +139,7 @@ export class UsersController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
   @Patch(':id/suspend')
-  async suspendUser(@Request() req: JwtRequest, @Param('id') id: string) {
+  async suspendUser(@Request() req: JwtRequest, @Param('id', CuidValidationPipe) id: string) {
     const result = await this.usersService.suspendUser(id, req.user.id);
     await this.auditLog.log(req.user.id, 'SUSPEND_USER', 'User', id);
     return result;
@@ -147,7 +148,7 @@ export class UsersController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
   @Patch(':id/ban')
-  async banUser(@Request() req: JwtRequest, @Param('id') id: string) {
+  async banUser(@Request() req: JwtRequest, @Param('id', CuidValidationPipe) id: string) {
     const result = await this.usersService.banUser(id, req.user.id);
     await this.auditLog.log(req.user.id, 'BAN_USER', 'User', id);
     return result;
