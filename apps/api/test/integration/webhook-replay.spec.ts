@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { PrismaService } from '../../src/prisma/prisma.service';
 import { PaymentWebhookController } from '../../src/payment/payment-webhook.controller';
 import { Decimal } from '@prisma/client/runtime/library';
@@ -21,7 +22,7 @@ describe('PaymentWebhookController - Replay Protection (Integration)', () => {
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [ConfigModule.forRoot()],
+      imports: [ConfigModule.forRoot(), EventEmitterModule.forRoot()],
       providers: [PrismaService, PaymentWebhookController, ConfigService],
     }).compile();
 

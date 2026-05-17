@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { PrismaService } from '../../src/prisma/prisma.service';
 import { TasksService } from '../../src/tasks/tasks.service';
 import { ReferralsService } from '../../src/referrals/referrals.service';
@@ -26,7 +27,7 @@ describe('TasksService - Daily Limit Enforcement (Integration)', () => {
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [ConfigModule.forRoot()],
+      imports: [ConfigModule.forRoot(), EventEmitterModule.forRoot()],
       providers: [
         PrismaService,
         TasksService,

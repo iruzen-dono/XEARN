@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { PrismaService } from '../../src/prisma/prisma.service';
 import { ReferralsService } from '../../src/referrals/referrals.service';
 import { NotificationsService } from '../../src/notifications/notifications.service';
@@ -27,7 +28,7 @@ describe('ReferralsService - Concurrent Commissions (Integration)', () => {
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [ConfigModule.forRoot()],
+      imports: [ConfigModule.forRoot(), EventEmitterModule.forRoot()],
       providers: [
         PrismaService,
         ReferralsService,

@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { PrismaService } from '../../src/prisma/prisma.service';
 import { WalletService } from '../../src/wallet/wallet.service';
 import { PaymentService } from '../../src/payment/payment.service';
@@ -26,7 +27,7 @@ describe('WalletService - Concurrent Withdrawals (Integration)', () => {
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [ConfigModule.forRoot()],
+      imports: [ConfigModule.forRoot(), EventEmitterModule.forRoot()],
       providers: [
         PrismaService,
         WalletService,

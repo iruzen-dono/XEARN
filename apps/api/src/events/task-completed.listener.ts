@@ -51,9 +51,16 @@ export class TaskCompletedListener {
     }
 
     // 3. Award badges and gamification
-    // Note: Gamification badges are awarded automatically via service methods
-    // that are already called elsewhere (e.g., updateTaskStats)
-    // Attempting to call private checkAndAwardBadges would fail
+    try {
+      await this.gamificationService.checkTaskBadges(userId);
+      await this.gamificationService.recordActivity(userId);
+      await this.gamificationService.checkEarningsBadges(userId);
+    } catch (error) {
+      this.logger.warn(
+        `Failed to award badges for completion ${completionId}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      // Non-critical: badge awards shouldn't block
+    }
 
     this.logger.log(`TaskCompleted event processed successfully: ${completionId}`);
   }
