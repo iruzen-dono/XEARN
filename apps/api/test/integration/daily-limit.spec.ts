@@ -27,7 +27,7 @@ describe('TasksService - Daily Limit Enforcement (Integration)', () => {
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [ConfigModule.forRoot(), EventEmitterModule.forRoot()],
+      imports: [ConfigModule.forRoot({ envFilePath: '.env.test' }), EventEmitterModule.forRoot()],
       providers: [
         PrismaService,
         TasksService,
