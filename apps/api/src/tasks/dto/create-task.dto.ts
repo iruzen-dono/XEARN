@@ -4,6 +4,7 @@ import {
   IsOptional,
   IsUrl,
   IsEnum,
+  IsBoolean,
   Min,
   Max,
   MinLength,
@@ -96,5 +97,6 @@ export class CreateTaskDto {
 
   @ApiPropertyOptional({ example: false })
   @IsOptional()
+  @IsBoolean()
   requiresCode?: boolean;
 }
