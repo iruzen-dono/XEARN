@@ -297,7 +297,7 @@ export class TasksService {
 
     // Transaction atomique : compléter la tâche + créditer le wallet
     let result;
-    let lockedReward: number;
+    let lockedReward: number = 0; // CRITIQUE FIX #3: Initialize to satisfy TypeScript
     try {
       result = await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
         // CRITIQUE FIX #3: Lock the task row and re-read reward to prevent TOCTOU
