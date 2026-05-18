@@ -3,6 +3,7 @@ import { Prisma, PrismaClient } from '@prisma/client';
 
 /**
  * H2 FIX: Extended PrismaClient with soft-delete support
+ * MAJEUR FIX #6: Transaction timeout protection against deadlocks
  *
  * IMPORTANT: To ensure soft-deleted users are filtered:
  * 1. Use prisma.user.findFirst/findMany with explicit { deletedAt: null } in where clause
@@ -12,7 +13,26 @@ import { Prisma, PrismaClient } from '@prisma/client';
  * { deletedAt: { not: null } } or omit the filter entirely if needed.
  */
 @Injectable()
-export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
+export class PrismaService
+  extends PrismaClient<Prisma.PrismaClientOptions, 'query' | 'info' | 'warn' | 'error'>
+  implements OnModuleInit, OnModuleDestroy
+{
+  constructor() {
+    super({
+      log: [
+        { emit: 'event', level: 'query' },
+        { emit: 'stdout', level: 'error' },
+        { emit: 'stdout', level: 'warn' },
+      ],
+      // MAJEUR FIX #6: Configure transaction timeouts to prevent indefinite locks
+      transactionOptions: {
+        maxWait: 5000, // 5s max wait time for lock acquisition
+        timeout: 10000, // 10s max transaction duration
+        isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
+      },
+    });
+  }
+
   async onModuleInit() {
     await this.$connect();
 

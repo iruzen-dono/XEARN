@@ -17,6 +17,10 @@ export class RegisterDto {
   @ApiPropertyOptional({ example: 'user@example.com', description: 'Adresse email de connexion' })
   @IsOptional()
   @IsEmail({}, { message: 'Adresse email invalide' })
+  // MAJEUR FIX #7: Strict email validation with regex
+  @Matches(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, {
+    message: 'Format email invalide',
+  })
   @Transform(({ value }) => (typeof value === 'string' ? value.toLowerCase().trim() : value))
   email?: string;
 
@@ -71,6 +75,10 @@ export class LoginDto {
   @ApiPropertyOptional({ example: 'user@example.com' })
   @IsOptional()
   @IsEmail({}, { message: 'Adresse email invalide' })
+  // MAJEUR FIX #7: Strict email validation with regex
+  @Matches(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, {
+    message: 'Format email invalide',
+  })
   @Transform(({ value }) => (typeof value === 'string' ? value.toLowerCase().trim() : value))
   email?: string;
 
@@ -105,6 +113,10 @@ export class RefreshTokenDto {
 export class ResendVerificationDto {
   @ApiProperty({ example: 'user@example.com' })
   @IsEmail({}, { message: 'Adresse email invalide' })
+  // MAJEUR FIX #7: Strict email validation with regex
+  @Matches(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, {
+    message: 'Format email invalide',
+  })
   @Transform(({ value }) => (typeof value === 'string' ? value.toLowerCase().trim() : value))
   email: string;
 }
@@ -126,6 +138,10 @@ export class GoogleAuthDto {
 export class ForgotPasswordDto {
   @ApiProperty({ example: 'user@example.com' })
   @IsEmail({}, { message: 'Adresse email invalide' })
+  // MAJEUR FIX #7: Strict email validation with regex
+  @Matches(/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, {
+    message: 'Format email invalide',
+  })
   @Transform(({ value }) => (typeof value === 'string' ? value.toLowerCase().trim() : value))
   email: string;
 }

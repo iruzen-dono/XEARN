@@ -167,6 +167,8 @@ const DEFAULT_BADGES: BadgeSeed[] = [
 export class GamificationService {
   private readonly logger = new Logger(GamificationService.name);
   private badgesSeeded = false;
+  // MAJEUR FIX #1: Daily cap pour limiter l'exposition financière
+  private readonly DAILY_BADGE_REWARD_CAP = 10000; // 10k FCFA/jour max par utilisateur
 
   constructor(
     private prisma: PrismaService,
@@ -342,76 +344,118 @@ export class GamificationService {
     category: BadgeCategory,
     currentValue: number,
   ): Promise<string[]> {
-    // Get all badges of this category that the user hasn't earned yet
-    const unearned = await this.prisma.badge.findMany({
-      where: {
-        category,
-        threshold: { lte: currentValue },
-        NOT: {
-          userBadges: { some: { userId } },
-        },
-      },
-    });
-
     const newBadgeNames: string[] = [];
 
-    for (const badge of unearned) {
-      try {
-        // Atomically create badge + award bonus to prevent accounting discrepancies
-        if (badge.reward) {
-          await this.prisma.$transaction([
-            this.prisma.userBadge.create({
+    // MAJEUR FIX #1: Vérifier le total de rewards badges déjà reçus aujourd'hui
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const todayRewards = await this.prisma.transaction.aggregate({
+      where: {
+        userId,
+        type: 'TASK_EARNING',
+        description: { startsWith: 'Bonus badge:' },
+        createdAt: { gte: today },
+      },
+      _sum: { amount: true },
+    });
+
+    const totalToday = Number(todayRewards._sum.amount || 0);
+
+    if (totalToday >= this.DAILY_BADGE_REWARD_CAP) {
+      this.logger.warn(
+        `Badge reward cap atteint pour ${userId} (${totalToday} FCFA aujourd'hui) - badges bloqués`,
+      );
+      return [];
+    }
+
+    // CRITIQUE FIX #1: Lock wallet BEFORE reading unearned badges to prevent race conditions
+    await this.prisma.$transaction(async (tx) => {
+      // 1. Lock wallet first to serialize badge operations per user
+      await tx.$queryRaw`SELECT 1 FROM "wallets" WHERE "userId" = ${userId} FOR UPDATE`;
+
+      // 2. Now read unearned badges (under lock)
+      const unearned = await tx.badge.findMany({
+        where: {
+          category,
+          threshold: { lte: currentValue },
+          NOT: {
+            userBadges: { some: { userId } },
+          },
+        },
+      });
+
+      // 3. Award badges atomically (with cap enforcement)
+      for (const badge of unearned) {
+        try {
+          if (badge.reward) {
+            // MAJEUR FIX #1: Vérifier que l'ajout ne dépasse pas le cap quotidien
+            const newTotal = totalToday + Number(badge.reward);
+            if (newTotal > this.DAILY_BADGE_REWARD_CAP) {
+              this.logger.warn(
+                `Badge ${badge.code} ignoré pour ${userId} - dépasserait le cap quotidien (${newTotal} > ${this.DAILY_BADGE_REWARD_CAP})`,
+              );
+              continue; // Skip this badge
+            }
+
+            await tx.userBadge.create({
               data: { userId, badgeId: badge.id },
-            }),
-            this.prisma.wallet.updateMany({
+            });
+            await tx.wallet.update({
               where: { userId },
               data: {
                 balance: { increment: badge.reward },
                 totalEarned: { increment: badge.reward },
               },
-            }),
-            this.prisma.transaction.create({
+            });
+            await tx.transaction.create({
               data: {
                 userId,
                 type: 'TASK_EARNING',
                 status: 'COMPLETED',
                 amount: badge.reward,
                 description: `Bonus badge: ${badge.name}`,
+                metadata: { badgeCode: badge.code, category },
               },
-            }),
-          ]);
-        } else {
-          await this.prisma.userBadge.create({
-            data: { userId, badgeId: badge.id },
-          });
-        }
+            });
+          } else {
+            await tx.userBadge.create({
+              data: { userId, badgeId: badge.id },
+            });
+          }
 
-        newBadgeNames.push(badge.name);
+          newBadgeNames.push(badge.name);
+        } catch (err: unknown) {
+          // P2002 = already awarded by a previous request that committed
+          if (
+            typeof err === 'object' &&
+            err !== null &&
+            'code' in err &&
+            (err as { code?: string }).code === 'P2002'
+          ) {
+            this.logger.debug(`Badge ${badge.code} already awarded to ${userId} (concurrent)`);
+            continue;
+          }
+          throw err;
+        }
+      }
+    });
 
-        // Notify user
-        try {
-          await this.notificationsService.create(
-            userId,
-            'SYSTEM',
-            `Badge débloqué : ${badge.name}`,
-            `Félicitations ! Vous avez obtenu le badge "${badge.name}" — ${badge.description}${badge.reward ? `. Bonus : ${badge.reward} FCFA` : ''}`,
-            { badgeCode: badge.code, badgeIcon: badge.icon },
-          );
-        } catch (err) {
-          this.logger.error(`Failed to notify badge: ${err}`);
-        }
-      } catch (err: unknown) {
-        // P2002 = unique constraint violation — badge already awarded by concurrent request
-        if (
-          typeof err === 'object' &&
-          err !== null &&
-          'code' in err &&
-          (err as { code?: string }).code === 'P2002'
-        ) {
-          this.logger.debug(`Badge ${badge.code} already awarded to ${userId} (concurrent)`);
-          continue;
-        }
-        throw err;
+    // Notifications outside transaction (non-critical)
+    for (const badgeName of newBadgeNames) {
+      const badge = await this.prisma.badge.findFirst({ where: { name: badgeName } });
+      if (!badge) continue;
+
+      try {
+        await this.notificationsService.create(
+          userId,
+          'SYSTEM',
+          `Badge débloqué : ${badge.name}`,
+          `Félicitations ! Vous avez obtenu le badge "${badge.name}" — ${badge.description}${badge.reward ? `. Bonus : ${badge.reward} FCFA` : ''}`,
+          { badgeCode: badge.code, badgeIcon: badge.icon },
+        );
+      } catch (err) {
+        this.logger.error(`Failed to notify badge: ${err}`);
       }
     }
 

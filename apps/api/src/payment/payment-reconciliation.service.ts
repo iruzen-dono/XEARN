@@ -26,6 +26,32 @@ export class PaymentReconciliationService {
     private notificationsService: NotificationsService,
   ) {}
 
+  /**
+   * MAJEUR FIX #4: Retry exponentiel pour opérations de réconciliation
+   */
+  private async reconcileWithRetry<T>(
+    operation: () => Promise<T>,
+    operationName: string,
+    maxRetries = 3,
+  ): Promise<T> {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        return await operation();
+      } catch (error) {
+        if (attempt === maxRetries) {
+          this.logger.error(`${operationName} failed after ${maxRetries} attempts: ${error}`);
+          throw error;
+        }
+        const delay = Math.min(1000 * Math.pow(2, attempt), 10000); // Max 10s
+        this.logger.warn(
+          `${operationName} failed (attempt ${attempt}/${maxRetries}), retrying in ${delay}ms`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
+    }
+    throw new Error(`${operationName} failed after max retries`);
+  }
+
   @Cron('*/5 * * * *')
   async reconcile() {
     // R1 fix: Reset the running flag if it's been stuck for too long
@@ -49,10 +75,11 @@ export class PaymentReconciliationService {
     this.runningStartedAt = Date.now();
 
     try {
+      // MAJEUR FIX #4: Wrap each reconciliation with retry logic
       await Promise.all([
-        this.reconcileActivations(),
-        this.reconcileTierUpgrades(),
-        this.reconcileWithdrawals(),
+        this.reconcileWithRetry(() => this.reconcileActivations(), 'reconcileActivations'),
+        this.reconcileWithRetry(() => this.reconcileTierUpgrades(), 'reconcileTierUpgrades'),
+        this.reconcileWithRetry(() => this.reconcileWithdrawals(), 'reconcileWithdrawals'),
       ]);
     } finally {
       this.running = false;

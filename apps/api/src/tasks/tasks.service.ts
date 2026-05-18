@@ -297,9 +297,10 @@ export class TasksService {
 
     // Transaction atomique : compléter la tâche + créditer le wallet
     let result;
+    let lockedReward: number;
     try {
       result = await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-        // Lock the task row and re-read reward to prevent TOCTOU
+        // CRITIQUE FIX #3: Lock the task row and re-read reward to prevent TOCTOU
         const rows = await tx.$queryRaw<
           { maxCompletions: number | null; completionCount: number; reward: number }[]
         >`
@@ -310,7 +311,7 @@ export class TasksService {
           throw new BadRequestException('Nombre maximum de complétions atteint');
         }
 
-        const lockedReward = rows[0].reward;
+        lockedReward = rows[0].reward;
 
         // Marquer la session comme utilisée
         await tx.taskSession.update({
@@ -359,7 +360,7 @@ export class TasksService {
       throw error;
     }
 
-    // Emit event for async side-effects (commissions, notifications, gamification)
+    // CRITIQUE FIX #3: Emit event with lockedReward instead of stale task.reward
     // This decouples the main transaction from non-critical operations
     this.eventEmitter.emit(
       'task.completed',
@@ -367,7 +368,7 @@ export class TasksService {
         userId,
         taskId,
         result.id,
-        new Decimal(task.reward.toString()),
+        new Decimal(lockedReward.toString()),
         task.type,
       ),
     );

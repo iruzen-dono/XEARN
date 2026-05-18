@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { Decimal } from '@prisma/client/runtime/library';
 import { Prisma } from '@prisma/client';
 import { PaymentService } from '../payment/payment.service';
+import { PlatformBalanceService } from './platform-balance.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import type { AccountTier, PaymentMethod } from '@xearn/types';
 import {
@@ -21,6 +22,7 @@ export class WalletService {
     private prisma: PrismaService,
     private configService: ConfigService,
     private paymentService: PaymentService,
+    private platformBalanceService: PlatformBalanceService,
     private notificationsService: NotificationsService,
   ) {}
 
@@ -220,6 +222,17 @@ export class WalletService {
 
     if (pendingWithdrawal) {
       throw new DuplicateOperationException('retrait en cours');
+    }
+
+    // MAJEUR FIX #3: Vérifier la solvabilité de la plateforme avant traitement
+    const canProcess = await this.platformBalanceService.canProcessWithdrawal(new Decimal(amount));
+    if (!canProcess) {
+      this.logger.error(
+        `🚨 Retrait refusé pour ${userId} (${amount} FCFA) - plateforme insolvable`,
+      );
+      throw new BadRequestException(
+        'Service temporairement indisponible. Veuillez réessayer plus tard.',
+      );
     }
 
     // MODÉRÉ 2 FIX: Limites quotidiennes de retrait (anti-drainage)
