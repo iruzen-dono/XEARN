@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { WalletService } from '../src/wallet/wallet.service';
+import { PlatformBalanceService } from '../src/wallet/platform-balance.service';
 import { PrismaService } from '../src/prisma/prisma.service';
 import { PaymentService } from '../src/payment/payment.service';
 import { NotificationsService } from '../src/notifications/notifications.service';
@@ -61,6 +62,14 @@ const mockNotifications = {
   notifyWithdrawalCompleted: jest.fn(),
 };
 
+const mockPlatformBalanceService = {
+  checkSolvency: jest
+    .fn()
+    .mockResolvedValue({ solvent: true, deficit: 0, liabilities: 0, assets: 0 }),
+  checkWithdrawalSolvency: jest.fn().mockResolvedValue(true),
+  canProcessWithdrawal: jest.fn().mockResolvedValue(true),
+};
+
 describe('WalletService', () => {
   let service: WalletService;
 
@@ -82,6 +91,7 @@ describe('WalletService', () => {
         { provide: ConfigService, useValue: mockConfigService },
         { provide: PaymentService, useValue: mockPaymentService },
         { provide: NotificationsService, useValue: mockNotifications },
+        { provide: PlatformBalanceService, useValue: mockPlatformBalanceService },
       ],
     }).compile();
 

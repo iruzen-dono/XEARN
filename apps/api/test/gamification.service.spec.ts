@@ -15,9 +15,11 @@ const mockPrisma = {
     // Support interactive $transaction(fn) — pass mockPrisma as tx
     return args(mockPrisma);
   }),
+  $queryRaw: jest.fn().mockResolvedValue([{ '1': 1 }]),
   badge: {
     upsert: jest.fn().mockResolvedValue({}),
     findMany: jest.fn(),
+    findFirst: jest.fn().mockResolvedValue(null),
   },
   userStreak: {
     upsert: jest.fn(),
@@ -38,9 +40,11 @@ const mockPrisma = {
   wallet: {
     findUnique: jest.fn(),
     updateMany: jest.fn(),
+    update: jest.fn().mockResolvedValue({}),
   },
   transaction: {
     create: jest.fn(),
+    aggregate: jest.fn().mockResolvedValue({ _sum: { amount: 0 } }),
   },
 };
 
