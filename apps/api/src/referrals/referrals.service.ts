@@ -17,9 +17,9 @@ export class ReferralsService {
     private gamificationService: GamificationService,
   ) {
     // Validate commission percentages at startup
-    const l1 = this.configService.get<number>('REFERRAL_LEVEL1_PERCENT') || 40;
-    const l2 = this.configService.get<number>('REFERRAL_LEVEL2_PERCENT') || 10;
-    const l3 = this.configService.get<number>('REFERRAL_LEVEL3_PERCENT') || 5;
+    const l1 = Number(this.configService.get('REFERRAL_LEVEL1_PERCENT')) || 40;
+    const l2 = Number(this.configService.get('REFERRAL_LEVEL2_PERCENT')) || 10;
+    const l3 = Number(this.configService.get('REFERRAL_LEVEL3_PERCENT')) || 5;
     if (l1 < 0 || l1 > 50 || l2 < 0 || l2 > 50 || l3 < 0 || l3 > 50) {
       throw new Error('REFERRAL_LEVEL*_PERCENT must be between 0 and 50');
     }
