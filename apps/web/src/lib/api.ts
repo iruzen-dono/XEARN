@@ -74,7 +74,7 @@ async function rawFetch(endpoint: string, options: FetchOptions = {}): Promise<R
   const csrfToken = getCookieValue('csrfToken');
   const method = String(options.method || 'GET').toUpperCase();
   const needsCsrf = method !== 'GET' && method !== 'HEAD' && method !== 'OPTIONS';
-  return fetch(`${API_URL}/api${endpoint}`, {
+  return fetch(`${API_URL}/api/v1${endpoint}`, {
     ...rest,
     credentials: 'include',
     headers: {
