@@ -80,7 +80,7 @@ test.describe('Auth navigation', () => {
   test('register form omits empty phone values', async ({ page }) => {
     let submittedBody: { phone?: unknown; email?: unknown } | null = null;
 
-    await page.route('**/api/auth/register', async (route) => {
+    await page.route('**/api/v1/auth/register', async (route) => {
       submittedBody = route.request().postDataJSON() as { phone?: unknown; email?: unknown };
       await route.fulfill({
         status: 200,
@@ -99,7 +99,8 @@ test.describe('Auth navigation', () => {
     await page.locator('#reg-password').fill('Password123!');
     await page.getByRole('button', { name: /Créer mon compte/i }).click();
 
-    await expect(page).toHaveURL(/\/verify-email\/pending/);
+    // Le register montre un message d'info sur la même page (pas de redirect)
+    await expect(page.locator('text=Compte créé').first()).toBeVisible({ timeout: 8000 });
     const receivedBody = submittedBody as { phone?: unknown; email?: unknown } | null;
     expect(receivedBody?.phone).toBeUndefined();
     expect(receivedBody?.email).toBe('qa+flow@example.com');
