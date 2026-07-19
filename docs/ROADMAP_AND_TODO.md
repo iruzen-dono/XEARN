@@ -15,8 +15,8 @@
 | Tests backend | ✅ **99/99 verts** (12 suites) |
 | Build frontend | ✅ **21 pages** — 0 erreur |
 | Lint | ✅ 0 erreur |
-| Format | ⚠️ 30 fichiers non formatés (Prettier) |
-| E2E Playwright | ⏳ 3 spec files — nécessite stack complet pour exécution |
+| Format | ✅ 0 warning (Prettier applied) |
+| E2E Playwright | ✅ **27/27 verts** — smoke, wallet, referrals, mock auth |
 | Modules backend | 13 modules, 12 contrôlleurs, 16 services |
 | Pages frontend | 21 pages (public + dashboard + admin + légales) |
 | Sécurité | ✅ 100/100 (audit terminé) |
