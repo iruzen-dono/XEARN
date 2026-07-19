@@ -20,11 +20,7 @@ export default function Skeleton({ className, lines = 1, circle }: SkeletonProps
         {Array.from({ length: lines }).map((_, i) => (
           <div
             key={i}
-            className={cn(
-              'skeleton h-4',
-              i === lines - 1 ? 'w-2/3' : 'w-full',
-              className,
-            )}
+            className={cn('skeleton h-4', i === lines - 1 ? 'w-2/3' : 'w-full', className)}
           />
         ))}
       </div>
@@ -57,7 +53,9 @@ export function PageSkeleton() {
 
       {/* Table */}
       <div className="card space-y-3 p-0">
-        <div className="px-4 pt-4"><Skeleton className="h-6 w-40" /></div>
+        <div className="px-4 pt-4">
+          <Skeleton className="h-6 w-40" />
+        </div>
         {[...Array(5)].map((_, i) => (
           <div key={i} className="flex gap-4 px-4 py-3 border-b border-dark-700/20 last:border-0">
             <Skeleton className="h-4 w-1/4" />

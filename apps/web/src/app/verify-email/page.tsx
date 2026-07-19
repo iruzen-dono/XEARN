@@ -9,7 +9,13 @@ import { getErrorMessage } from '@/lib/errors';
 
 export default function VerifyEmailPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="text-dark-400">Chargement...</div></div>}>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="text-dark-400">Chargement...</div>
+        </div>
+      }
+    >
       <VerifyEmailContent />
     </Suspense>
   );

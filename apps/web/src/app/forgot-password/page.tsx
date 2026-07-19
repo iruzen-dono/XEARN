@@ -21,7 +21,7 @@ export default function ForgotPasswordPage() {
       await authApi.forgotPassword(email);
       setSent(true);
     } catch (error) {
-      setError(getErrorMessage(error, 'Erreur lors de l\'envoi'));
+      setError(getErrorMessage(error, "Erreur lors de l'envoi"));
     } finally {
       setLoading(false);
     }
@@ -51,8 +51,8 @@ export default function ForgotPasswordPage() {
             </div>
             <h2 className="text-xl font-semibold mb-2">Email envoyé !</h2>
             <p className="text-dark-400 mb-6">
-              Si un compte est associé à <strong className="text-white">{email}</strong>,
-              vous recevrez un lien de réinitialisation. Vérifiez également vos spams.
+              Si un compte est associé à <strong className="text-white">{email}</strong>, vous
+              recevrez un lien de réinitialisation. Vérifiez également vos spams.
             </p>
             <Link href="/login" className="btn-primary inline-flex items-center gap-2">
               <ArrowLeft className="w-4 h-4" />
@@ -83,13 +83,20 @@ export default function ForgotPasswordPage() {
                 </div>
               </div>
 
-              <button type="submit" disabled={loading} className="btn-primary w-full disabled:opacity-50">
+              <button
+                type="submit"
+                disabled={loading}
+                className="btn-primary w-full disabled:opacity-50"
+              >
                 {loading ? 'Envoi en cours...' : 'Envoyer le lien'}
               </button>
             </form>
 
             <p className="text-center text-dark-400 mt-6">
-              <Link href="/login" className="text-primary-400 hover:text-primary-300 flex items-center justify-center gap-2">
+              <Link
+                href="/login"
+                className="text-primary-400 hover:text-primary-300 flex items-center justify-center gap-2"
+              >
                 <ArrowLeft className="w-4 h-4" />
                 Retour à la connexion
               </Link>

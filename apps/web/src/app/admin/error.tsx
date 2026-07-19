@@ -21,7 +21,7 @@ export default function AdminError({
       </div>
       <h2 className="text-xl font-bold text-white mb-2">Erreur panneau admin</h2>
       <p className="text-dark-400 mb-6 max-w-md">
-        {error.message || 'Un problème inattendu s\'est produit dans le panneau d\'administration.'}
+        {error.message || "Un problème inattendu s'est produit dans le panneau d'administration."}
       </p>
       <button onClick={reset} className="btn-primary flex items-center gap-2">
         <RefreshCw className="w-4 h-4" />

@@ -66,3 +66,14 @@ jobs:
       - name: Test API
         run: npx jest --forceExit --ci
         working-directory: apps/api
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+        working-directory: apps/web
+
+      - name: Run E2E tests
+        run: npx playwright test --project=chromium --reporter=line
+        working-directory: apps/web
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:4000
+          NEXT_PUBLIC_APP_URL: http://localhost:3000

@@ -19,10 +19,7 @@ describe('UsersService', () => {
     jest.clearAllMocks();
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        UsersService,
-        { provide: PrismaService, useValue: mockPrisma },
-      ],
+      providers: [UsersService, { provide: PrismaService, useValue: mockPrisma }],
     }).compile();
 
     service = module.get<UsersService>(UsersService);
@@ -118,7 +115,11 @@ describe('UsersService', () => {
     });
 
     it('should throw if user is admin', async () => {
-      mockPrisma.user.findUnique.mockResolvedValue({ id: 'u1', role: 'ADMIN', status: 'ACTIVATED' });
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: 'u1',
+        role: 'ADMIN',
+        status: 'ACTIVATED',
+      });
       await expect(service.suspendUser('u1')).rejects.toThrow('admin');
     });
 
@@ -139,7 +140,11 @@ describe('UsersService', () => {
   // ─── banUser ───────────────────────────────────────
   describe('banUser', () => {
     it('should throw if admin', async () => {
-      mockPrisma.user.findUnique.mockResolvedValue({ id: 'u1', role: 'ADMIN', status: 'ACTIVATED' });
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: 'u1',
+        role: 'ADMIN',
+        status: 'ACTIVATED',
+      });
       await expect(service.banUser('u1')).rejects.toThrow('admin');
     });
 

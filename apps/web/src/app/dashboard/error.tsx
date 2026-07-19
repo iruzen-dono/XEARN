@@ -21,7 +21,7 @@ export default function DashboardError({
       </div>
       <h2 className="text-xl font-bold text-white mb-2">Oups, une erreur est survenue</h2>
       <p className="text-dark-400 mb-6 max-w-md">
-        {error.message || 'Un problème inattendu s\'est produit. Veuillez réessayer.'}
+        {error.message || "Un problème inattendu s'est produit. Veuillez réessayer."}
       </p>
       <button onClick={reset} className="btn-primary flex items-center gap-2">
         <RefreshCw className="w-4 h-4" />

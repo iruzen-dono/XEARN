@@ -26,10 +26,7 @@ export default function ErrorPage({
           Quelque chose s&apos;est mal passé. Veuillez réessayer ou revenir à l&apos;accueil.
         </p>
         <div className="flex items-center justify-center gap-4">
-          <button
-            onClick={reset}
-            className="btn-primary flex items-center gap-2"
-          >
+          <button onClick={reset} className="btn-primary flex items-center gap-2">
             <RefreshCw className="w-4 h-4" />
             Réessayer
           </button>

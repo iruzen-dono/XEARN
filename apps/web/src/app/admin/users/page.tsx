@@ -47,7 +47,12 @@ export default function AdminUsersPage() {
     if (!token) return;
     setLoading(true);
     try {
-      const data = (await adminApi.getUsers(token, page, search || undefined, statusFilter)) as AdminUsersResponse;
+      const data = (await adminApi.getUsers(
+        token,
+        page,
+        search || undefined,
+        statusFilter,
+      )) as AdminUsersResponse;
       setUsers(data.users || []);
       setTotal(data.total || 0);
     } catch (err) {
@@ -57,12 +62,17 @@ export default function AdminUsersPage() {
     }
   }, [token, page, search, statusFilter]);
 
-  useEffect(() => { fetchUsers(); }, [fetchUsers]);
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
   // Debounce search
   const [searchInput, setSearchInput] = useState('');
   useEffect(() => {
-    const timer = setTimeout(() => { setSearch(searchInput); setPage(1); }, 400);
+    const timer = setTimeout(() => {
+      setSearch(searchInput);
+      setPage(1);
+    }, 400);
     return () => clearTimeout(timer);
   }, [searchInput]);
 
@@ -74,7 +84,12 @@ export default function AdminUsersPage() {
       if (!confirm('Êtes-vous sûr de vouloir suspendre cet utilisateur ?')) return;
     }
     if (action === 'ban') {
-      if (!confirm('Êtes-vous sûr de vouloir bannir cet utilisateur ? Cette action est difficilement réversible.')) return;
+      if (
+        !confirm(
+          'Êtes-vous sûr de vouloir bannir cet utilisateur ? Cette action est difficilement réversible.',
+        )
+      )
+        return;
     }
 
     setActionLoading(userId);
@@ -91,13 +106,16 @@ export default function AdminUsersPage() {
   };
 
   const totalPages = Math.ceil(total / 20);
-  const fmtDate = (d: string) => new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const fmtDate = (d: string) =>
+    new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
   return (
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <h1 className="text-3xl font-bold">Utilisateurs</h1>
-        <div className="text-dark-400 text-sm">{total} utilisateur{total > 1 ? 's' : ''}</div>
+        <div className="text-dark-400 text-sm">
+          {total} utilisateur{total > 1 ? 's' : ''}
+        </div>
       </div>
 
       {/* Filters */}
@@ -117,7 +135,10 @@ export default function AdminUsersPage() {
             {statuses.map((s) => (
               <button
                 key={s}
-                onClick={() => { setStatusFilter(s); setPage(1); }}
+                onClick={() => {
+                  setStatusFilter(s);
+                  setPage(1);
+                }}
                 className={`px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
                   statusFilter === s
                     ? 'bg-primary-500/20 text-primary-400 border border-primary-500/30'
@@ -133,7 +154,9 @@ export default function AdminUsersPage() {
 
       {/* Users Table */}
       {loading ? (
-        <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary-400" /></div>
+        <div className="flex justify-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-primary-400" />
+        </div>
       ) : users.length === 0 ? (
         <div className="card text-center text-dark-400 py-12">Aucun utilisateur trouvé</div>
       ) : (
@@ -153,22 +176,31 @@ export default function AdminUsersPage() {
               </thead>
               <tbody>
                 {users.map((u) => (
-                  <tr key={u.id} className="border-b border-dark-800/50 last:border-0 hover:bg-dark-800/30">
+                  <tr
+                    key={u.id}
+                    className="border-b border-dark-800/50 last:border-0 hover:bg-dark-800/30"
+                  >
                     <td className="py-3">
-                      <div className="font-medium">{u.firstName} {u.lastName}</div>
+                      <div className="font-medium">
+                        {u.firstName} {u.lastName}
+                      </div>
                       <div className="text-dark-500 text-xs sm:hidden">{u.email}</div>
                     </td>
                     <td className="py-3 text-dark-400 hidden sm:table-cell">{u.email}</td>
                     <td className="py-3 text-dark-400 hidden md:table-cell">{u.phone || '—'}</td>
                     <td className="py-3">
-                      <span className={`text-xs px-2 py-1 rounded-full ${statusColors[u.status] || 'bg-dark-800 text-dark-400'}`}>
+                      <span
+                        className={`text-xs px-2 py-1 rounded-full ${statusColors[u.status] || 'bg-dark-800 text-dark-400'}`}
+                      >
                         {statusLabels[u.status] || u.status}
                       </span>
                     </td>
                     <td className="py-3 text-dark-300 hidden lg:table-cell">
                       {u.wallet ? `${Number(u.wallet.balance).toLocaleString('fr-FR')} F` : '—'}
                     </td>
-                    <td className="py-3 text-dark-500 hidden lg:table-cell">{fmtDate(u.createdAt)}</td>
+                    <td className="py-3 text-dark-500 hidden lg:table-cell">
+                      {fmtDate(u.createdAt)}
+                    </td>
                     <td className="py-3 text-right">
                       {actionLoading === u.id ? (
                         <Loader2 className="w-4 h-4 animate-spin text-dark-400 inline" />
@@ -177,20 +209,32 @@ export default function AdminUsersPage() {
                       ) : (
                         <div className="flex gap-1 justify-end">
                           {u.status !== 'ACTIVATED' && (
-                            <button onClick={() => handleAction(u.id, 'activate')} title="Activer" aria-label="Activer l'utilisateur"
-                              className="p-1.5 rounded-lg text-green-400 hover:bg-green-500/10 transition-colors">
+                            <button
+                              onClick={() => handleAction(u.id, 'activate')}
+                              title="Activer"
+                              aria-label="Activer l'utilisateur"
+                              className="p-1.5 rounded-lg text-green-400 hover:bg-green-500/10 transition-colors"
+                            >
                               <UserCheck className="w-4 h-4" />
                             </button>
                           )}
                           {u.status !== 'SUSPENDED' && (
-                            <button onClick={() => handleAction(u.id, 'suspend')} title="Suspendre" aria-label="Suspendre l'utilisateur"
-                              className="p-1.5 rounded-lg text-yellow-400 hover:bg-yellow-500/10 transition-colors">
+                            <button
+                              onClick={() => handleAction(u.id, 'suspend')}
+                              title="Suspendre"
+                              aria-label="Suspendre l'utilisateur"
+                              className="p-1.5 rounded-lg text-yellow-400 hover:bg-yellow-500/10 transition-colors"
+                            >
                               <Shield className="w-4 h-4" />
                             </button>
                           )}
                           {u.status !== 'BANNED' && (
-                            <button onClick={() => handleAction(u.id, 'ban')} title="Bannir" aria-label="Bannir l'utilisateur"
-                              className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors">
+                            <button
+                              onClick={() => handleAction(u.id, 'ban')}
+                              title="Bannir"
+                              aria-label="Bannir l'utilisateur"
+                              className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors"
+                            >
                               <Ban className="w-4 h-4" />
                             </button>
                           )}
@@ -205,15 +249,23 @@ export default function AdminUsersPage() {
 
           {totalPages > 1 && (
             <div className="flex items-center justify-center gap-4 mt-6">
-              <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
                 aria-label="Page précédente"
-                className="p-2 rounded-lg bg-dark-800 text-dark-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                className="p-2 rounded-lg bg-dark-800 text-dark-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
                 <ChevronLeft className="w-5 h-5" />
               </button>
-              <span className="text-sm text-dark-400">Page {page} / {totalPages}</span>
-              <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+              <span className="text-sm text-dark-400">
+                Page {page} / {totalPages}
+              </span>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
                 aria-label="Page suivante"
-                className="p-2 rounded-lg bg-dark-800 text-dark-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                className="p-2 rounded-lg bg-dark-800 text-dark-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              >
                 <ChevronRight className="w-5 h-5" />
               </button>
             </div>

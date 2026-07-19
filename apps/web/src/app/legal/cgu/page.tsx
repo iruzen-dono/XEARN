@@ -3,7 +3,7 @@ import { Zap, ArrowLeft } from 'lucide-react';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Conditions Générales d\'Utilisation — XEARN',
+  title: "Conditions Générales d'Utilisation — XEARN",
 };
 
 export default function CGUPage() {
@@ -31,12 +31,14 @@ export default function CGUPage() {
           <section>
             <h2 className="text-xl font-semibold text-white mb-4">1. Objet</h2>
             <p>
-              Les présentes Conditions Générales d&apos;Utilisation (ci-après « CGU ») définissent les
-              modalités et conditions dans lesquelles les utilisateurs (ci-après « l&apos;Utilisateur »)
-              peuvent accéder et utiliser les services proposés par la plateforme XEARN (ci-après « le Service »).
+              Les présentes Conditions Générales d&apos;Utilisation (ci-après « CGU ») définissent
+              les modalités et conditions dans lesquelles les utilisateurs (ci-après «
+              l&apos;Utilisateur ») peuvent accéder et utiliser les services proposés par la
+              plateforme XEARN (ci-après « le Service »).
             </p>
             <p className="mt-4">
-              L&apos;inscription sur le Site implique l&apos;acceptation pleine et entière des présentes CGU.
+              L&apos;inscription sur le Site implique l&apos;acceptation pleine et entière des
+              présentes CGU.
             </p>
           </section>
 
@@ -46,8 +48,13 @@ export default function CGUPage() {
               XEARN est une plateforme de micro-revenus digitaux permettant aux Utilisateurs de :
             </p>
             <ul className="mt-4 space-y-2 list-disc list-inside">
-              <li>Gagner des revenus en complétant des tâches rémunérées (visionnage de publicités, sondages, etc.)</li>
-              <li>Parrainer d&apos;autres Utilisateurs et percevoir des commissions sur leurs revenus</li>
+              <li>
+                Gagner des revenus en complétant des tâches rémunérées (visionnage de publicités,
+                sondages, etc.)
+              </li>
+              <li>
+                Parrainer d&apos;autres Utilisateurs et percevoir des commissions sur leurs revenus
+              </li>
               <li>Retirer leurs gains via les moyens de paiement mobile disponibles</li>
             </ul>
           </section>
@@ -57,15 +64,16 @@ export default function CGUPage() {
             <p>
               Pour utiliser le Service, l&apos;Utilisateur doit créer un compte en fournissant des
               informations exactes et à jour (nom, prénom, adresse e-mail). L&apos;Utilisateur doit
-              confirmer son adresse e-mail via le lien de vérification envoyé lors de l&apos;inscription.
+              confirmer son adresse e-mail via le lien de vérification envoyé lors de
+              l&apos;inscription.
             </p>
             <p className="mt-4">
-              L&apos;Utilisateur est responsable de la confidentialité de ses identifiants de connexion
-              et de toutes les activités effectuées sous son compte.
+              L&apos;Utilisateur est responsable de la confidentialité de ses identifiants de
+              connexion et de toutes les activités effectuées sous son compte.
             </p>
             <p className="mt-4">
-              L&apos;Utilisateur doit être âgé d&apos;au moins <strong className="text-white">18 ans</strong> pour
-              s&apos;inscrire sur la plateforme.
+              L&apos;Utilisateur doit être âgé d&apos;au moins{' '}
+              <strong className="text-white">18 ans</strong> pour s&apos;inscrire sur la plateforme.
             </p>
           </section>
 
@@ -86,12 +94,18 @@ export default function CGUPage() {
             <h2 className="text-xl font-semibold text-white mb-4">5. Système de parrainage</h2>
             <p>Le programme de parrainage fonctionne sur deux niveaux :</p>
             <ul className="mt-4 space-y-2 list-disc list-inside">
-              <li><strong className="text-white">Niveau 1 (filleuls directs) :</strong> 40% de commission sur les frais d&apos;activation de chaque filleul direct</li>
-              <li><strong className="text-white">Niveau 2 (filleuls indirects) :</strong> 10% de commission sur les frais d&apos;activation des filleuls de vos filleuls</li>
+              <li>
+                <strong className="text-white">Niveau 1 (filleuls directs) :</strong> 40% de
+                commission sur les frais d&apos;activation de chaque filleul direct
+              </li>
+              <li>
+                <strong className="text-white">Niveau 2 (filleuls indirects) :</strong> 10% de
+                commission sur les frais d&apos;activation des filleuls de vos filleuls
+              </li>
             </ul>
             <p className="mt-4">
-              Les commissions sont créditées automatiquement sur le portefeuille de l&apos;Utilisateur
-              après confirmation du paiement d&apos;activation du filleul.
+              Les commissions sont créditées automatiquement sur le portefeuille de
+              l&apos;Utilisateur après confirmation du paiement d&apos;activation du filleul.
             </p>
           </section>
 
@@ -99,12 +113,16 @@ export default function CGUPage() {
             <h2 className="text-xl font-semibold text-white mb-4">6. Gains et retraits</h2>
             <p>
               Les gains perçus via les tâches et le parrainage sont comptabilisés en FCFA dans le
-              portefeuille virtuel de l&apos;Utilisateur. Les retraits sont soumis aux conditions suivantes :
+              portefeuille virtuel de l&apos;Utilisateur. Les retraits sont soumis aux conditions
+              suivantes :
             </p>
             <ul className="mt-4 space-y-2 list-disc list-inside">
               <li>Le compte doit être activé</li>
               <li>Le montant minimum de retrait est fixé par la plateforme</li>
-              <li>Les retraits sont traités dans un délai raisonnable après validation par l&apos;équipe</li>
+              <li>
+                Les retraits sont traités dans un délai raisonnable après validation par
+                l&apos;équipe
+              </li>
               <li>XEARN se réserve le droit de demander des justificatifs avant tout retrait</li>
             </ul>
           </section>
@@ -114,7 +132,9 @@ export default function CGUPage() {
             <p>L&apos;Utilisateur s&apos;engage à ne pas :</p>
             <ul className="mt-4 space-y-2 list-disc list-inside">
               <li>Créer plusieurs comptes</li>
-              <li>Utiliser des robots, scripts ou tout moyen automatisé pour compléter des tâches</li>
+              <li>
+                Utiliser des robots, scripts ou tout moyen automatisé pour compléter des tâches
+              </li>
               <li>Fournir de fausses informations lors de l&apos;inscription</li>
               <li>Tenter de manipuler le système de gains ou de parrainage</li>
               <li>Utiliser le Service à des fins illégales ou frauduleuses</li>
@@ -140,10 +160,13 @@ export default function CGUPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold text-white mb-4">9. Limitation de responsabilité</h2>
+            <h2 className="text-xl font-semibold text-white mb-4">
+              9. Limitation de responsabilité
+            </h2>
             <p>
               XEARN ne garantit pas un niveau de revenus minimum. Les gains dépendent de
-              l&apos;activité de l&apos;Utilisateur, de la disponibilité des tâches et du nombre de filleuls.
+              l&apos;activité de l&apos;Utilisateur, de la disponibilité des tâches et du nombre de
+              filleuls.
             </p>
             <p className="mt-4">
               XEARN ne saurait être tenu responsable des interruptions de service, pertes de données
@@ -154,18 +177,19 @@ export default function CGUPage() {
           <section>
             <h2 className="text-xl font-semibold text-white mb-4">10. Modification des CGU</h2>
             <p>
-              XEARN se réserve le droit de modifier les présentes CGU à tout moment. Les Utilisateurs
-              seront informés des modifications par e-mail ou via une notification sur le Site.
-              L&apos;utilisation continue du Service après modification vaut acceptation des nouvelles CGU.
+              XEARN se réserve le droit de modifier les présentes CGU à tout moment. Les
+              Utilisateurs seront informés des modifications par e-mail ou via une notification sur
+              le Site. L&apos;utilisation continue du Service après modification vaut acceptation
+              des nouvelles CGU.
             </p>
           </section>
 
           <section>
             <h2 className="text-xl font-semibold text-white mb-4">11. Droit applicable</h2>
             <p>
-              Les présentes CGU sont régies par le droit applicable dans le pays d&apos;établissement
-              de XEARN. En cas de litige, les parties s&apos;engagent à rechercher une solution amiable
-              avant toute action judiciaire.
+              Les présentes CGU sont régies par le droit applicable dans le pays
+              d&apos;établissement de XEARN. En cas de litige, les parties s&apos;engagent à
+              rechercher une solution amiable avant toute action judiciaire.
             </p>
           </section>
 
@@ -184,9 +208,15 @@ export default function CGUPage() {
         <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-dark-500 text-sm">© 2026 XEARN. Tous droits réservés.</p>
           <div className="flex gap-6 text-sm text-dark-400">
-            <Link href="/legal/mentions-legales" className="hover:text-white">Mentions légales</Link>
-            <Link href="/legal/cgu" className="hover:text-white">CGU</Link>
-            <Link href="/legal/confidentialite" className="hover:text-white">Confidentialité</Link>
+            <Link href="/legal/mentions-legales" className="hover:text-white">
+              Mentions légales
+            </Link>
+            <Link href="/legal/cgu" className="hover:text-white">
+              CGU
+            </Link>
+            <Link href="/legal/confidentialite" className="hover:text-white">
+              Confidentialité
+            </Link>
           </div>
         </div>
       </footer>

@@ -8,10 +8,12 @@ export function cn(...inputs: ClassValue[]) {
 
 /** Format XOF currency */
 export function formatXOF(amount: number): string {
-  return new Intl.NumberFormat('fr-FR', {
-    style: 'decimal',
-    maximumFractionDigits: 0,
-  }).format(amount) + ' FCFA';
+  return (
+    new Intl.NumberFormat('fr-FR', {
+      style: 'decimal',
+      maximumFractionDigits: 0,
+    }).format(amount) + ' FCFA'
+  );
 }
 
 /** Relative time (e.g. "il y a 5 min") */

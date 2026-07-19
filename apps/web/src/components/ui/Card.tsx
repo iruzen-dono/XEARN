@@ -24,7 +24,12 @@ const paddingMap: Record<string, string> = {
   lg: 'p-8',
 };
 
-export default function Card({ children, className, variant = 'default', padding = 'md' }: CardProps) {
+export default function Card({
+  children,
+  className,
+  variant = 'default',
+  padding = 'md',
+}: CardProps) {
   return <div className={cn(variantMap[variant], paddingMap[padding], className)}>{children}</div>;
 }
 
@@ -37,6 +42,12 @@ export function CardTitle({ children, className }: { children: ReactNode; classN
   return <h3 className={cn('text-lg font-semibold text-white', className)}>{children}</h3>;
 }
 
-export function CardDescription({ children, className }: { children: ReactNode; className?: string }) {
+export function CardDescription({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
   return <p className={cn('text-sm text-dark-400', className)}>{children}</p>;
 }

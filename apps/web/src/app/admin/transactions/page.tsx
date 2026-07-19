@@ -57,7 +57,9 @@ export default function AdminTransactionsPage() {
     }
   }, [token, page]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleApprove = async (id: string) => {
     if (!token || !confirm('Approuver ce retrait ?')) return;
@@ -111,12 +113,18 @@ export default function AdminTransactionsPage() {
           <div className="text-xl font-bold">{fmt(walletStats?.totalWithdrawals)} F</div>
         </div>
         <div className="card">
-          <div className="text-dark-400 text-xs uppercase tracking-wide mb-2">Retraits complétés</div>
-          <div className="text-xl font-bold text-blue-400">{fmt(walletStats?.completedWithdrawals)}</div>
+          <div className="text-dark-400 text-xs uppercase tracking-wide mb-2">
+            Retraits complétés
+          </div>
+          <div className="text-xl font-bold text-blue-400">
+            {fmt(walletStats?.completedWithdrawals)}
+          </div>
         </div>
         <div className="card">
           <div className="text-dark-400 text-xs uppercase tracking-wide mb-2">En attente</div>
-          <div className="text-xl font-bold text-red-400">{fmt(walletStats?.pendingWithdrawals)}</div>
+          <div className="text-xl font-bold text-red-400">
+            {fmt(walletStats?.pendingWithdrawals)}
+          </div>
         </div>
       </div>
 
@@ -132,33 +140,56 @@ export default function AdminTransactionsPage() {
         ) : (
           <div className="space-y-3">
             {withdrawals.map((w) => (
-              <div key={w.id} className="flex flex-col sm:flex-row sm:items-center gap-4 py-4 border-b border-dark-800 last:border-0">
+              <div
+                key={w.id}
+                className="flex flex-col sm:flex-row sm:items-center gap-4 py-4 border-b border-dark-800 last:border-0"
+              >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="font-semibold">{w.user?.firstName} {w.user?.lastName}</span>
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-400">{w.method}</span>
+                    <span className="font-semibold">
+                      {w.user?.firstName} {w.user?.lastName}
+                    </span>
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-400">
+                      {w.method}
+                    </span>
                   </div>
                   <div className="text-dark-500 text-xs flex flex-wrap gap-3">
                     <span>{w.user?.email}</span>
                     <span>{w.user?.phone || '—'}</span>
                     <span>Compte: {w.accountInfo}</span>
-                    <span>{new Date(w.createdAt).toLocaleDateString('fr-FR', {
-                      day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
-                    })}</span>
+                    <span>
+                      {new Date(w.createdAt).toLocaleDateString('fr-FR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </span>
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
-                  <span className="text-lg font-bold text-white">{Number(w.amount).toLocaleString('fr-FR')} F</span>
+                  <span className="text-lg font-bold text-white">
+                    {Number(w.amount).toLocaleString('fr-FR')} F
+                  </span>
                   {actionLoading === w.id ? (
                     <Loader2 className="w-5 h-5 animate-spin text-dark-400" />
                   ) : (
                     <div className="flex gap-2">
-                      <button onClick={() => handleApprove(w.id)} title="Approuver" aria-label="Approuver le retrait"
-                        className="p-2 rounded-lg text-green-400 hover:bg-green-500/10 transition-colors">
+                      <button
+                        onClick={() => handleApprove(w.id)}
+                        title="Approuver"
+                        aria-label="Approuver le retrait"
+                        className="p-2 rounded-lg text-green-400 hover:bg-green-500/10 transition-colors"
+                      >
                         <CheckCircle className="w-5 h-5" />
                       </button>
-                      <button onClick={() => handleReject(w.id)} title="Rejeter" aria-label="Rejeter le retrait"
-                        className="p-2 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors">
+                      <button
+                        onClick={() => handleReject(w.id)}
+                        title="Rejeter"
+                        aria-label="Rejeter le retrait"
+                        className="p-2 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors"
+                      >
                         <XCircle className="w-5 h-5" />
                       </button>
                     </div>
@@ -171,13 +202,21 @@ export default function AdminTransactionsPage() {
 
         {totalPages > 1 && (
           <div className="flex items-center justify-center gap-4 mt-6 pt-4 border-t border-dark-800">
-            <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
-              className="p-2 rounded-lg bg-dark-800 text-dark-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="p-2 rounded-lg bg-dark-800 text-dark-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+            >
               <ChevronLeft className="w-5 h-5" />
             </button>
-            <span className="text-sm text-dark-400">Page {page} / {totalPages}</span>
-            <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-              className="p-2 rounded-lg bg-dark-800 text-dark-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed">
+            <span className="text-sm text-dark-400">
+              Page {page} / {totalPages}
+            </span>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="p-2 rounded-lg bg-dark-800 text-dark-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+            >
               <ChevronRight className="w-5 h-5" />
             </button>
           </div>

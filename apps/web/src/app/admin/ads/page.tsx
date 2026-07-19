@@ -1,7 +1,16 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { Loader2, CheckCircle, XCircle, Pause, ChevronLeft, ChevronRight, ExternalLink, Filter } from 'lucide-react';
+import {
+  Loader2,
+  CheckCircle,
+  XCircle,
+  Pause,
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
+  Filter,
+} from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { useToast } from '@/lib/toast';
 import { adminApi } from '@/lib/api';
@@ -54,9 +63,13 @@ export default function AdminAdsPage() {
     }
   }, [token, page, statusFilter]);
 
-  useEffect(() => { fetchAds(); }, [fetchAds]);
+  useEffect(() => {
+    fetchAds();
+  }, [fetchAds]);
 
-  useEffect(() => { setPage(1); }, [statusFilter]);
+  useEffect(() => {
+    setPage(1);
+  }, [statusFilter]);
 
   const handleApprove = async (id: string) => {
     if (!token) return;
@@ -114,7 +127,9 @@ export default function AdminAdsPage() {
             className="px-3 py-2 bg-dark-800 border border-dark-700 rounded-xl text-sm focus:border-primary-500 focus:outline-none"
           >
             {AD_STATUSES.map((s) => (
-              <option key={s} value={s}>{statusLabels[s]}</option>
+              <option key={s} value={s}>
+                {statusLabels[s]}
+              </option>
             ))}
           </select>
         </div>
@@ -131,7 +146,8 @@ export default function AdminAdsPage() {
         </div>
       ) : ads.length === 0 ? (
         <div className="card text-center text-dark-400 py-12">
-          Aucune publicité {statusFilter !== 'ALL' ? `avec le statut "${statusLabels[statusFilter]}"` : ''}
+          Aucune publicité{' '}
+          {statusFilter !== 'ALL' ? `avec le statut "${statusLabels[statusFilter]}"` : ''}
         </div>
       ) : (
         <>
@@ -141,7 +157,9 @@ export default function AdminAdsPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className="font-semibold truncate">{ad.title}</h3>
-                    <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${statusColors[ad.status] || ''}`}>
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${statusColors[ad.status] || ''}`}
+                    >
                       {statusLabels[ad.status] || ad.status}
                     </span>
                   </div>
@@ -176,7 +194,8 @@ export default function AdminAdsPage() {
                       {(ad.status === 'PENDING' || ad.status === 'PAUSED') && (
                         <button
                           onClick={() => handleApprove(ad.id)}
-                          title="Approuver" aria-label="Approuver la publicité"
+                          title="Approuver"
+                          aria-label="Approuver la publicité"
                           className="p-2 rounded-lg text-green-400 hover:bg-green-500/10 transition-colors"
                         >
                           <CheckCircle className="w-4 h-4" />
@@ -185,7 +204,8 @@ export default function AdminAdsPage() {
                       {ad.status === 'ACTIVE' && (
                         <button
                           onClick={() => handlePause(ad.id)}
-                          title="Mettre en pause" aria-label="Mettre en pause la publicité"
+                          title="Mettre en pause"
+                          aria-label="Mettre en pause la publicité"
                           className="p-2 rounded-lg text-yellow-400 hover:bg-yellow-500/10 transition-colors"
                         >
                           <Pause className="w-4 h-4" />
@@ -194,7 +214,8 @@ export default function AdminAdsPage() {
                       {ad.status !== 'REJECTED' && ad.status !== 'EXPIRED' && (
                         <button
                           onClick={() => handleReject(ad.id)}
-                          title="Rejeter" aria-label="Rejeter la publicité"
+                          title="Rejeter"
+                          aria-label="Rejeter la publicité"
                           className="p-2 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors"
                         >
                           <XCircle className="w-4 h-4" />

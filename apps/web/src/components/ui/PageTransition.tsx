@@ -15,13 +15,7 @@ export default function PageTransition({ children }: { children: ReactNode }) {
 
   return (
     <AnimatePresence mode="wait">
-      <motion.div
-        key={pathname}
-        variants={variants}
-        initial="hidden"
-        animate="enter"
-        exit="exit"
-      >
+      <motion.div key={pathname} variants={variants} initial="hidden" animate="enter" exit="exit">
         {children}
       </motion.div>
     </AnimatePresence>

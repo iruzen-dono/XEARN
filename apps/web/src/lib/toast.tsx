@@ -53,11 +53,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  const addToast = useCallback((type: ToastType, message: string) => {
-    const id = ++toastId;
-    setToasts((prev) => [...prev, { id, type, message }]);
-    setTimeout(() => removeToast(id), 4000);
-  }, [removeToast]);
+  const addToast = useCallback(
+    (type: ToastType, message: string) => {
+      const id = ++toastId;
+      setToasts((prev) => [...prev, { id, type, message }]);
+      setTimeout(() => removeToast(id), 4000);
+    },
+    [removeToast],
+  );
 
   const toast = {
     success: (msg: string) => addToast('success', msg),
@@ -87,7 +90,10 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               >
                 <Icon className={`w-5 h-5 flex-shrink-0 mt-0.5 ${iconColors[t.type]}`} />
                 <span className="text-sm font-medium text-white flex-1">{t.message}</span>
-                <button onClick={() => removeToast(t.id)} className="text-dark-400 hover:text-white flex-shrink-0 transition-colors">
+                <button
+                  onClick={() => removeToast(t.id)}
+                  className="text-dark-400 hover:text-white flex-shrink-0 transition-colors"
+                >
                   <X className="w-4 h-4" />
                 </button>
                 {/* Progress bar */}

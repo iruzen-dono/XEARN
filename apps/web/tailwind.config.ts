@@ -79,8 +79,10 @@ const config: Config = {
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-        'gradient-mesh': 'radial-gradient(at 40% 20%, rgba(99,102,241,.15) 0px, transparent 50%), radial-gradient(at 80% 0%, rgba(217,70,239,.1) 0px, transparent 50%), radial-gradient(at 0% 50%, rgba(99,102,241,.1) 0px, transparent 50%)',
-        'noise': "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E\")",
+        'gradient-mesh':
+          'radial-gradient(at 40% 20%, rgba(99,102,241,.15) 0px, transparent 50%), radial-gradient(at 80% 0%, rgba(217,70,239,.1) 0px, transparent 50%), radial-gradient(at 0% 50%, rgba(99,102,241,.1) 0px, transparent 50%)',
+        noise:
+          "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E\")",
       },
       animation: {
         'fade-in': 'fadeIn 0.5s ease-out',
@@ -88,11 +90,11 @@ const config: Config = {
         'slide-in-right': 'slideInRight 0.3s ease-out',
         'slide-in-up': 'slideInUp 0.4s ease-out',
         'scale-in': 'scaleIn 0.2s ease-out',
-        'shimmer': 'shimmer 2s infinite linear',
+        shimmer: 'shimmer 2s infinite linear',
         'pulse-glow': 'pulseGlow 2s infinite',
-        'float': 'float 6s ease-in-out infinite',
+        float: 'float 6s ease-in-out infinite',
         'spin-slow': 'spin 8s linear infinite',
-        'gradient': 'gradient 8s ease infinite',
+        gradient: 'gradient 8s ease infinite',
         'border-glow': 'borderGlow 3s ease infinite',
       },
       keyframes: {

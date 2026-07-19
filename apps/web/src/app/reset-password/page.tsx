@@ -51,9 +51,7 @@ function ResetPasswordForm() {
           <Lock className="w-8 h-8 text-red-400" />
         </div>
         <h2 className="text-xl font-semibold mb-2">Lien invalide</h2>
-        <p className="text-dark-400 mb-6">
-          Ce lien de réinitialisation est invalide ou incomplet.
-        </p>
+        <p className="text-dark-400 mb-6">Ce lien de réinitialisation est invalide ou incomplet.</p>
         <Link href="/forgot-password" className="btn-primary inline-block">
           Demander un nouveau lien
         </Link>
@@ -101,7 +99,11 @@ function ResetPasswordForm() {
               required
               minLength={6}
             />
-            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-dark-400 hover:text-white">
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-dark-400 hover:text-white"
+            >
               {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
             </button>
           </div>
@@ -126,13 +128,20 @@ function ResetPasswordForm() {
           )}
         </div>
 
-        <button type="submit" disabled={loading || password !== confirmPassword} className="btn-primary w-full disabled:opacity-50">
+        <button
+          type="submit"
+          disabled={loading || password !== confirmPassword}
+          className="btn-primary w-full disabled:opacity-50"
+        >
           {loading ? 'Réinitialisation...' : 'Réinitialiser le mot de passe'}
         </button>
       </form>
 
       <p className="text-center text-dark-400 mt-6">
-        <Link href="/login" className="text-primary-400 hover:text-primary-300 flex items-center justify-center gap-2">
+        <Link
+          href="/login"
+          className="text-primary-400 hover:text-primary-300 flex items-center justify-center gap-2"
+        >
           <ArrowLeft className="w-4 h-4" />
           Retour à la connexion
         </Link>

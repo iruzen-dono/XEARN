@@ -32,7 +32,10 @@ const sizeClasses: Record<Size, string> = {
 };
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ variant = 'primary', size = 'md', loading, icon, children, className, disabled, ...props }, ref) => {
+  (
+    { variant = 'primary', size = 'md', loading, icon, children, className, disabled, ...props },
+    ref,
+  ) => {
     return (
       <motion.button
         ref={ref as React.Ref<HTMLButtonElement>}
