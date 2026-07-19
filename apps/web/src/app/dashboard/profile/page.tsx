@@ -18,10 +18,11 @@ import { useAuth } from '@/lib/auth';
 import { useToast } from '@/lib/toast';
 import { usersApi } from '@/lib/api';
 import { MotionDiv, staggerContainer, staggerItem } from '@/components/ui';
+import { PageSkeleton } from '@/components/ui/Skeleton';
 import { getErrorMessage } from '@/lib/errors';
 
 export default function ProfilePage() {
-  const { user, token, refreshUser } = useAuth();
+  const { user, token, isLoading, refreshUser } = useAuth();
   const toast = useToast();
 
   const [profileForm, setProfileForm] = useState({ firstName: '', lastName: '', phone: '' });
@@ -83,6 +84,25 @@ export default function ProfilePage() {
   };
 
   const isGoogleUser = user?.provider === 'GOOGLE';
+
+  if (isLoading) return <PageSkeleton />;
+  if (!user) {
+    return (
+      <div className="space-y-6">
+        <MotionDiv preset="fadeUp">
+          <h1 className="heading-lg">Mon profil</h1>
+          <p className="text-dark-400 mt-1">Gérez vos informations personnelles</p>
+        </MotionDiv>
+        <div className="empty-state">
+          <User className="w-8 h-8 text-dark-500" />
+          <h3 className="text-base font-semibold mb-1">Session indisponible</h3>
+          <p className="text-dark-400 text-sm max-w-xs">
+            Veuillez vous reconnecter pour accéder à votre profil.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

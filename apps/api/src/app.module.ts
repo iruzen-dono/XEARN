@@ -1,6 +1,7 @@
 import { Module, Injectable, ExecutionContext } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { resolve } from 'path';
+import { CacheModule } from '@nestjs/cache-manager';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
 import { EventEmitterModule } from '@nestjs/event-emitter';
@@ -45,6 +46,13 @@ class ProxyAwareThrottlerGuard extends ThrottlerGuard {
     ScheduleModule.forRoot(),
 
     EventEmitterModule.forRoot(),
+
+    // Cache mémoire (in-memory — zéro dépendance externe)
+    CacheModule.register({
+      ttl: 60_000, // 60s TTL par défaut
+      max: 200, // max 200 entrées en cache
+      isGlobal: true,
+    }),
 
     // Rate limiting par paliers
     ThrottlerModule.forRoot([

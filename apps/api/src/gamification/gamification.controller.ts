@@ -1,5 +1,6 @@
-import { Controller, Get, Query, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Query, UseGuards, Req, UseInterceptors } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
+import { CacheInterceptor, CacheTTL } from '@nestjs/cache-manager';
 import { GamificationService } from './gamification.service';
 import { JwtAuthGuard, RolesGuard, Roles } from '../auth/guards';
 import { JwtRequest } from '../common/types';
@@ -24,8 +25,10 @@ export class GamificationController {
     return this.gamificationService.getUserBadges(req.user.id);
   }
 
-  /** Get streak leaderboard */
+  /** Get streak leaderboard (cached 30s — shared data) */
   @Get('leaderboard')
+  @UseInterceptors(CacheInterceptor)
+  @CacheTTL(30_000)
   @Roles('USER', 'PARTNER', 'ADMIN')
   async getLeaderboard(@Query('limit') limit?: string) {
     const parsedLimit = limit ? Math.min(parseInt(limit, 10) || 20, 100) : 20;
