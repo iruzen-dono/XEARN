@@ -26,7 +26,9 @@ export class MockPaymentProvider implements PaymentProvider {
   }
 
   async disburse(request: PaymentDisbursementRequest): Promise<PaymentDisbursementResult> {
-    this.logger.log(`[MOCK] Décaissement: ${request.amount} FCFA → ${request.method} (${request.accountInfo})`);
+    this.logger.log(
+      `[MOCK] Décaissement: ${request.amount} FCFA → ${request.method} (${request.accountInfo})`,
+    );
     return {
       status: 'completed',
       providerTransactionId: `mock_dis_${Date.now()}`,
@@ -37,5 +39,10 @@ export class MockPaymentProvider implements PaymentProvider {
   async checkStatus(providerTransactionId: string): Promise<'completed' | 'pending' | 'failed'> {
     this.logger.log(`[MOCK] Vérification statut: ${providerTransactionId}`);
     return 'completed';
+  }
+
+  async getBalance(): Promise<number> {
+    this.logger.log('[MOCK] Solde compte marchand: 1 000 000 FCFA');
+    return 1_000_000; // Dev: toujours solvable
   }
 }

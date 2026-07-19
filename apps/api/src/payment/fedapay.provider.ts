@@ -20,6 +20,9 @@ interface FedaPayApiResponse {
     payout?: {
       id?: string | number;
     };
+    account?: {
+      available_balance?: number;
+    };
   };
   token?: string;
 }
@@ -183,6 +186,27 @@ export class FedaPayProvider implements PaymentProvider {
       }
     } catch {
       return 'failed';
+    }
+  }
+
+  /**
+   * Obtenir le solde du compte marchand FedaPay.
+   * Endpoint: GET /accounts/me/balance
+   */
+  async getBalance(): Promise<number> {
+    try {
+      const response = await this.apiRequest('GET', '/accounts/me/balance', null);
+      // La réponse FedaPay retourne un solde en centimes (ex: 500000 = 5000 FCFA)
+      // Format attendu: { v1: { account: { available_balance: 500000 } } }
+      const balance = response?.v1?.account?.available_balance;
+      if (typeof balance === 'number') {
+        return balance / 100; // Convertir centimes → FCFA
+      }
+      this.logger.warn('FedaPay balance: format de réponse inattendu', response);
+      return 0;
+    } catch (error) {
+      this.logger.error('FedaPay balance: erreur API', (error as Error).message);
+      throw error; // Laisser le caller décider du fail-open
     }
   }
 

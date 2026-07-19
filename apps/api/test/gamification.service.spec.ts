@@ -172,8 +172,17 @@ describe('GamificationService', () => {
         },
       ]);
       mockPrisma.userBadge.create.mockResolvedValue({});
-      mockPrisma.wallet.updateMany.mockResolvedValue({});
+      mockPrisma.wallet.update.mockResolvedValue({});
       mockPrisma.transaction.create.mockResolvedValue({});
+      // Fix: badge.findFirst must return a valid badge so the notification is sent
+      mockPrisma.badge.findFirst.mockResolvedValue({
+        id: 'badge-1',
+        code: 'streak_3',
+        name: '🔥 3 jours',
+        icon: '🔥',
+        description: 'test',
+        reward: 100,
+      });
 
       const result = await service.recordActivity(userId);
 
@@ -182,7 +191,7 @@ describe('GamificationService', () => {
       expect(mockPrisma.userBadge.create).toHaveBeenCalledWith({
         data: { userId, badgeId: 'badge-1' },
       });
-      expect(mockPrisma.wallet.updateMany).toHaveBeenCalled();
+      expect(mockPrisma.wallet.update).toHaveBeenCalled();
       expect(mockPrisma.transaction.create).toHaveBeenCalled();
       expect(mockNotifications.create).toHaveBeenCalled();
     });

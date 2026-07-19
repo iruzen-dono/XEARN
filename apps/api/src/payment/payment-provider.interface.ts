@@ -67,4 +67,10 @@ export interface PaymentProvider {
    * Vérifier le statut d'une transaction
    */
   checkStatus(providerTransactionId: string): Promise<'completed' | 'pending' | 'failed'>;
+
+  /**
+   * Obtenir le solde disponible du compte marchand (en FCFA).
+   * Utilisé pour la vérification de solvabilité avant les retraits.
+   */
+  getBalance(): Promise<number>;
 }

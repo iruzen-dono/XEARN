@@ -18,6 +18,7 @@ import {
   Megaphone,
   ChevronRight,
   Loader2,
+  Award,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import NotificationBell from '@/components/NotificationBell';
@@ -30,6 +31,7 @@ const navItems = [
   { href: '/dashboard/wallet', label: 'Portefeuille', icon: Wallet },
   { href: '/dashboard/ads', label: 'Mes Publicités', icon: Megaphone },
   { href: '/dashboard/notifications', label: 'Notifications', icon: Bell },
+  { href: '/dashboard/gamification', label: 'Badges et classement', icon: Award },
   { href: '/dashboard/profile', label: 'Mon profil', icon: UserCircle },
 ];
 

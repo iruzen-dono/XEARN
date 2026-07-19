@@ -546,6 +546,10 @@ export class AuthService {
     const verifyUrl = `${webUrl}/verify-email?token=${token}`;
 
     const transporter = this.getMailTransporter();
+    if (!transporter) {
+      this.logger.warn(`[Email] SMTP non configuré, vérification ignorée pour ${email}`);
+      return verifyUrl;
+    }
     const from = this.configService.get('SMTP_FROM') || this.configService.get('SMTP_USER');
 
     const html = this.loadTemplate('verification-email.html', {
@@ -589,6 +593,10 @@ export class AuthService {
     const loginUrl = `${webUrl}/login`;
 
     const transporter = this.getMailTransporter();
+    if (!transporter) {
+      this.logger.warn(`[Email] SMTP non configuré, email de bienvenue ignoré pour ${email}`);
+      return;
+    }
     const from = this.configService.get('SMTP_FROM') || this.configService.get('SMTP_USER');
 
     const html = this.loadTemplate('account-created.html', {
@@ -641,6 +649,10 @@ export class AuthService {
     const resetUrl = `${webUrl}/reset-password?token=${token}`;
 
     const transporter = this.getMailTransporter();
+    if (!transporter) {
+      this.logger.warn(`[Email] SMTP non configuré, email de reset ignoré pour ${email}`);
+      return;
+    }
     const from = this.configService.get('SMTP_FROM') || this.configService.get('SMTP_USER');
 
     const html = this.loadTemplate('password-reset.html', {
@@ -709,15 +721,22 @@ export class AuthService {
   private mailTransporter: nodemailer.Transporter | null = null;
 
   private getMailTransporter() {
+    const host = this.configService.get('SMTP_HOST');
+    const user = this.configService.get('SMTP_USER');
+    const pass = this.configService.get('SMTP_PASS');
+
+    // Dev fallback: skip SMTP if not configured
+    if (!host || !user || !pass) {
+      this.logger.warn('SMTP non configuré — les emails ne seront pas envoyés');
+      return null;
+    }
+
     if (!this.mailTransporter) {
       this.mailTransporter = nodemailer.createTransport({
-        host: this.configService.get('SMTP_HOST') || 'smtp.gmail.com',
+        host,
         port: Number(this.configService.get('SMTP_PORT') || 465),
         secure: String(this.configService.get('SMTP_SECURE') || 'true') === 'true',
-        auth: {
-          user: this.configService.get('SMTP_USER'),
-          pass: this.configService.get('SMTP_PASS'),
-        },
+        auth: { user, pass },
       });
     }
     return this.mailTransporter;

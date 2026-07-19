@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { Decimal } from '@prisma/client/runtime/library';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentService } from '../payment/payment.service';
+import * as Sentry from '@sentry/node';
 
 /**
  * MAJEUR FIX #3: Service de vérification de solvabilité plateforme
@@ -17,7 +17,6 @@ export class PlatformBalanceService {
   constructor(
     private prisma: PrismaService,
     private paymentService: PaymentService,
-    private configService: ConfigService,
   ) {}
 
   /**
@@ -43,32 +42,16 @@ export class PlatformBalanceService {
       let assets: Decimal;
       try {
         const provider = this.paymentService.getProvider();
-        if (provider.name === 'fedapay') {
-          // FedaPay API pour obtenir le solde du compte marchand
-          const balance = await this.getFedaPayBalance();
-          assets = new Decimal(balance);
-        } else {
-          // Mode développement: on suppose que la plateforme est solvable
-          this.logger.warn('Mode MockProvider - vérification solvabilité désactivée');
-          return {
-            solvent: true,
-            deficit: new Decimal(0),
-            liabilities,
-            assets: liabilities,
-          };
-        }
-      } catch (err) {
-        this.logger.error(`Erreur récupération solde FedaPay: ${err}`);
-        // En cas d'erreur API, on considère comme solvable pour ne pas bloquer les retraits
-        // (l'admin doit être alerté par monitoring)
-        return {
-          solvent: true,
-          deficit: new Decimal(0),
-          liabilities,
-          assets: liabilities,
-        };
+        const balance = await provider.getBalance();
+        assets = new Decimal(balance);
+      } catch (error) {
+        this.logger.warn(
+          'Impossible de récupérer le solde du provider — fail-open',
+          (error as Error).message,
+        );
+        // Fail-open: on autorise les retraits même si l'API de solde est down
+        assets = new Decimal(Infinity);
       }
-
       // 3. Calculer le déficit (si liabilities > assets)
       const deficit = liabilities.minus(assets);
       const solvent = deficit.lessThanOrEqualTo(0);
@@ -105,7 +88,10 @@ export class PlatformBalanceService {
         this.logger.error(
           `🚨 Retrait de ${amount} FCFA refusé - Plateforme insolvable (déficit: ${deficit} FCFA)`,
         );
-        // TODO: Alerter l'admin (email, Slack, Sentry)
+        Sentry.captureMessage(
+          `🚨 RETRAIT REFUSÉ - PLATEFORME INSOLVABLE: ${amount} FCFA | Déficit: ${deficit} FCFA`,
+          'fatal',
+        );
         return false;
       }
 
@@ -116,32 +102,6 @@ export class PlatformBalanceService {
       this.logger.warn(`Erreur vérification retrait - autorisation par défaut: ${error}`);
       return true;
     }
-  }
-
-  /**
-   * Obtient le solde du compte marchand FedaPay.
-   *
-   * @returns Solde en FCFA
-   */
-  private async getFedaPayBalance(): Promise<number> {
-    // TODO: Implémenter l'appel API FedaPay pour récupérer le solde du compte marchand
-    // Endpoint probable: GET https://api.fedapay.com/v1/accounts/{account_id}/balance
-    // Nécessite token API avec scope 'read:balance'
-
-    const fedapaySecretKey = this.configService.get('FEDAPAY_SECRET_KEY');
-    if (!fedapaySecretKey) {
-      throw new Error('FEDAPAY_SECRET_KEY non configuré');
-    }
-
-    // Placeholder: en production, faire l'appel API réel
-    // const response = await fetch('https://api.fedapay.com/v1/accounts/me/balance', {
-    //   headers: { Authorization: `Bearer ${fedapaySecretKey}` },
-    // });
-    // const data = await response.json();
-    // return data.available_balance;
-
-    this.logger.warn('getFedaPayBalance non implémenté - retour 0');
-    return 0;
   }
 
   /**

@@ -87,6 +87,11 @@ model User {
 
   @@index([referredById])
   @@index([status])
+  @@index([tier, status])
+  @@index([role])
+  @@index([createdAt])
+  @@index([emailVerificationToken])
+  @@index([passwordResetToken])
   @@map("users")
 }
 
@@ -188,6 +193,7 @@ model TaskSession {
 
   @@unique([userId, taskId])
   @@index([verificationCode])
+  @@index([userId, completed])
   @@map("task_sessions")
 }
 
@@ -229,6 +235,7 @@ model Transaction {
   @@index([userId, type, status])
   @@index([createdAt])
   @@index([status, createdAt])
+  @@index([type, status, createdAt])
   // H1 FIX: Add GIN index for JSONB metadata path queries (used in reconciliation)
   @@index([metadata], type: Gin)
   @@map("transactions")
@@ -272,6 +279,7 @@ model Withdrawal {
   @@index([status])
   @@index([createdAt])
   @@index([userId, createdAt])
+  @@index([userId, status])
   @@map("withdrawals")
 }
 
@@ -363,6 +371,7 @@ model UserStreak {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  @@index([currentStreak])
   @@map("user_streaks")
 }
 
@@ -433,6 +442,8 @@ model Advertisement {
 
   @@index([status, publisherId])
   @@index([status, expiresAt])
+  @@index([publisherId])
+  @@index([expiresAt])
   @@map("advertisements")
 }
 
