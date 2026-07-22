@@ -1,8 +1,10 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { colors, fontSize, shadows, borderRadius } from '../../src/theme';
+import { scale, safeArea } from '../../src/utils/responsive';
 
 export default function TabsLayout() {
   return (
@@ -12,15 +14,16 @@ export default function TabsLayout() {
         screenOptions={{
           headerShown: false,
           tabBarStyle: styles.tabBar,
-          tabBarActiveTintColor: '#14b8a6',
-          tabBarInactiveTintColor: '#64748b',
+          tabBarActiveTintColor: colors.primary,
+          tabBarInactiveTintColor: colors.textDim,
           tabBarLabelStyle: styles.tabLabel,
+          tabBarItemStyle: styles.tabItem,
         }}
       >
         <Tabs.Screen
           name="index"
           options={{
-            title: 'Dashboard',
+            title: 'Accueil',
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="grid-outline" size={size} color={color} />
             ),
@@ -29,7 +32,7 @@ export default function TabsLayout() {
         <Tabs.Screen
           name="wallet"
           options={{
-            title: 'Portefeuille',
+            title: 'Wallet',
             tabBarIcon: ({ color, size }) => (
               <Ionicons name="wallet-outline" size={size} color={color} />
             ),
@@ -69,15 +72,19 @@ export default function TabsLayout() {
 
 const styles = StyleSheet.create({
   tabBar: {
-    backgroundColor: '#1e293b',
-    borderTopColor: '#334155',
+    backgroundColor: colors.bgCard,
+    borderTopColor: colors.border,
     borderTopWidth: 1,
-    paddingTop: 4,
-    height: 60,
+    paddingTop: scale(4),
+    height: safeArea.bottom + scale(56),
+    ...shadows.md,
   },
   tabLabel: {
-    fontSize: 11,
+    fontSize: scale(10),
     fontWeight: '600',
-    marginBottom: 4,
+    marginBottom: Platform.OS === 'ios' ? 0 : scale(4),
+  },
+  tabItem: {
+    paddingVertical: scale(2),
   },
 });

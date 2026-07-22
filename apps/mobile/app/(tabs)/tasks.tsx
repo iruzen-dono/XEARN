@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   Pressable,
   RefreshControl,
@@ -8,10 +7,14 @@ import {
   StyleSheet,
   Text,
   View,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { api, ApiError } from '../../src/api/client';
 import ErrorScreen from '../../src/components/ErrorScreen';
+import { AnimatedCard, DashboardSkeleton } from '../../src/components/Animated';
+import { colors, borderRadius, shadows } from '../../src/theme';
+import { scale, moderateScale, safeArea } from '../../src/utils/responsive';
 import type { TasksPage, Task } from '../../src/types';
 
 export default function TasksTab() {
@@ -49,12 +52,10 @@ export default function TasksTab() {
     setActionLoading(taskId);
     try {
       await api.post(`/tasks/${taskId}/start`);
-      Alert.alert('Succès', 'Tâche démarrée !');
+      Alert.alert('✅ Démarrée', 'Tâche démarrée !');
       fetchTasks(true);
     } catch (e) {
-      if (e instanceof ApiError) {
-        Alert.alert('Erreur', e.message);
-      }
+      if (e instanceof ApiError) Alert.alert('Erreur', e.message);
     } finally {
       setActionLoading(null);
     }
@@ -64,28 +65,18 @@ export default function TasksTab() {
     setActionLoading(`complete-${taskId}`);
     try {
       await api.post(`/tasks/${taskId}/complete`);
-      Alert.alert('Succès', 'Tâche terminée !');
+      Alert.alert('✅ Terminée', 'Tâche terminée !');
       fetchTasks(true);
     } catch (e) {
-      if (e instanceof ApiError) {
-        Alert.alert('Erreur', e.message);
-      }
+      if (e instanceof ApiError) Alert.alert('Erreur', e.message);
     } finally {
       setActionLoading(null);
     }
   }
 
-  if (loading) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#14b8a6" />
-      </View>
-    );
-  }
+  if (loading) return <DashboardSkeleton />;
 
-  if (error) {
-    return <ErrorScreen message={error} onRetry={() => fetchTasks()} />;
-  }
+  if (error) return <ErrorScreen message={error} onRetry={() => fetchTasks()} />;
 
   if (!data) return null;
 
@@ -93,121 +84,155 @@ export default function TasksTab() {
 
   return (
     <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
+      style={s.container}
+      contentContainerStyle={s.content}
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
           onRefresh={() => fetchTasks(true)}
-          tintColor="#14b8a6"
-          colors={['#14b8a6']}
+          tintColor={colors.primary}
+          colors={[colors.primary]}
+          progressBackgroundColor={colors.bg}
         />
       }
     >
-      <Text style={styles.pageTitle}>Tâches disponibles</Text>
-      <Text style={styles.pageSubtitle}>
-        {data.total} tâche{data.total > 1 ? 's' : ''} disponible
-        {data.total > 1 ? 's' : ''}
-      </Text>
-
-      {activeTasks.length === 0 ? (
-        <View style={styles.emptyBox}>
-          <Ionicons name="checkmark-done-outline" size={40} color="#64748b" />
-          <Text style={styles.emptyText}>
-            Aucune tâche disponible pour le moment. Revenez plus tard !
+      {/* ── Header ── */}
+      <View style={s.header}>
+        <View>
+          <Text style={s.pageTitle}>Tâches</Text>
+          <Text style={s.pageSubtitle}>
+            {data.total} tâche{data.total > 1 ? 's' : ''} disponible{data.total > 1 ? 's' : ''}
           </Text>
         </View>
+        <View style={s.totalReward}>
+          <Ionicons name="cash-outline" size={scale(16)} color={colors.secondary} />
+          <Text style={s.totalRewardText}>
+            {activeTasks.reduce((sum, t) => sum + parseFloat(t.reward), 0).toLocaleString()} FCFA
+          </Text>
+        </View>
+      </View>
+
+      {/* ── Task List ── */}
+      {activeTasks.length === 0 ? (
+        <AnimatedCard delay={150} style={s.emptyCard}>
+          <View style={s.emptyIcon}>
+            <Ionicons name="checkmark-done-outline" size={scale(40)} color={colors.primary} />
+          </View>
+          <Text style={s.emptyTitle}>Tout est fait !</Text>
+          <Text style={s.emptyText}>
+            Aucune tâche disponible pour le moment. Reviens plus tard pour gagner plus !
+          </Text>
+        </AnimatedCard>
       ) : (
-        activeTasks.map((task) => (
+        activeTasks.map((task, i) => (
           <TaskCard
             key={task.id}
             task={task}
+            index={i}
             actionLoading={actionLoading}
             onStart={() => handleStartTask(task.id)}
             onComplete={() => handleCompleteTask(task.id)}
           />
         ))
       )}
+
+      {/* Bottom spacer */}
+      <View style={{ height: safeArea.bottom + scale(20) }} />
     </ScrollView>
   );
 }
 
 function TaskCard({
   task,
+  index,
   actionLoading,
   onStart,
   onComplete,
 }: {
   task: Task;
+  index: number;
   actionLoading: string | null;
   onStart: () => void;
   onComplete: () => void;
 }) {
+  const tier = task.requiredTier;
   return (
-    <View style={styles.taskCard}>
-      <View style={styles.taskHeader}>
-        <View style={styles.taskTypeBadge}>
-          <Text style={styles.taskTypeText}>{formatTaskType(task.type)}</Text>
+    <AnimatedCard delay={150 + index * 80} style={s.taskCard}>
+      {/* Task type + tier badges */}
+      <View style={s.taskHeader}>
+        <View style={s.taskTypeBadge}>
+          <Ionicons name={getTaskIcon(task.type)} size={scale(12)} color={colors.primary} />
+          <Text style={s.taskTypeText}>{formatTaskType(task.type)}</Text>
         </View>
-        {task.requiredTier !== 'NORMAL' && (
-          <View style={styles.tierBadge}>
-            <Text style={styles.tierText}>{task.requiredTier}</Text>
+        {tier !== 'NORMAL' && (
+          <View style={[s.tierBadge, tier === 'PREMIUM' ? s.tierPremiumBadge : s.tierVipBadge]}>
+            <Text style={s.tierText}>{tier}</Text>
           </View>
         )}
       </View>
 
-      <Text style={styles.taskTitle}>{task.title}</Text>
-      {task.description ? <Text style={styles.taskDesc}>{task.description}</Text> : null}
+      {/* Title + description */}
+      <Text style={s.taskTitle}>{task.title}</Text>
+      {task.description ? <Text style={s.taskDesc}>{task.description}</Text> : null}
 
-      <View style={styles.taskMeta}>
-        <View style={styles.metaItem}>
-          <Ionicons name="cash-outline" size={16} color="#14b8a6" />
-          <Text style={styles.metaText}>{parseFloat(task.reward).toLocaleString()} FCFA</Text>
+      {/* Meta row */}
+      <View style={s.taskMeta}>
+        <View style={s.metaItem}>
+          <Ionicons name="cash-outline" size={scale(15)} color={colors.secondary} />
+          <Text style={s.metaReward}>+{parseFloat(task.reward).toLocaleString()} FCFA</Text>
         </View>
         {task.maxCompletions && (
-          <View style={styles.metaItem}>
-            <Ionicons name="repeat-outline" size={16} color="#94a3b8" />
-            <Text style={styles.metaText}>
+          <View style={s.metaItem}>
+            <Ionicons name="repeat-outline" size={scale(15)} color={colors.textMuted} />
+            <Text style={s.metaText}>
               {task.completionCount}/{task.maxCompletions}
             </Text>
           </View>
         )}
       </View>
 
-      <View style={styles.actions}>
+      {/* Actions */}
+      <View style={s.actions}>
         <Pressable
-          style={[
-            styles.actionButton,
-            styles.startButton,
-            actionLoading === task.id && styles.buttonDisabled,
-          ]}
+          style={[s.actionBtn, s.startBtn, actionLoading === task.id && s.btnDisabled]}
           onPress={onStart}
           disabled={actionLoading === task.id}
         >
           {actionLoading === task.id ? (
-            <ActivityIndicator size="small" color="#ffffff" />
+            <ActivityIndicator size="small" color={colors.white} />
           ) : (
-            <Text style={styles.actionButtonText}>Démarrer</Text>
+            <Text style={s.actionBtnText}>Démarrer</Text>
           )}
         </Pressable>
         <Pressable
           style={[
-            styles.actionButton,
-            styles.completeButton,
-            actionLoading === `complete-${task.id}` && styles.buttonDisabled,
+            s.actionBtn,
+            s.completeBtn,
+            actionLoading === `complete-${task.id}` && s.btnDisabled,
           ]}
           onPress={onComplete}
           disabled={actionLoading === `complete-${task.id}`}
         >
           {actionLoading === `complete-${task.id}` ? (
-            <ActivityIndicator size="small" color="#ffffff" />
+            <ActivityIndicator size="small" color={colors.white} />
           ) : (
-            <Text style={styles.actionButtonText}>Terminer</Text>
+            <Text style={s.actionBtnText}>Terminer</Text>
           )}
         </Pressable>
       </View>
-    </View>
+    </AnimatedCard>
   );
+}
+
+function getTaskIcon(type: string): string {
+  const icons: Record<string, string> = {
+    VIDEO_AD: 'videocam-outline',
+    CLICK_AD: 'hand-left-outline',
+    SURVEY: 'clipboard-outline',
+    SPONSORED: 'sparkles-outline',
+    EXTERNAL: 'open-outline',
+  };
+  return icons[type] ?? 'ellipse-outline';
 }
 
 function formatTaskType(type: string): string {
@@ -221,130 +246,166 @@ function formatTaskType(type: string): string {
   return labels[type] ?? type;
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0f172a',
-  },
+const s = StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.bg },
   content: {
-    padding: 16,
-    paddingTop: 60,
-    paddingBottom: 32,
+    paddingHorizontal: scale(16),
+    paddingTop: safeArea.top + scale(10),
+    paddingBottom: scale(10),
   },
-  centered: {
-    flex: 1,
-    backgroundColor: '#0f172a',
+  // ── Header ──
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: scale(16),
+  },
+  pageTitle: {
+    fontSize: moderateScale(24),
+    fontWeight: '800',
+    color: colors.text,
+    marginBottom: scale(2),
+  },
+  pageSubtitle: {
+    fontSize: moderateScale(13),
+    color: colors.textMuted,
+  },
+  totalReward: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(4),
+    backgroundColor: colors.bgCard,
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(6),
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  totalRewardText: {
+    fontSize: moderateScale(13),
+    fontWeight: '700',
+    color: colors.secondary,
+  },
+  // ── Empty ──
+  emptyCard: {
+    alignItems: 'center',
+    paddingVertical: scale(40),
+    gap: scale(12),
+  },
+  emptyIcon: {
+    width: scale(64),
+    height: scale(64),
+    borderRadius: borderRadius['2xl'],
+    backgroundColor: colors.primaryGlow,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  pageTitle: {
-    fontSize: 24,
-    fontWeight: '800',
-    color: '#f1f5f9',
-    marginBottom: 4,
-  },
-  pageSubtitle: {
-    fontSize: 14,
-    color: '#94a3b8',
-    marginBottom: 20,
-  },
-  emptyBox: {
-    backgroundColor: '#1e293b',
-    borderRadius: 12,
-    padding: 32,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#334155',
-    gap: 12,
+  emptyTitle: {
+    fontSize: moderateScale(18),
+    fontWeight: '700',
+    color: colors.text,
   },
   emptyText: {
-    color: '#64748b',
-    fontSize: 14,
+    fontSize: moderateScale(14),
+    color: colors.textMuted,
     textAlign: 'center',
+    lineHeight: moderateScale(20),
+    paddingHorizontal: scale(20),
   },
+  // ── Task Card ──
   taskCard: {
-    backgroundColor: '#1e293b',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#334155',
+    padding: scale(16),
+    marginBottom: scale(10),
   },
   taskHeader: {
     flexDirection: 'row',
-    gap: 8,
-    marginBottom: 8,
+    gap: scale(6),
+    marginBottom: scale(10),
   },
   taskTypeBadge: {
-    backgroundColor: '#0f172a',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(4),
+    backgroundColor: colors.primaryGlow,
+    paddingHorizontal: scale(8),
+    paddingVertical: scale(4),
+    borderRadius: borderRadius.sm,
   },
   taskTypeText: {
-    color: '#14b8a6',
-    fontSize: 11,
+    color: colors.primary,
+    fontSize: moderateScale(11),
     fontWeight: '600',
   },
   tierBadge: {
-    backgroundColor: '#f59e0b',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
+    paddingHorizontal: scale(8),
+    paddingVertical: scale(4),
+    borderRadius: borderRadius.sm,
+  },
+  tierPremiumBadge: {
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+  },
+  tierVipBadge: {
+    backgroundColor: 'rgba(168, 85, 247, 0.15)',
   },
   tierText: {
-    color: '#ffffff',
-    fontSize: 11,
+    color: colors.white,
+    fontSize: moderateScale(10),
     fontWeight: '700',
   },
   taskTitle: {
-    color: '#f1f5f9',
-    fontSize: 16,
+    fontSize: moderateScale(16),
     fontWeight: '700',
-    marginBottom: 4,
+    color: colors.text,
+    marginBottom: scale(4),
   },
   taskDesc: {
-    color: '#94a3b8',
-    fontSize: 13,
-    lineHeight: 18,
-    marginBottom: 12,
+    fontSize: moderateScale(13),
+    color: colors.textMuted,
+    lineHeight: moderateScale(18),
+    marginBottom: scale(12),
   },
   taskMeta: {
     flexDirection: 'row',
-    gap: 16,
-    marginBottom: 12,
+    gap: scale(16),
+    marginBottom: scale(14),
   },
   metaItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: scale(4),
+  },
+  metaReward: {
+    color: colors.secondary,
+    fontSize: moderateScale(13),
+    fontWeight: '700',
   },
   metaText: {
-    color: '#94a3b8',
-    fontSize: 13,
+    color: colors.textMuted,
+    fontSize: moderateScale(13),
   },
   actions: {
     flexDirection: 'row',
-    gap: 10,
+    gap: scale(10),
   },
-  actionButton: {
+  actionBtn: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingVertical: scale(12),
+    borderRadius: borderRadius.md,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  startButton: {
-    backgroundColor: '#14b8a6',
+  startBtn: {
+    backgroundColor: colors.primary,
   },
-  completeButton: {
-    backgroundColor: '#f59e0b',
+  completeBtn: {
+    backgroundColor: colors.secondary,
   },
-  actionButtonText: {
-    color: '#ffffff',
-    fontSize: 14,
+  actionBtnText: {
+    color: colors.white,
+    fontSize: moderateScale(14),
     fontWeight: '700',
   },
-  buttonDisabled: {
+  btnDisabled: {
     opacity: 0.6,
   },
 });

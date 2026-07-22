@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   Pressable,
   RefreshControl,
@@ -8,10 +7,14 @@ import {
   StyleSheet,
   Text,
   View,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { api, ApiError } from '../../src/api/client';
 import ErrorScreen from '../../src/components/ErrorScreen';
+import { AnimatedCard, AnimatedBalance, DashboardSkeleton } from '../../src/components/Animated';
+import { colors, fontSize, spacing, borderRadius, shadows, gradients } from '../../src/theme';
+import { scale, moderateScale, safeArea } from '../../src/utils/responsive';
 import type { WalletData, WalletOverview, TierPricing } from '../../src/types';
 
 export default function WalletTab() {
@@ -51,7 +54,7 @@ export default function WalletTab() {
   }, [fetchWallet]);
 
   async function handleWithdraw() {
-    Alert.prompt(
+    Alert.prompt?.(
       'Retrait',
       'Montant à retirer (FCFA) :',
       async (amount) => {
@@ -63,12 +66,10 @@ export default function WalletTab() {
         setWithdrawing(true);
         try {
           await api.post('/wallet/withdraw', { amount: num });
-          Alert.alert('Succès', 'Demande de retrait envoyée.');
+          Alert.alert('✅ Succès', 'Demande de retrait envoyée.');
           fetchWallet(true);
         } catch (e) {
-          if (e instanceof ApiError) {
-            Alert.alert('Erreur', e.message);
-          }
+          if (e instanceof ApiError) Alert.alert('Erreur', e.message);
         } finally {
           setWithdrawing(false);
         }
@@ -79,103 +80,166 @@ export default function WalletTab() {
     );
   }
 
-  if (loading) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#14b8a6" />
-      </View>
-    );
-  }
+  if (loading) return <DashboardSkeleton />;
 
-  if (error) {
-    return <ErrorScreen message={error} onRetry={() => fetchWallet()} />;
-  }
+  if (error) return <ErrorScreen message={error} onRetry={() => fetchWallet()} />;
 
   if (!data || !transactions) return null;
 
   const balance = parseFloat(data.wallet.balance);
   const totalEarned = parseFloat(data.wallet.totalEarned);
+  const monthlyEarnings = parseFloat(data.wallet.monthlyEarnings);
+  const monthlyWithdrawals = parseFloat(data.wallet.monthlyWithdrawals);
   const minWithdrawal = data.fees.minimumWithdrawal;
 
   return (
     <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
+      style={s.container}
+      contentContainerStyle={s.content}
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
           onRefresh={() => fetchWallet(true)}
-          tintColor="#14b8a6"
-          colors={['#14b8a6']}
+          tintColor={colors.primary}
+          colors={[colors.primary]}
+          progressBackgroundColor={colors.bg}
         />
       }
     >
-      {/* Balance card */}
-      <View style={styles.balanceCard}>
-        <Text style={styles.balanceLabel}>Solde disponible</Text>
-        <Text style={styles.balanceAmount}>{balance.toLocaleString()} FCFA</Text>
-        <Text style={styles.earnedLabel}>Total gagné : {totalEarned.toLocaleString()} FCFA</Text>
+      {/* ── Header ── */}
+      <View style={s.header}>
+        <Text style={s.pageTitle}>Portefeuille</Text>
+        <View style={s.headerRight}>
+          <View style={s.monthBadge}>
+            <Text style={s.monthText}>
+              {new Date().toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
+            </Text>
+          </View>
+        </View>
+      </View>
 
-        <View style={styles.feesRow}>
-          <Text style={styles.feeText}>Frais de retrait : {data.fees.withdrawalFeePercent}%</Text>
-          <Text style={styles.feeText}>Min. retrait : {minWithdrawal.toLocaleString()} FCFA</Text>
+      {/* ── Balance Card Premium ── */}
+      <AnimatedCard delay={100} style={s.balanceCard}>
+        <Text style={s.balanceLabel}>Solde disponible</Text>
+        <AnimatedBalance amount={balance} currency="FCFA" style={s.balanceAmount} />
+        <View style={s.earnedRow}>
+          <Ionicons name="trending-up-outline" size={scale(14)} color={colors.success} />
+          <Text style={s.earnedText}>Total gagné : {totalEarned.toLocaleString()} FCFA</Text>
         </View>
 
+        {/* Monthly stats */}
+        <View style={s.monthlyStats}>
+          <View style={s.monthlyItem}>
+            <Text style={s.monthlyLabel}>Gains du mois</Text>
+            <Text style={s.monthlyValue}>{monthlyEarnings.toLocaleString()} FCFA</Text>
+          </View>
+          <View style={s.monthlyDivider} />
+          <View style={s.monthlyItem}>
+            <Text style={s.monthlyLabel}>Retraits du mois</Text>
+            <Text style={[s.monthlyValue, { color: colors.danger }]}>
+              {monthlyWithdrawals.toLocaleString()} FCFA
+            </Text>
+          </View>
+        </View>
+
+        {/* Withdraw button */}
         <Pressable
-          style={[
-            styles.withdrawButton,
-            (balance < minWithdrawal || withdrawing) && styles.buttonDisabled,
-          ]}
+          style={[s.withdrawBtn, (balance < minWithdrawal || withdrawing) && s.btnDisabled]}
           onPress={handleWithdraw}
           disabled={balance < minWithdrawal || withdrawing}
         >
           {withdrawing ? (
-            <ActivityIndicator color="#ffffff" size="small" />
+            <ActivityIndicator color={colors.white} size="small" />
           ) : (
-            <Text style={styles.withdrawText}>Effectuer un retrait</Text>
+            <>
+              <Ionicons name="arrow-down-outline" size={scale(18)} color={colors.white} />
+              <Text style={s.withdrawBtnText}>Effectuer un retrait</Text>
+            </>
           )}
         </Pressable>
-      </View>
 
-      {/* Upgrade tiers */}
-      <Text style={styles.sectionTitle}>Améliorer votre tier</Text>
-      <View style={styles.tierRow}>
-        <UpgradeTierCard tier="PREMIUM" price={5000} />
-        <UpgradeTierCard tier="VIP" price={15000} />
-      </View>
-
-      {/* Recent transactions */}
-      <Text style={styles.sectionTitle}>Transactions récentes</Text>
-      {transactions.recentTransactions.length === 0 ? (
-        <View style={styles.emptyBox}>
-          <Text style={styles.emptyText}>Aucune transaction pour le moment.</Text>
+        {/* Fees info */}
+        <View style={s.feesRow}>
+          <Text style={s.feeText}>Frais : {data.fees.withdrawalFeePercent}%</Text>
+          <Text style={s.feeText}>Min : {minWithdrawal.toLocaleString()} FCFA</Text>
         </View>
+      </AnimatedCard>
+
+      {/* ── Upgrade Tiers ── */}
+      <View style={s.sectionHeader}>
+        <Text style={s.sectionTitle}>Améliorer votre tier</Text>
+      </View>
+
+      <View style={s.tierRow}>
+        <UpgradeTierCard
+          tier="PREMIUM"
+          price={5000}
+          icon="diamond-outline"
+          color={colors.secondary}
+          delay={200}
+        />
+        <UpgradeTierCard
+          tier="VIP"
+          price={15000}
+          icon="infinite-outline"
+          color={colors.purple}
+          delay={250}
+        />
+      </View>
+
+      {/* ── Transactions ── */}
+      <View style={s.sectionHeader}>
+        <Text style={s.sectionTitle}>Transactions récentes</Text>
+      </View>
+
+      {transactions.recentTransactions.length === 0 ? (
+        <AnimatedCard delay={300} style={s.emptyCard}>
+          <Ionicons name="receipt-outline" size={scale(36)} color={colors.textDim} />
+          <Text style={s.emptyText}>Aucune transaction pour le moment.</Text>
+        </AnimatedCard>
       ) : (
-        transactions.recentTransactions.map((tx) => {
+        transactions.recentTransactions.map((tx, i) => {
           const isCredit = !['WITHDRAWAL', 'TIER_UPGRADE'].includes(tx.type);
           return (
-            <View key={tx.id} style={styles.txRow}>
-              <View style={styles.txLeft}>
-                <Ionicons
-                  name={isCredit ? 'arrow-down-circle' : 'arrow-up-circle'}
-                  size={20}
-                  color={isCredit ? '#14b8a6' : '#ef4444'}
-                />
-                <View style={styles.txInfo}>
-                  <Text style={styles.txType}>{formatTxType(tx.type)}</Text>
-                  <Text style={styles.txDate}>
-                    {new Date(tx.createdAt).toLocaleDateString('fr-FR')}
+            <AnimatedCard key={tx.id} delay={300 + i * 60} style={s.txCard}>
+              <View style={s.txRow}>
+                <View
+                  style={[
+                    s.txIcon,
+                    { backgroundColor: isCredit ? colors.primaryGlow : colors.dangerGlow },
+                  ]}
+                >
+                  <Ionicons
+                    name={isCredit ? 'arrow-down-circle' : 'arrow-up-circle'}
+                    size={scale(20)}
+                    color={isCredit ? colors.primary : colors.danger}
+                  />
+                </View>
+                <View style={s.txInfo}>
+                  <Text style={s.txType}>{formatTxType(tx.type)}</Text>
+                  <Text style={s.txDate}>
+                    {new Date(tx.createdAt).toLocaleDateString('fr-FR', {
+                      day: 'numeric',
+                      month: 'short',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
                   </Text>
                 </View>
+                <View style={s.txRight}>
+                  <Text style={[s.txAmount, { color: isCredit ? colors.primary : colors.danger }]}>
+                    {isCredit ? '+' : '-'}
+                    {parseFloat(tx.amount).toLocaleString()}
+                  </Text>
+                  <Text style={s.txCurrency}>FCFA</Text>
+                </View>
               </View>
-              <Text style={[styles.txAmount, { color: isCredit ? '#14b8a6' : '#ef4444' }]}>
-                {isCredit ? '+' : '-'}
-                {parseFloat(tx.amount).toLocaleString()} FCFA
-              </Text>
-            </View>
+            </AnimatedCard>
           );
         })
       )}
+
+      <View style={{ height: safeArea.bottom + scale(20) }} />
     </ScrollView>
   );
 }
@@ -194,172 +258,258 @@ function formatTxType(type: string): string {
   return labels[type] ?? type;
 }
 
-function UpgradeTierCard({ tier, price }: { tier: string; price: number }) {
-  const tierColor = tier === 'PREMIUM' ? '#f59e0b' : '#8b5cf6';
-
+function UpgradeTierCard({
+  tier,
+  price,
+  icon,
+  color,
+  delay,
+}: {
+  tier: string;
+  price: number;
+  icon: string;
+  color: string;
+  delay: number;
+}) {
   async function handleUpgrade() {
     try {
       await api.post('/wallet/upgrade-tier', { tier });
-      Alert.alert('Succès', 'Tier mis à jour !');
+      Alert.alert('✅ Succès', `Tier ${tier} activé !`);
     } catch (e) {
-      if (e instanceof ApiError) {
-        Alert.alert('Erreur', e.message);
-      }
+      if (e instanceof ApiError) Alert.alert('Erreur', e.message);
     }
   }
 
   return (
-    <Pressable style={styles.tierCard} onPress={handleUpgrade}>
-      <Ionicons
-        name={tier === 'PREMIUM' ? 'diamond-outline' : 'infinite-outline'}
-        size={24}
-        color={tierColor}
-      />
-      <Text style={[styles.tierName, { color: tierColor }]}>{tier}</Text>
-      <Text style={styles.tierPrice}>{price.toLocaleString()} FCFA</Text>
-    </Pressable>
+    <AnimatedCard
+      delay={delay}
+      style={[s.tierCard, { borderColor: color }]}
+      onPress={handleUpgrade}
+    >
+      <View style={[s.tierIconWrap, { backgroundColor: `${color}20` }]}>
+        <Ionicons name={icon as any} size={scale(26)} color={color} />
+      </View>
+      <Text style={[s.tierName, { color }]}>{tier}</Text>
+      <Text style={s.tierPrice}>{price.toLocaleString()} FCFA</Text>
+      <Text style={s.tierPeriod}>/ mois</Text>
+    </AnimatedCard>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0f172a',
-  },
+const s = StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.bg },
   content: {
-    padding: 16,
-    paddingTop: 60,
-    paddingBottom: 32,
+    paddingHorizontal: scale(16),
+    paddingTop: safeArea.top + scale(10),
+    paddingBottom: scale(10),
   },
-  centered: {
-    flex: 1,
-    backgroundColor: '#0f172a',
+  // ── Header ──
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    justifyContent: 'center',
+    marginBottom: scale(16),
   },
-  balanceCard: {
-    backgroundColor: '#1e293b',
-    borderRadius: 16,
-    padding: 24,
-    marginBottom: 16,
+  pageTitle: {
+    fontSize: moderateScale(24),
+    fontWeight: '800',
+    color: colors.text,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(8),
+  },
+  monthBadge: {
+    backgroundColor: colors.bgCard,
+    paddingHorizontal: scale(10),
+    paddingVertical: scale(4),
+    borderRadius: borderRadius.full,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: colors.border,
+  },
+  monthText: {
+    fontSize: moderateScale(11),
+    color: colors.textMuted,
+    fontWeight: '600',
+  },
+  // ── Balance Card ──
+  balanceCard: {
+    backgroundColor: colors.bgCard,
+    borderRadius: borderRadius['2xl'],
+    padding: scale(20),
+    borderWidth: 1,
+    borderColor: 'rgba(20, 184, 166, 0.12)',
+    marginBottom: scale(16),
   },
   balanceLabel: {
-    fontSize: 14,
-    color: '#94a3b8',
-    marginBottom: 4,
+    fontSize: moderateScale(14),
+    color: colors.textMuted,
+    marginBottom: scale(4),
   },
   balanceAmount: {
-    fontSize: 36,
+    fontSize: moderateScale(36, 0.3),
     fontWeight: '900',
-    color: '#14b8a6',
-    marginBottom: 4,
+    color: colors.primary,
+    letterSpacing: -1,
+    marginBottom: scale(2),
   },
-  earnedLabel: {
-    fontSize: 13,
-    color: '#64748b',
-    marginBottom: 12,
+  earnedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scale(4),
+    marginBottom: scale(16),
+  },
+  earnedText: {
+    fontSize: moderateScale(12),
+    color: colors.textMuted,
+  },
+  monthlyStats: {
+    flexDirection: 'row',
+    backgroundColor: colors.bgCardAlt,
+    borderRadius: borderRadius.lg,
+    padding: scale(14),
+    marginBottom: scale(16),
+  },
+  monthlyItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  monthlyLabel: {
+    fontSize: moderateScale(11),
+    color: colors.textDim,
+    marginBottom: scale(4),
+  },
+  monthlyValue: {
+    fontSize: moderateScale(16),
+    fontWeight: '800',
+    color: colors.text,
+  },
+  monthlyDivider: {
+    width: 1,
+    backgroundColor: colors.border,
+    marginHorizontal: scale(12),
+  },
+  withdrawBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: scale(8),
+    backgroundColor: colors.primary,
+    paddingVertical: scale(14),
+    borderRadius: borderRadius.lg,
+    ...shadows.glow,
+  },
+  btnDisabled: {
+    opacity: 0.5,
+  },
+  withdrawBtnText: {
+    color: colors.white,
+    fontSize: moderateScale(16),
+    fontWeight: '700',
   },
   feesRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 16,
+    marginTop: scale(10),
   },
   feeText: {
-    color: '#64748b',
-    fontSize: 12,
+    fontSize: moderateScale(11),
+    color: colors.textDim,
   },
-  withdrawButton: {
-    backgroundColor: '#14b8a6',
-    paddingVertical: 14,
-    borderRadius: 8,
+  // ── Section ──
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  withdrawText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '700',
+    marginBottom: scale(12),
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: moderateScale(18),
     fontWeight: '700',
-    color: '#f1f5f9',
-    marginBottom: 12,
-    marginTop: 8,
+    color: colors.text,
   },
+  // ── Tier Cards ──
   tierRow: {
     flexDirection: 'row',
-    gap: 10,
-    marginBottom: 16,
+    gap: scale(10),
+    marginBottom: scale(20),
   },
   tierCard: {
     flex: 1,
-    backgroundColor: '#1e293b',
-    borderRadius: 12,
-    padding: 16,
     alignItems: 'center',
+    paddingVertical: scale(20),
     borderWidth: 1,
-    borderColor: '#334155',
+  },
+  tierIconWrap: {
+    width: scale(48),
+    height: scale(48),
+    borderRadius: borderRadius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: scale(10),
   },
   tierName: {
-    fontSize: 14,
+    fontSize: moderateScale(16),
     fontWeight: '800',
-    marginTop: 8,
+    marginBottom: scale(4),
   },
   tierPrice: {
-    fontSize: 16,
-    color: '#f1f5f9',
-    fontWeight: '700',
-    marginTop: 4,
+    fontSize: moderateScale(20),
+    fontWeight: '900',
+    color: colors.text,
   },
-  emptyBox: {
-    backgroundColor: '#1e293b',
-    borderRadius: 12,
-    padding: 24,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#334155',
+  tierPeriod: {
+    fontSize: moderateScale(11),
+    color: colors.textDim,
+    marginTop: scale(2),
   },
-  emptyText: {
-    color: '#64748b',
-    fontSize: 14,
+  // ── Transactions ──
+  txCard: {
+    padding: scale(12),
+    marginBottom: scale(6),
   },
   txRow: {
-    backgroundColor: '#1e293b',
-    borderRadius: 10,
-    padding: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#334155',
+    gap: scale(12),
   },
-  txLeft: {
-    flexDirection: 'row',
+  txIcon: {
+    width: scale(38),
+    height: scale(38),
+    borderRadius: borderRadius.md,
     alignItems: 'center',
-    gap: 10,
-    flex: 1,
+    justifyContent: 'center',
   },
-  txInfo: {
-    flex: 1,
-  },
+  txInfo: { flex: 1 },
   txType: {
-    color: '#f1f5f9',
-    fontSize: 14,
+    fontSize: moderateScale(14),
     fontWeight: '600',
+    color: colors.text,
+    marginBottom: scale(2),
   },
   txDate: {
-    color: '#64748b',
-    fontSize: 12,
-    marginTop: 2,
+    fontSize: moderateScale(11),
+    color: colors.textDim,
   },
+  txRight: { alignItems: 'flex-end' },
   txAmount: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: moderateScale(15),
+    fontWeight: '800',
+  },
+  txCurrency: {
+    fontSize: moderateScale(10),
+    color: colors.textDim,
+  },
+  // ── Empty ──
+  emptyCard: {
+    alignItems: 'center',
+    paddingVertical: scale(32),
+    gap: scale(8),
+  },
+  emptyText: {
+    fontSize: moderateScale(14),
+    color: colors.textMuted,
+    textAlign: 'center',
   },
 });
