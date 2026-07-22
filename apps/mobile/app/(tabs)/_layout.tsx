@@ -1,16 +1,33 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Platform } from 'react-native';
+import { StyleSheet, Platform, LayoutAnimation, UIManager } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fontSize, shadows, borderRadius } from '../../src/theme';
+import { colors, shadows } from '../../src/theme';
 import { scale, safeArea } from '../../src/utils/responsive';
+
+// Enable LayoutAnimation on Android
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 export default function TabsLayout() {
   return (
     <>
       <StatusBar style="light" />
       <Tabs
+        screenListeners={{
+          tabPress: (e) => {
+            LayoutAnimation.configureNext({
+              duration: 200,
+              create: {
+                type: LayoutAnimation.Types.easeInEaseOut,
+                property: LayoutAnimation.Properties.opacity,
+              },
+              update: { type: LayoutAnimation.Types.easeInEaseOut },
+            });
+          },
+        }}
         screenOptions={{
           headerShown: false,
           tabBarStyle: styles.tabBar,

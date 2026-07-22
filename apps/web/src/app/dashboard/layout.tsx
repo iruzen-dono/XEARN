@@ -19,26 +19,30 @@ import {
   ChevronRight,
   Loader2,
   Award,
+  Shield,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import NotificationBell from '@/components/NotificationBell';
 import PageTransition from '@/components/ui/PageTransition';
 
-const navItems = [
-  { href: '/dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
-  { href: '/dashboard/tasks', label: 'Tâches', icon: ListTodo },
-  { href: '/dashboard/referrals', label: 'Parrainage', icon: Users },
-  { href: '/dashboard/wallet', label: 'Portefeuille', icon: Wallet },
-  { href: '/dashboard/ads', label: 'Mes Publicités', icon: Megaphone },
-  { href: '/dashboard/notifications', label: 'Notifications', icon: Bell },
-  { href: '/dashboard/gamification', label: 'Badges et classement', icon: Award },
-  { href: '/dashboard/profile', label: 'Mon profil', icon: UserCircle },
-];
-
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user, logout, isLoading, isAuthenticated } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const navItems = [
+    { href: '/dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
+    { href: '/dashboard/tasks', label: 'Tâches', icon: ListTodo },
+    { href: '/dashboard/referrals', label: 'Parrainage', icon: Users },
+    { href: '/dashboard/wallet', label: 'Portefeuille', icon: Wallet },
+    { href: '/dashboard/ads', label: 'Mes Publicités', icon: Megaphone },
+    { href: '/dashboard/notifications', label: 'Notifications', icon: Bell },
+    { href: '/dashboard/gamification', label: 'Badges et classement', icon: Award },
+    { href: '/dashboard/profile', label: 'Mon profil', icon: UserCircle },
+    ...(user?.role === 'ADMIN'
+      ? [{ href: '/dashboard/admin/stats', label: 'Administration', icon: Shield }]
+      : []),
+  ];
 
   if (isLoading) {
     return (
@@ -68,7 +72,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Navigation */}
       <nav className="flex-1 space-y-1">
         {navItems.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive =
+            pathname === item.href ||
+            (item.href.startsWith('/dashboard/admin') && pathname.startsWith('/dashboard/admin'));
           return (
             <Link
               key={item.href}

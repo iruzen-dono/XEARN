@@ -2,1181 +2,1006 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>XEARN — App Mobile Preview</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>XEARN — Mobile App Preview</title>
 <style>
-  :root {
-    --bg: #0f172a;
-    --bg-card: #1e293b;
-    --bg-input: #1e293b;
-    --border: #334155;
-    --text: #f1f5f9;
-    --text-muted: #94a3b8;
-    --text-dim: #64748b;
-    --primary: #14b8a6;
-    --primary-dark: #0d9488;
-    --primary-glow: rgba(20, 185, 166, 0.15);
-    --secondary: #f59e0b;
-    --success: #22c55e;
-    --danger: #ef4444;
-    --gold: #fbbf24;
-    --purple: #a855f7;
-    --gradient: linear-gradient(135deg, #0d9488 0%, #14b8a6 50%, #5eead4 100%);
-  }
-
   * { margin: 0; padding: 0; box-sizing: border-box; }
-
   body {
-    background: linear-gradient(135deg, #0a0f1e 0%, #1a1a3e 50%, #0a0f1e 100%);
-    font-family: system-ui, -apple-system, sans-serif;
+    background: #080e1a;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
     min-height: 100vh;
+    color: #f1f5f9;
     padding: 20px;
-    color: var(--text);
   }
 
-  h1 {
-    font-size: 1.5rem;
-    font-weight: 700;
-    margin-bottom: 8px;
-    background: var(--gradient);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-
-  .subtitle {
-    color: var(--text-muted);
-    font-size: 0.85rem;
-    margin-bottom: 24px;
-    text-align: center;
-  }
-
-  .phone-container {
-    position: relative;
+  .showcase {
     display: flex;
-    gap: 20px;
-    align-items: flex-start;
+    gap: 40px;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: 1100px;
   }
 
   .phone {
-    width: 393px;
-    height: 852px;
-    background: var(--bg);
-    border-radius: 55px;
-    border: 3px solid #334155;
-    box-shadow:
-      0 0 0 1px #1e293b,
-      0 0 0 4px #0f172a,
-      0 0 0 6px #1e293b,
-      0 30px 80px rgba(0,0,0,0.6),
-      inset 0 0 0 1px rgba(255,255,255,0.05);
+    width: 375px;
+    height: 790px;
+    background: #0c1222;
+    border-radius: 44px;
+    border: 3px solid #1c2a42;
     overflow: hidden;
     position: relative;
-    flex-shrink: 0;
+    box-shadow: 0 0 60px rgba(20,184,166,0.06), 0 20px 60px rgba(0,0,0,0.6);
   }
 
-  .notch {
-    position: absolute;
-    top: 12px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 126px;
-    height: 34px;
-    background: #000;
-    border-radius: 20px;
-    z-index: 20;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-  }
-  .notch-dot {
-    width: 10px; height: 10px;
-    border-radius: 50%;
-    background: #1a1a2e;
-    border: 1px solid #2a2a3e;
-  }
-  .status-bar {
+  .phone-notch {
     position: absolute;
     top: 0;
-    left: 0; right: 0;
-    height: 54px;
-    z-index: 10;
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    padding: 0 32px 6px;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text);
-  }
-  .status-right { display: flex; gap: 6px; align-items: center; font-size: 11px; }
-
-  .screen-content {
-    padding: 54px 0 0;
-    height: 100%;
-    overflow-y: auto;
-    scrollbar-width: none;
-    position: relative;
-  }
-  .screen-content::-webkit-scrollbar { display: none; }
-
-  .home-indicator {
-    position: absolute;
-    bottom: 6px;
     left: 50%;
     transform: translateX(-50%);
-    width: 134px;
-    height: 5px;
-    background: #fff;
-    border-radius: 100px;
-    opacity: 0.3;
-    z-index: 20;
-  }
-
-  /* Screens */
-  .screen {
-    display: none;
-    flex-direction: column;
-    min-height: 100%;
-    animation: fadeIn 0.3s ease;
-  }
-  .screen.active { display: flex; }
-
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  /* Nav Dots */
-  .nav {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 20px 0;
-  }
-  .nav label {
+    width: 150px;
+    height: 30px;
+    background: #0c1222;
+    border-radius: 0 0 18px 18px;
+    z-index: 100;
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
-    padding: 8px 14px;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: all 0 isolates;
-    font-size: 0.8rem;
-    color: var(--text-muted);
-    white-space: nowrap;
   }
-  .nav label:hover { background: rgba(255,255,255,0.05); color: var(--text); }
-  .nav input:checked + span + .dot-label { color: var(--primary); font-weight: 600; }
-  .nav input { display: none; }
-  .nav .dot {
+  .phone-notch .camera {
     width: 10px; height: 10px;
     border-radius: 50%;
-    background: var(--text-dim);
-    transition: all 0.2s;
-    flex-shrink: 0;
+    background: #1c2a42;
+    border: 1px solid #2a3a52;
   }
-  .nav input:checked ~ .dot { background: var(--primary); box-shadow: 0 0 8px var(--primary-glow); }
-  .nav .dot-label { transition: all 0.2s; }
-
-  /* Screen components */
-  .p-4 { padding: 16px; }
-  .p-5 { padding: 20px; }
-  .px-4 { padding-left: 16px; padding-right: 16px; }
-  .px-5 { padding-left: 20px; padding-right: 20px; }
-  .py-3 { padding-top: 12px; padding-bottom: 12px; }
-  .py-4 { padding-top: 16px; padding-bottom: 16px; }
-  .gap-2 { gap: 8px; }
-  .gap-3 { gap: 12px; }
-  .gap-4 { gap: 16px; }
-  .flex { display: flex; }
-  .flex-col { flex-direction: column; }
-  .items-center { align-items: center; }
-  .items-end { align-items: flex-end; }
-  .justify-between { justify-content: space-between; }
-  .justify-center { justify-content: center; }
-  .flex-1 { flex: 1; }
-  .text-center { text-align: center; }
-  .text-xs { font-size: 0.7rem; }
-  .text-sm { font-size: 0.78rem; }
-  .text-lg { font-size: 1rem; }
-  .text-xl { font-size: 1.2rem; }
-  .text-2xl { font-size: 1.5rem; }
-  .text-3xl { font-size: 1.8rem; }
-  .font-semibold { font-weight: 600; }
-  .font-bold { font-weight: 700; }
-  .text-muted { color: var(--text-muted); }
-  .text-dim { color: var(--text-dim); }
-  .text-primary { color: var(--primary); }
-  .text-secondary { color: var(--secondary); }
-  .text-success { color: var(--success); }
-  .text-danger { color: var(--danger); }
-  .text-gold { color: var(--gold); }
-  .mt-1 { margin-top: 4px; }
-  .mt-2 { margin-top: 8px; }
-  .mt-3 { margin-top: 12px; }
-  .mt-4 { margin-top: 16px; }
-  .mt-6 { margin-top: 24px; }
-  .mb-1 { margin-bottom: 4px; }
-  .mb-2 { margin-bottom: 8px; }
-  .mb-3 { margin-bottom: 12px; }
-  .mb-4 { margin-bottom: 16px; }
-  .mr-2 { margin-right: 8px; }
-  .ml-2 { margin-left: 8px; }
-  .w-full { width: 100%; }
-
-  .card {
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 16px;
-  }
-  .card-glass {
-    background: rgba(255,255,255,0.03);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 16px;
-    padding: 16px;
+  .phone-notch .speaker {
+    width: 50px; height: 4px;
+    border-radius: 2px;
+    background: #1c2a42;
   }
 
-  .btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 14px 20px;
-    border-radius: 12px;
-    border: none;
-    font-size: 0.85rem;
-    font-weight: 600;
-    cursor: default;
-    transition: all 0.2s;
-    width: 100%;
-  }
-  .btn-primary {
-    background: linear-gradient(135deg, var(--primary-dark), var(--primary));
-    color: #fff;
-    box-shadow: 0 4px 15px var(--primary-glow);
-  }
-  .btn-secondary {
-    background: rgba(255,255,255,0.06);
-    color: var(--text);
-    border: 1px solid var(--border);
-  }
-  .btn-danger {
-    background: rgba(239,68,68,0.1);
-    color: var(--danger);
-    border: 1px solid rgba(239,68,68,0.2);
-  }
-  .btn-sm { padding: 10px 16px; font-size: 0.78rem; }
-  .btn-icon {
-    width: 40px; height: 40px;
-    padding: 0;
-    border-radius: 12px;
-  }
-
-  .input {
-    width: 100%;
-    padding: 14px 16px;
-    background: var(--bg-input);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    color: var(--text);
-    font-size: 0.85rem;
-    outline: none;
-    transition: border-color 0.2s;
-  }
-  .input:focus { border-color: var(--primary); }
-  .input::placeholder { color: var(--text-dim); }
-  .input-label {
-    display: block;
-    font-size: 0.78rem;
-    font-weight: 500;
-    color: var(--text-muted);
-    margin-bottom: 6px;
-  }
-
-  .badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 10px;
-    border-radius: 20px;
-    font-size: 0.7rem;
-    font-weight: 600;
-    border: 1px solid;
-  }
-  .badge-primary { background: rgba(20,185,166,0.1); color: var(--primary); border-color: rgba(20,185,166,0.2); }
-  .badge-success { background: rgba(34,197,94,0.1); color: var(--success); border-color: rgba(34,197,94,0.2); }
-  .badge-warning { background: rgba(245,158,11,0.1); color: var(--secondary); border-color: rgba(245,158,11,0.2); }
-  .badge-danger { background: rgba(239,68,68,0.1); color: var(--danger); border-color: rgba(239,68,68,0.2); }
-  .badge-gold { background: rgba(251,191,36,0.1); color: var(--gold); border-color: rgba(251,191,36,0.2); }
-
-  .avatar {
-    width: 40px; height: 40px;
-    border-radius: 12px;
-    background: var(--gradient);
-    display: flex;
-    align-items: center;
-    justify-content: center;
+  .phone-time {
+    position: absolute;
+    top: 12px;
+    left: 28px;
+    z-index: 101;
+    font-size: 12px;
     font-weight: 700;
-    font-size: 1rem;
-    color: #fff;
-    flex-shrink: 0;
+    color: #f1f5f9;
+    letter-spacing: 0.3px;
   }
-  .avatar-sm { width: 32px; height: 32px; font-size: 0.8rem; border-radius: 10px; }
-
-  .divider {
-    height: 1px;
-    background: var(--border);
-    margin: 16px 0;
-  }
-
-  .stat-value { font-size: 1.5rem; font-weight: 700; }
-  .stat-label { font-size: 0.78rem; color: var(--text-dim); }
-  .chip {
-    display: inline-flex;
+  .phone-battery {
+    position: absolute;
+    top: 14px;
+    right: 24px;
+    z-index: 101;
+    display: flex;
     align-items: center;
     gap: 4px;
-    padding: 6px 12px;
-    border-radius: 8px;
-    font-size: 0.75rem;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid var(--border);
-    color: var(--text-muted);
+    font-size: 10px;
+    color: #f1f5f9;
+  }
+  .phone-battery .batt {
+    width: 18px; height: 10px;
+    border: 1.5px solid #f1f5f9;
+    border-radius: 2px;
+    padding: 1px;
+  }
+  .phone-battery .batt-inner {
+    width: 75%; height: 100%;
+    background: #22c55e;
+    border-radius: 1px;
   }
 
-  /* Tab bar simulation (at bottom of screen content) */
+  .phone-screen {
+    height: 100%;
+    padding: 38px 14px 10px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #1c2a42 transparent;
+  }
+  .phone-screen::-webkit-scrollbar { width: 3px; }
+  .phone-screen::-webkit-scrollbar-thumb { background: #1c2a42; border-radius: 3px; }
+
+  /* Tab bar */
   .tab-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 70px;
+    background: #162032;
+    border-top: 1px solid rgba(51,65,85,0.4);
     display: flex;
     justify-content: space-around;
     align-items: center;
-    padding: 8px 0 16px;
-    border-top: 1px solid var(--border);
-    background: rgba(15,23,42,0.95);
-    backdrop-filter: blur(10px);
-    margin-top: auto;
+    padding: 0 8px;
+    z-index: 99;
   }
   .tab-item {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 2px;
-    font-size: 0.6rem;
-    color: var(--text-dim);
-    cursor: default;
-    transition: color 0.2s;
-    padding: 4px 12px;
-  }
-  .tab-item.active { color: var(--primary); }
-  .tab-icon {
-    width: 22px; height: 22px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.1rem;
-  }
-
-  /* Notification pill */
-  .notif-pill {
-    position: absolute;
-    top: -2px;
-    right: -4px;
-    width: 16px; height: 16px;
-    background: var(--danger);
-    border-radius: 50%;
-    font-size: 0.55rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    color: #fff;
-    border: 2px solid var(--bg);
-  }
-
-  .tab-icon-wrap { position: relative; }
-
-  /* Quick stats row */
-  .stat-row {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
-  }
-  .stat-box {
-    background: rgba(255,255,255,0.03);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 14px 12px;
-    text-align: center;
-  }
-
-  /* Transaction list */
-  .tx-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 0;
-  }
-  .tx-item + .tx-item { border-top: 1px solid var(--border); }
-  .tx-icon {
-    width: 36px; height: 36px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.85rem;
-    flex-shrink: 0;
-  }
-  .tx-icon-in { background: rgba(34,197,94,0.1); }
-  .tx-icon-out { background: rgba(239,68,68,0.1); }
-  .tx-icon-ref { background: rgba(20,185,166,0.1); }
-
-  /* Referral tree */
-  .ref-level {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 0;
-  }
-  .ref-level + .ref-level { border-top: 1px solid var(--border); }
-  .ref-count {
-    width: 32px; height: 32px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.8rem;
-    font-weight: 700;
-    flex-shrink: 0;
-  }
-
-  /* Task item */
-  .task-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 14px;
-    background: rgba(255,255,255,0.02);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-  }
-  .task-check {
-    width: 22px; height: 22px;
-    border-radius: 6px;
-    border: 2px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    font-size: 0.7rem;
-    transition: all 0.2s;
-  }
-  .task-check.done { background: var(--primary); border-color: var(--primary); }
-  .task-reward {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: var(--secondary);
-    padding: 2px 8px;
-    background: rgba(245,158,11,0.1);
-    border-radius: 6px;
-  }
-
-  /* Streak bar */
-  .streak-bar {
-    display: flex;
-    gap: 4px;
-    justify-content: center;
-  }
-  .streak-day {
-    width: 28px; height: 28px;
-    border-radius: 8px;
-    background: rgba(255,255,255,0.05);
-    border: 1px solid var(--border);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.65rem;
-    color: var(--text-dim);
-  }
-  .streak-day.filled { background: rgba(20,185,166,0.2); border-color: var(--primary); color: var(--primary); }
-  .streak-day.today { border-color: var(--secondary); box-shadow: 0 0 8px rgba(245,158,11,0.2); }
-
-  /* Badge awards */
-  .badge-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 12px;
-  }
-  .badge-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    text-align: center;
-  }
-  .badge-icon {
-    width: 44px; height: 44px;
-    border-radius: 14px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.3rem;
-    background: rgba(255,255,255,0.04);
-    border: 1px solid var(--border);
-  }
-  .badge-icon.unlocked { background: rgba(20,185,166,0.1); border-color: var(--primary); }
-
-  .desc { font-size: 0.72rem; color: var(--text-muted); line-height: 1.4; }
-
-  .toast {
-    position: absolute;
-    bottom: 100px;
-    left: 20px; right: 20px;
-    background: #1e293b;
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 14px 16px;
-    display: none;
-    align-items: center;
-    gap: 10px;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.4);
-    z-index: 30;
-    animation: slideUp 0.3s ease;
-  }
-  .toast.show { display: flex; }
-  @keyframes slideUp {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  .toast-icon { font-size: 1.2rem; }
-  .toast-msg { font-size: 0.82rem; flex: 1; }
-
-  /* Controls */
-  .controls {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    background: rgba(255,255,255,0.03);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    padding: 12px;
-    min-width: 160px;
-  }
-  .controls-title {
-    font-size: 0.7rem;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
     padding: 4px 8px;
-    font-weight: 600;
-  }
-  .controls label {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 7px 8px;
-    border-radius: 8px;
     cursor: pointer;
-    font-size: 0.78rem;
-    color: var(--text-muted);
-    transition: all 0.15s;
+    border: none;
+    background: none;
+    color: #64748b;
+    font-size: 10px;
+    font-weight: 600;
+    transition: color 0.2s;
   }
-  .controls label:hover { background: rgba(255,255,255,0.04); }
-  .controls input:checked + .ctrl-dot { background: var(--primary); box-shadow: 0 0 6px var(--primary-glow); }
-  .controls input:checked ~ .ctrl-label { color: var(--text); font-weight: 500; }
-  .ctrl-dot {
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    background: var(--text-dim);
-    transition: all 0.2s;
-    flex-shrink: 0;
+  .tab-item.active { color: #14b8a6; }
+  .tab-item svg { width: 22px; height: 22px; }
+
+  .home-indicator {
+    position: absolute;
+    bottom: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 120px;
+    height: 5px;
+    border-radius: 3px;
+    background: #334155;
+    z-index: 100;
   }
 
-  .leaderboard-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 0;
-  }
-  .leaderboard-rank {
-    width: 24px; height: 24px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.7rem;
-    font-weight: 700;
-    flex-shrink: 0;
-  }
-  .rank-gold { background: rgba(251,191,36,0.2); color: var(--gold); }
-  .rank-silver { background: rgba(148,163,184,0.2); color: #cbd5e1; }
-  .rank-bronze { background: rgba(180,83,9,0.2); color: var(--secondary); }
-  .rank-default { background: rgba(255,255,255,0.04); color: var(--text-dim); }
-
-  .empty-state {
+  /* Navigation */
+  .nav {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 40px 20px;
-    text-align: center;
     gap: 8px;
   }
-  .empty-icon {
-    width: 56px; height: 56px;
-    border-radius: 14px;
-    background: rgba(255,255,255,0.03);
-    border: 1px solid var(--border);
+  .nav h2 {
+    font-size: 20px;
+    font-weight: 800;
+    color: #e2e8f0;
+    margin-bottom: 6px;
+  }
+  .nav p {
+    font-size: 13px;
+    color: #64748b;
+    margin-bottom: 10px;
+  }
+  .screen-buttons {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5rem;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .screen-btn {
+    padding: 10px 18px;
+    border-radius: 10px;
+    border: 1px solid rgba(51,65,85,0.4);
+    background: #162032;
+    color: #cbd5e1;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .screen-btn:hover {
+    background: #1c2a42;
+    border-color: rgba(20,184,166,0.3);
+  }
+  .screen-btn.active {
+    background: rgba(20,184,166,0.12);
+    border-color: #14b8a6;
+    color: #14b8a6;
+  }
+
+  .screen-info {
+    background: #162032;
+    border-radius: 14px;
+    padding: 20px;
+    border: 1px solid rgba(51,65,85,0.4);
+    max-width: 380px;
+    min-width: 300px;
+  }
+  .screen-info h3 {
+    font-size: 18px;
+    font-weight: 700;
     margin-bottom: 8px;
   }
+  .screen-info p {
+    font-size: 13px;
+    color: #94a3b8;
+    line-height: 1.6;
+    margin-bottom: 6px;
+  }
+  .screen-info ul {
+    padding-left: 18px;
+    font-size: 13px;
+    color: #94a3b8;
+    line-height: 1.6;
+  }
+  .screen-info .features {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+  }
+  .screen-info .feature-tag {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    background: rgba(20,184,166,0.1);
+    color: #5eead4;
+    border: 1px solid rgba(20,184,166,0.15);
+  }
 
-  @media (max-width: 700px) {
-    .phone-container { flex-direction: column; align-items: center; }
-    .controls { flex-direction: row; flex-wrap: wrap; min-width: unset; width: 100%; max-width: 393px; }
-    .controls label { flex: 1; min-width: 80px; }
-    .phone { width: 100%; max-width: 393px; height: auto; aspect-ratio: 393/852; min-height: 600px; }
+  .screen-info .feature-tag.gold { background: rgba(245,158,11,0.1); color: #fbbf24; border-color: rgba(245,158,11,0.15); }
+  .screen-info .feature-tag.purple { background: rgba(168,85,247,0.1); color: #c084fc; border-color: rgba(168,85,247,0.15); }
+
+  /* Screens CSS */
+  .screen-content { display: block; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .screen-content > * { animation: fadeIn 0.3s ease-out both; }
+  .screen-content > *:nth-child(1) { animation-delay: 0s; }
+  .screen-content > *:nth-child(2) { animation-delay: 0.08s; }
+  .screen-content > *:nth-child(3) { animation-delay: 0.16s; }
+  .screen-content > *:nth-child(4) { animation-delay: 0.24s; }
+  .screen-content > *:nth-child(5) { animation-delay: 0.32s; }
+  .screen-content > *:nth-child(6) { animation-delay: 0.40s; }
+
+  /* Dashboard specific */
+  .dash-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px;
+  }
+  .dash-greeting { font-size: 13px; color: #94a3b8; }
+  .dash-name { font-size: 22px; font-weight: 800; color: #f1f5f9; }
+  .dash-avatar {
+    width: 40px; height: 40px;
+    border-radius: 12px;
+    background: #14b8a6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800; font-size: 15px; color: #fff;
+  }
+
+  .balance-card {
+    background: linear-gradient(135deg, #162032 0%, #1c2a42 100%);
+    border-radius: 20px;
+    padding: 20px;
+    border: 1px solid rgba(20,184,166,0.12);
+    margin-bottom: 14px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+  }
+  .balance-label { font-size: 13px; color: #94a3b8; margin-bottom: 2px; }
+  .balance-amount { font-size: 34px; font-weight: 900; color: #14b8a6; letter-spacing: -1px; }
+  .balance-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+  }
+  .btn-primary {
+    flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
+    background: #14b8a6; padding: 12px; border-radius: 12px;
+    font-weight: 700; font-size: 14px; color: #fff;
+    border: none; cursor: pointer;
+    box-shadow: 0 0 20px rgba(20,184,166,0.2);
+  }
+  .btn-secondary {
+    flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
+    background: #1c2a42; padding: 12px; border-radius: 12px;
+    font-weight: 600; font-size: 14px; color: #f1f5f9;
+    border: 1px solid rgba(51,65,85,0.4); cursor: pointer;
+  }
+
+  .stats-row {
+    display: flex; gap: 10px; margin-bottom: 18px;
+  }
+  .stat-card {
+    flex: 1;
+    background: #162032;
+    border-radius: 12px;
+    padding: 14px;
+    text-align: center;
+    border: 1px solid rgba(51,65,85,0.4);
+  }
+  .stat-icon {
+    width: 30px; height: 30px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 6px; font-size: 14px;
+  }
+  .stat-value { font-size: 15px; font-weight: 800; color: #f1f5f9; }
+  .stat-label { font-size: 10px; color: #94a3b8; margin-top: 2px; }
+
+  .section-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 10px;
+  }
+  .section-title { font-size: 17px; font-weight: 700; color: #f1f5f9; }
+  .section-link { font-size: 12px; color: #14b8a6; font-weight: 600; }
+
+  .task-item {
+    display: flex; align-items: center; gap: 12px;
+    background: #162032; border-radius: 12px; padding: 12px;
+    margin-bottom: 6px; border: 1px solid rgba(51,65,85,0.4);
+  }
+  .task-icon {
+    width: 36px; height: 36px; border-radius: 8px;
+    background: rgba(20,184,166,0.1);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .task-info { flex: 1; }
+  .task-title { font-size: 13px; font-weight: 600; color: #f1f5f9; }
+  .task-date { font-size: 10px; color: #64748b; }
+  .task-reward { font-size: 14px; font-weight: 800; color: #f59e0b; }
+
+  .empty-state {
+    text-align: center; padding: 28px 16px;
+    background: #162032; border-radius: 14px;
+    border: 1px solid rgba(51,65,85,0.4);
+    margin-bottom: 12px;
+  }
+  .empty-state p { font-size: 13px; color: #94a3b8; line-height: 1.5; }
+  .empty-state .big-icon { font-size: 32px; margin-bottom: 8px; opacity: 0.4; }
+
+  .tier-badge {
+    padding: 3px 10px; border-radius: 20px; font-size: 10px; font-weight: 700;
+    background: rgba(245,158,11,0.12); color: #f59e0b;
+    border: 1px solid rgba(245,158,11,0.15);
+  }
+  .tier-badge.vip {
+    background: rgba(168,85,247,0.12); color: #c084fc;
+    border-color: rgba(168,85,247,0.15);
+  }
+
+  .wallet-monthly {
+    display: flex; background: #1c2a42; border-radius: 12px;
+    padding: 12px; margin-bottom: 14px;
+  }
+  .wallet-monthly > div { flex: 1; text-align: center; }
+  .wallet-monthly .ml { font-size: 10px; color: #64748b; margin-bottom: 4px; }
+  .wallet-monthly .mv { font-size: 15px; font-weight: 800; color: #f1f5f9; }
+  .wallet-monthly .mv.danger { color: #ef4444; }
+
+  .tier-row {
+    display: flex; gap: 10px; margin-bottom: 16px;
+  }
+  .tier-card {
+    flex: 1; background: #162032; border-radius: 14px;
+    padding: 18px; text-align: center;
+    border: 1px solid;
+    cursor: pointer;
+  }
+  .tier-card .tier-icon {
+    width: 42px; height: 42px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 8px;
+  }
+
+  .tx-item {
+    display: flex; align-items: center; gap: 10px;
+    background: #162032; border-radius: 10px;
+    padding: 10px; margin-bottom: 5px;
+    border: 1px solid rgba(51,65,85,0.4);
+  }
+  .tx-icon {
+    width: 34px; height: 34px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .tx-info { flex: 1; }
+  .tx-type { font-size: 13px; font-weight: 600; color: #f1f5f9; }
+  .tx-date { font-size: 10px; color: #64748b; }
+  .tx-amount { font-size: 14px; font-weight: 800; }
+
+  /* Profile */
+  .profile-card {
+    text-align: center; padding: 22px;
+    background: #162032; border-radius: 18px; margin-bottom: 14px;
+    border: 1px solid rgba(51,65,85,0.4);
+  }
+  .profile-avatar {
+    width: 64px; height: 64px; border-radius: 32px;
+    background: #14b8a6; display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 10px; font-size: 22px; font-weight: 800; color: #fff;
+    position: relative;
+  }
+  .profile-avatar::after {
+    content: ''; position: absolute; inset: -3px;
+    border-radius: 35px; border: 2px solid rgba(20,184,166,0.3);
+  }
+  .profile-name { font-size: 18px; font-weight: 700; color: #f1f5f9; }
+  .profile-email { font-size: 12px; color: #94a3b8; margin: 4px 0 8px; }
+
+  .streak-bar {
+    display: flex; align-items: center; justify-content: space-around;
+    background: #162032; border-radius: 14px; padding: 14px;
+    margin-bottom: 14px; border: 1px solid rgba(51,65,85,0.4);
+  }
+  .streak-bar .flame { font-size: 24px; }
+  .streak-label { font-size: 11px; color: #94a3b8; }
+  .streak-val { font-size: 18px; font-weight: 800; color: #f1f5f9; }
+
+  .quick-actions {
+    display: flex; gap: 10px; margin-bottom: 14px;
+  }
+  .qa-card {
+    flex: 1; background: #162032; border-radius: 12px;
+    padding: 12px; text-align: center;
+    border: 1px solid rgba(51,65,85,0.4); cursor: pointer;
+  }
+  .qa-card .qa-icon { font-size: 20px; margin-bottom: 4px; }
+  .qa-card .qa-label { font-size: 10px; color: #94a3b8; }
+
+  .badge-scroll {
+    display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px;
+    margin-bottom: 14px;
+  }
+  .badge-scroll::-webkit-scrollbar { height: 2px; }
+  .badge-scroll::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
+  .badge-item {
+    min-width: 70px; background: #162032; border-radius: 12px;
+    padding: 12px 8px; text-align: center;
+    border: 1px solid rgba(51,65,85,0.4);
+  }
+  .badge-item.locked { opacity: 0.45; }
+  .badge-icon { font-size: 24px; margin-bottom: 4px; }
+  .badge-name { font-size: 10px; font-weight: 600; color: #f1f5f9; }
+  .badge-progress { font-size: 9px; color: #64748b; margin-top: 2px; }
+
+  .notif-item {
+    display: flex; align-items: flex-start; gap: 8px;
+    background: #162032; border-radius: 10px; padding: 10px;
+    margin-bottom: 5px; border: 1px solid rgba(51,65,85,0.4);
+  }
+  .notif-item.unread { border-color: rgba(20,184,166,0.3); }
+  .notif-dot {
+    width: 16px; padding-top: 3px; text-align: center;
+  }
+  .notif-dot .pulse {
+    display: inline-block; width: 7px; height: 7px;
+    border-radius: 50%; background: #14b8a6;
+  }
+  .notif-content { flex: 1; }
+  .notif-title { font-size: 13px; font-weight: 600; color: #f1f5f9; }
+  .notif-msg { font-size: 11px; color: #94a3b8; margin-top: 2px; }
+  .notif-date { font-size: 10px; color: #64748b; margin-top: 4px; }
+
+  /* Referral code */
+  .ref-code {
+    text-align: center; padding: 18px;
+    background: #162032; border-radius: 14px; margin-bottom: 14px;
+    border: 1px solid rgba(20,184,166,0.15);
+  }
+  .ref-code .code-label { font-size: 12px; color: #94a3b8; margin-bottom: 6px; }
+  .ref-code .code-value {
+    font-size: 26px; font-weight: 900; color: #14b8a6;
+    letter-spacing: 3px; margin-bottom: 6px;
+  }
+  .ref-code .code-actions {
+    display: flex; gap: 10px; justify-content: center; margin-top: 10px;
+  }
+  .ref-code .code-btn {
+    display: flex; align-items: center; gap: 4px;
+    padding: 8px 16px; border-radius: 8px; font-size: 12px;
+    font-weight: 700; color: #fff; background: #14b8a6;
+    border: none; cursor: pointer;
+  }
+  .ref-code .code-btn.share { background: #f59e0b; }
+
+  .ref-stats {
+    display: flex; gap: 10px; margin-bottom: 14px;
+  }
+  .ref-stat {
+    flex: 1; background: #162032; border-radius: 12px;
+    padding: 14px; text-align: center;
+    border: 1px solid rgba(51,65,85,0.4);
   }
 </style>
 </head>
 <body>
-
-<h1>📱 XEARN Mobile</h1>
-<p class="subtitle">Prototype interactif — clique sur un écran pour le voir dans le téléphone</p>
-
-<div class="phone-container">
-  <!-- Phone Frame -->
-  <div class="phone">
-    <div class="notch"><div class="notch-dot"></div></div>
-    <div class="status-bar">
-      <span>9:41</span>
-      <div class="status-right">
-        <span>●●●●○</span>
-        <span style="font-size:14px;">🔋</span>
-      </div>
+<div class="showcase">
+  <div class="phone" id="phone">
+    <div class="phone-notch">
+      <div class="speaker"></div>
+      <div class="camera"></div>
+    </div>
+    <div class="phone-time">12:00</div>
+    <div class="phone-battery">
+      <span>95%</span>
+      <div class="batt"><div class="batt-inner"></div></div>
     </div>
 
-    <div class="screen-content" id="screenContent">
-      <!-- LOGIN SCREEN -->
-      <div class="screen active" id="screen-login">
-        <div class="p-5 flex flex-col" style="min-height:100%;">
-          <div style="margin-top:20px;text-align:center;">
-            <div style="font-size:2rem;margin-bottom:4px;">💰</div>
-            <div style="font-size:1.5rem;font-weight:800;background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">XEARN</div>
-            <div class="text-muted text-sm" style="margin-top:4px;">Gagne de l'argent en accomplissant des tâches simples</div>
-          </div>
-
-          <div style="margin-top:32px;" class="flex flex-col gap-3">
-            <div>
-              <label class="input-label">Email</label>
-              <input class="input" type="email" placeholder="ton@email.com" value="demo@xearn.com" disabled>
-            </div>
-            <div>
-              <label class="input-label">Mot de passe</label>
-              <input class="input" type="password" placeholder="••••••••" value="password" disabled>
-            </div>
-          </div>
-
-          <div style="margin-top:24px;" class="flex flex-col gap-3">
-            <div class="btn btn-primary">🔓 Se connecter</div>
-            <div class="btn btn-secondary">Créer un compte</div>
-          </div>
-
-          <div class="text-center text-xs text-dim mt-4" style="margin-top:auto;padding:20px 0 10px;">
-            En continuant, tu acceptes les <span class="text-primary">CGU</span>
-          </div>
-        </div>
-        <div class="home-indicator"></div>
-      </div>
-
-      <!-- REGISTER SCREEN -->
-      <div class="screen" id="screen-register">
-        <div class="p-5 flex flex-col" style="min-height:100%;">
-          <div style="margin-top:12px;">
-            <div class="text-sm text-dim mb-1">Étape 1 sur 2</div>
-            <div class="text-xl font-bold">Crée ton compte</div>
-            <div class="text-sm text-muted">Rejoins +10 000 utilisateurs</div>
-          </div>
-          <div class="flex flex-col gap-3 mt-4">
-            <div class="flex gap-3">
-              <div style="flex:1">
-                <label class="input-label">Prénom</label>
-                <input class="input" value="Alex" disabled>
-              </div>
-              <div style="flex:1">
-                <label class="input-label">Nom</label>
-                <input class="input" value="Koné" disabled>
-              </div>
-            </div>
-            <div>
-              <label class="input-label">Email</label>
-              <input class="input" type="email" value="alex@email.com" disabled>
-            </div>
-            <div>
-              <label class="input-label">Mot de passe</label>
-              <input class="input" type="password" value="•••••••" disabled>
-            </div>
-            <div>
-              <label class="input-label">Code de parrainage (optionnel)</label>
-              <input class="input" placeholder="XE-XXXX" value="XE-DEMO" disabled>
-            </div>
-          </div>
-          <div class="btn btn-primary mt-4">✨ Créer mon compte</div>
-          <div class="text-center text-xs text-dim mt-3">
-            Déjà un compte ? <span class="text-primary">Connecte-toi</span>
-          </div>
-        </div>
-        <div class="home-indicator"></div>
-      </div>
-
-      <!-- DASHBOARD SCREEN -->
-      <div class="screen" id="screen-dashboard">
-        <div class="p-4 flex flex-col" style="min-height:100%;">
-          <!-- Header -->
-          <div class="flex justify-between items-center mb-3">
-            <div>
-              <div class="text-sm text-dim">Bonjour 👋</div>
-              <div class="text-lg font-bold">Alex</div>
-            </div>
-            <div class="flex gap-2">
-              <div class="chip">🔔</div>
-              <div class="avatar">AK</div>
-            </div>
-          </div>
-
-          <!-- Balance Card -->
-          <div class="card" style="background:linear-gradient(135deg,rgba(20,185,166,0.08),rgba(20,185,166,0.02));border-color:rgba(20,185,166,0.15);padding:20px;">
-            <div class="flex justify-between items-center mb-3">
-              <span class="text-sm text-dim">Solde disponible</span>
-              <span class="badge badge-primary">NORMAL</span>
-            </div>
-            <div class="text-3xl font-bold">12 450 <span style="font-size:1rem;font-weight:500;color:var(--text-muted);">FCFA</span></div>
-            <div class="flex gap-3 mt-3">
-              <div class="flex-1 btn btn-primary btn-sm" style="font-size:0.78rem;">💰 Retirer</div>
-              <div class="flex-1 btn btn-secondary btn-sm" style="font-size:0.78rem;">📊 Détails</div>
-            </div>
-          </div>
-
-          <!-- Quick Stats -->
-          <div class="stat-row mt-3">
-            <div class="stat-box"><div class="stat-value" style="font-size:1.2rem;">47</div><div class="stat-label">Tâches</div></div>
-            <div class="stat-box"><div class="stat-value" style="font-size:1.2rem;">3</div><div class="stat-label">Jours 🔥</div></div>
-            <div class="stat-box"><div class="stat-value" style="font-size:1.2rem;">18</div><div class="stat-label">Filleuls</div></div>
-          </div>
-
-          <!-- Today's tasks -->
-          <div class="flex justify-between items-center mt-4 mb-2">
-            <span class="font-semibold text-sm">Tâches du jour</span>
-            <span class="text-xs text-primary">Voir tout →</span>
-          </div>
-          <div class="flex flex-col gap-2">
-            <div class="task-item">
-              <div class="task-check done">✓</div>
-              <div style="flex:1"><div style="font-size:0.82rem;font-weight:500;">Regarder une pub</div><div style="font-size:0.7rem;color:var(--text-dim);">Youtube • 30s</div></div>
-              <span class="task-reward">+50 FCFA</span>
-            </div>
-            <div class="task-item">
-              <div class="task-check"></div>
-              <div style="flex:1"><div style="font-size:0.82rem;font-weight:500;">S'inscrire à une offre</div><div style="font-size:0.7rem;color:var(--text-dim);">Partenaire • 2min</div></div>
-              <span class="task-reward">+200 FCFA</span>
-            </div>
-            <div class="task-item">
-              <div class="task-check"></div>
-              <div style="flex:1"><div style="font-size:0.82rem;font-weight:500;">Partager sur WhatsApp</div><div style="font-size:0.7rem;color:var(--text-dim);">Réseaux • 1min</div></div>
-              <span class="task-reward">+100 FCFA</span>
-            </div>
-          </div>
-
-          <div class="tab-bar">
-            <div class="tab-item active"><div class="tab-icon">🏠</div>Accueil</div>
-            <div class="tab-item"><div class="tab-icon">💳</div>Wallet</div>
-            <div class="tab-item"><div class="tab-icon">📋</div>Tâches</div>
-            <div class="tab-item"><div class="tab-icon">👥</div>Parrainage</div>
-            <div class="tab-item"><div class="tab-icon-wrap">⚙️<div class="notif-pill">3</div></div>Plus</div>
-          </div>
-        </div>
-        <div class="home-indicator"></div>
-      </div>
-
-      <!-- WALLET SCREEN -->
-      <div class="screen" id="screen-wallet">
-        <div class="p-4 flex flex-col" style="min-height:100%;">
-          <div class="flex justify-between items-center mb-3">
-            <div class="text-xl font-bold">💰 Wallet</div>
-            <div class="chip">Historique</div>
-          </div>
-
-          <!-- Balance -->
-          <div class="card" style="padding:20px;margin-bottom:12px;">
-            <div class="flex justify-between items-center mb-2">
-              <span class="text-sm text-dim">Solde</span>
-              <span class="text-xs text-dim">Frais: 5%</span>
-            </div>
-            <div class="text-3xl font-bold">12 450 <span class="text-sm text-muted">FCFA</span></div>
-            <div class="stat-row mt-3" style="grid-template-columns:repeat(2,1fr);">
-              <div class="stat-box" style="padding:10px;"><div class="text-xs text-dim">Gagné (mois)</div><div class="font-bold text-sm mt-1" style="color:var(--success);">+8 200 FCFA</div></div>
-              <div class="stat-box" style="padding:10px;"><div class="text-xs text-dim">Retiré (mois)</div><div class="font-bold text-sm mt-1" style="color:var(--danger);">-2 000 FCFA</div></div>
-            </div>
-          </div>
-
-          <!-- Actions -->
-          <div class="flex gap-3 mb-3">
-            <div class="btn btn-primary" style="flex:1;">💸 Retirer</div>
-            <div class="btn btn-secondary btn-icon" style="width:48px;">📊</div>
-          </div>
-
-          <!-- Tier upgrade -->
-          <div class="card mb-3" style="background:rgba(251,191,36,0.04);border-color:rgba(251,191,36,0.1);">
-            <div class="flex justify-between items-center">
-              <div>
-                <div class="font-semibold text-sm">Passer PREMIUM</div>
-                <div class="text-xs text-muted mt-1">50 000 FCFA → -5% frais + 2x gains</div>
-              </div>
-              <span class="badge badge-gold">⭐ VIP</span>
-            </div>
-          </div>
-
-          <!-- Transactions -->
-          <div class="flex justify-between items-center mb-2">
-            <span class="font-semibold text-sm">Transactions récentes</span>
-            <span class="text-xs text-primary">Voir tout</span>
-          </div>
-          <div>
-            <div class="tx-item">
-              <div class="tx-icon tx-icon-in">💰</div>
-              <div style="flex:1"><div style="font-size:0.82rem;">Gain pub vidéo</div><div class="text-xs text-dim">Aujourd'hui, 14:30</div></div>
-              <span class="text-xs font-semibold" style="color:var(--success);">+50 FCFA</span>
-            </div>
-            <div class="tx-item">
-              <div class="tx-icon tx-icon-ref">👥</div>
-              <div style="flex:1"><div style="font-size:0.82rem;">Commission parrainage L1</div><div class="text-xs text-dim">Aujourd'hui, 10:15</div></div>
-              <span class="text-xs font-semibold" style="color:var(--primary);">+125 FCFA</span>
-            </div>
-            <div class="tx-item">
-              <div class="tx-icon tx-icon-out">💸</div>
-              <div style="flex:1"><div style="font-size:0.82rem;">Retrait Wave</div><div class="text-xs text-dim">Hier, 09:00</div></div>
-              <span class="text-xs font-semibold" style="color:var(--danger);">-2 000 FCFA</span>
-            </div>
-          </div>
-
-          <div class="tab-bar">
-            <div class="tab-item"><div class="tab-icon">🏠</div>Accueil</div>
-            <div class="tab-item active"><div class="tab-icon">💳</div>Wallet</div>
-            <div class="tab-item"><div class="tab-icon">📋</div>Tâches</div>
-            <div class="tab-item"><div class="tab-icon">👥</div>Parrainage</div>
-            <div class="tab-item"><div class="tab-icon-wrap">⚙️<div class="notif-pill">3</div></div>Plus</div>
-          </div>
-        </div>
-        <div class="home-indicator"></div>
-      </div>
-
-      <!-- TASKS SCREEN -->
-      <div class="screen" id="screen-tasks">
-        <div class="p-4 flex flex-col" style="min-height:100%;">
-          <div class="flex justify-between items-center mb-3">
-            <div class="text-xl font-bold">📋 Tâches</div>
-            <div class="chip">🔥 3 dispo</div>
-          </div>
-
-          <!-- Filters -->
-          <div class="flex gap-2 mb-3" style="overflow-x:auto;">
-            <span class="chip" style="background:var(--primary);color:#fff;border-color:var(--primary);">Toutes</span>
-            <span class="chip">Vidéos</span>
-            <span class="chip">Sondages</span>
-            <span class="chip">Réseaux</span>
-            <span class="chip">Offres</span>
-          </div>
-
-          <div class="flex flex-col gap-2">
-            <div class="task-item">
-              <div class="task-check done">✓</div>
-              <div style="flex:1"><div style="font-size:0.82rem;font-weight:500;">Regarder une pub vidéo</div><div style="font-size:0.7rem;color:var(--text-dim);">YouTube • 30s</div></div>
-              <span class="task-reward">+50 FCFA</span>
-            </div>
-            <div class="task-item">
-              <div class="task-check"></div>
-              <div style="flex:1"><div style="font-size:0.82rem;font-weight:500;">Répondre à un sondage</div><div style="font-size:0.7rem;color:var(--text-dim);">3 questions • 1min</div></div>
-              <span class="task-reward">+150 FCFA</span>
-            </div>
-            <div class="task-item">
-              <div class="task-check"></div>
-              <div style="flex:1"><div style="font-size:0.82rem;font-weight:500;">Suivre sur Instagram</div><div style="font-size:0.7rem;color:var(--text-dim);">Réseaux sociaux</div></div>
-              <span class="task-reward">+100 FCFA</span>
-            </div>
-            <div class="task-item">
-              <div class="task-check"></div>
-              <div style="flex:1"><div style="font-size:0.82rem;font-weight:500;">Télécharger l'app partenaire</div><div style="font-size:0.7rem;color:var(--text-dim);">Offre • 5min</div></div>
-              <span class="task-reward">+500 FCFA</span>
-            </div>
-            <div class="task-item">
-              <div class="task-check"></div>
-              <div style="flex:1"><div style="font-size:0.82rem;font-weight:500;">Partager le lien XEARN</div><div style="font-size:0.7rem;color:var(--text-dim);">WhatsApp • 30s</div></div>
-              <span class="task-reward">+200 FCFA</span>
-            </div>
-          </div>
-
-          <!-- Empty state -->
-          <div class="empty-state mt-3">
-            <div class="empty-icon">🎯</div>
-            <div class="font-semibold text-sm">Plus de tâches demain !</div>
-            <div class="desc">Reviens demain pour de nouvelles tâches. Complète ta série quotidienne 🔥</div>
-          </div>
-
-          <div class="tab-bar">
-            <div class="tab-item"><div class="tab-icon">🏠</div>Accueil</div>
-            <div class="tab-item"><div class="tab-icon">💳</div>Wallet</div>
-            <div class="tab-item active"><div class="tab-icon">📋</div>Tâches</div>
-            <div class="tab-item"><div class="tab-icon">👥</div>Parrainage</div>
-            <div class="tab-item"><div class="tab-icon-wrap">⚙️<div class="notif-pill">3</div></div>Plus</div>
-          </div>
-        </div>
-        <div class="home-indicator"></div>
-      </div>
-
-      <!-- REFERRALS SCREEN -->
-      <div class="screen" id="screen-referrals">
-        <div class="p-4 flex flex-col" style="min-height:100%;">
-          <div class="flex justify-between items-center mb-3">
-            <div class="text-xl font-bold">👥 Parrainage</div>
-            <div class="chip">💰 +1 245 FCFA</div>
-          </div>
-
-          <!-- Referral code card -->
-          <div class="card" style="background:rgba(20,185,166,0.04);border-color:rgba(20,185,166,0.12);padding:20px;">
-            <div class="text-sm text-muted mb-2">Ton code de parrainage</div>
-            <div class="flex gap-3 items-center">
-              <div style="flex:1;background:var(--bg);border:1px dashed var(--primary);border-radius:12px;padding:14px;text-align:center;">
-                <span class="text-xl font-bold tracking-widest" style="letter-spacing:4px;">XE-ALEX</span>
-              </div>
-              <div class="btn btn-primary btn-icon" style="width:52px;height:52px;font-size:1.2rem;">📋</div>
-            </div>
-            <div class="text-xs text-dim mt-2 text-center">Partage ce code avec tes amis et gagne 15% de leurs gains à vie !</div>
-          </div>
-
-          <!-- Stats -->
-          <div class="stat-row mt-3">
-            <div class="stat-box"><div class="stat-value" style="font-size:1.3rem;">12</div><div class="stat-label">L1 directs</div></div>
-            <div class="stat-box"><div class="stat-value" style="font-size:1.3rem;">5</div><div class="stat-label">L2 indirects</div></div>
-            <div class="stat-box"><div class="stat-value" style="font-size:1.3rem;">1</div><div class="stat-label">L3 indirects</div></div>
-          </div>
-
-          <!-- Level breakdown -->
-          <div class="mt-3">
-            <div class="font-semibold text-sm mb-2">Niveaux de parrainage</div>
-            <div class="ref-level">
-              <div class="ref-count" style="background:rgba(20,185,166,0.15);color:var(--primary);">L1</div>
-              <div style="flex:1;"><div style="font-size:0.82rem;">12 filleuls</div><div class="text-xs text-dim">15% de leurs gains</div></div>
-              <span class="text-xs font-semibold" style="color:var(--success);">+845 FCFA</span>
-            </div>
-            <div class="ref-level">
-              <div class="ref-count" style="background:rgba(245,158,11,0.15);color:var(--secondary);">L2</div>
-              <div style="flex:1;"><div style="font-size:0.82rem;">5 filleuls</div><div class="text-xs text-dim">5% de leurs gains</div></div>
-              <span class="text-xs font-semibold" style="color:var(--success);">+320 FCFA</span>
-            </div>
-            <div class="ref-level">
-              <div class="ref-count" style="background:rgba(168,85,247,0.15);color:var(--purple);">L3</div>
-              <div style="flex:1;"><div style="font-size:0.82rem;">1 filleul</div><div class="text-xs text-dim">2% de ses gains</div></div>
-              <span class="text-xs font-semibold" style="color:var(--success);">+80 FCFA</span>
-            </div>
-          </div>
-
-          <!-- Recent commissions -->
-          <div class="flex justify-between items-center mt-4 mb-2">
-            <span class="font-semibold text-sm">Dernières commissions</span>
-            <span class="text-xs text-primary">Voir tout</span>
-          </div>
-          <div>
-            <div class="tx-item">
-              <div class="tx-icon tx-icon-in" style="background:rgba(20,185,166,0.1);">👤</div>
-              <div style="flex:1"><div style="font-size:0.82rem;">Kader D. (L1)</div><div class="text-xs text-dim">Aujourd'hui</div></div>
-              <span class="text-xs font-semibold" style="color:var(--success);">+75 FCFA</span>
-            </div>
-            <div class="tx-item">
-              <div class="tx-icon tx-icon-in" style="background:rgba(245,158,11,0.1);">👤</div>
-              <div style="flex:1"><div style="font-size:0.82rem;">Fatou S. (L2)</div><div class="text-xs text-dim">Hier</div></div>
-              <span class="text-xs font-semibold" style="color:var(--success);">+25 FCFA</span>
-            </div>
-          </div>
-
-          <div class="tab-bar">
-            <div class="tab-item"><div class="tab-icon">🏠</div>Accueil</div>
-            <div class="tab-item"><div class="tab-icon">💳</div>Wallet</div>
-            <div class="tab-item"><div class="tab-icon">📋</div>Tâches</div>
-            <div class="tab-item active"><div class="tab-icon">👥</div>Parrainage</div>
-            <div class="tab-item"><div class="tab-icon-wrap">⚙️<div class="notif-pill">3</div></div>Plus</div>
-          </div>
-        </div>
-        <div class="home-indicator"></div>
-      </div>
-
-      <!-- MORE SCREEN -->
-      <div class="screen" id="screen-more">
-        <div class="p-4 flex flex-col" style="min-height:100%;">
-          <!-- Profile header -->
-          <div class="flex items-center gap-4 mb-4">
-            <div class="avatar" style="width:52px;height:52px;font-size:1.3rem;border-radius:16px;">AK</div>
-            <div style="flex:1;">
-              <div class="text-lg font-bold">Alex Koné</div>
-              <div class="text-sm text-dim">alex@email.com</div>
-              <div class="flex gap-2 mt-1">
-                <span class="badge badge-primary">NORMAL</span>
-                <span class="badge badge-success">Activé</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Streaks -->
-          <div class="card mb-3">
-            <div class="flex justify-between items-center mb-3">
-              <span class="font-semibold text-sm">🔥 Série quotidienne</span>
-              <span class="text-sm font-bold" style="color:var(--secondary);">3 jours</span>
-            </div>
-            <div class="streak-bar">
-              <div class="streak-day filled">✓</div>
-              <div class="streak-day filled">✓</div>
-              <div class="streak-day filled">✓</div>
-              <div class="streak-day today">4</div>
-              <div class="streak-day">5</div>
-              <div class="streak-day">6</div>
-              <div class="streak-day">7</div>
-            </div>
-            <div class="text-xs text-dim mt-2 text-center">
-              7 jours → 🎁 Bonus 500 FCFA • 30 jours → 🎁 Bonus 5 000 FCFA
-            </div>
-          </div>
-
-          <!-- Badges -->
-          <div class="card mb-3">
-            <div class="font-semibold text-sm mb-3">🏆 Badges</div>
-            <div class="badge-grid">
-              <div class="badge-item"><div class="badge-icon unlocked">🔥</div><div style="font-size:0.65rem;color:var(--text-dim);">Série 3j</div></div>
-              <div class="badge-item"><div class="badge-icon unlocked">👥</div><div style="font-size:0.65rem;color:var(--text-dim);">10 filleuls</div></div>
-              <div class="badge-item"><div class="badge-icon">💰</div><div style="font-size:0.65rem;color:var(--text-dim);">10K gains</div></div>
-              <div class="badge-item"><div class="badge-icon">🏅</div><div style="font-size:0.65rem;color:var(--text-dim);">VIP</div></div>
-              <div class="badge-item"><div class="badge-icon">📋</div><div style="font-size:0.65rem;color:var(--text-dim);">100 tâches</div></div>
-              <div class="badge-item"><div class="badge-icon">🚀</div><div style="font-size:0.65rem;color:var(--text-dim);">Ambassadeur</div></div>
-              <div class="badge-item"><div class="badge-icon">🥇</div><div style="font-size:0.65rem;color:var(--text-dim);">Top 10</div></div>
-              <div class="badge-item"><div class="badge-icon">💎</div><div style="font-size:0.65rem;color:var(--text-dim);">Diamond</div></div>
-            </div>
-          </div>
-
-          <!-- Leaderboard preview -->
-          <div class="card mb-3">
-            <div class="flex justify-between items-center mb-2">
-              <span class="font-semibold text-sm">🏅 Classement</span>
-              <span class="text-xs text-primary">Voir tout</span>
-            </div>
-            <div class="leaderboard-item">
-              <div class="leaderboard-rank rank-gold">🥇</div>
-              <div class="avatar avatar-sm" style="background:var(--secondary);">AM</div>
-              <div style="flex:1;"><div style="font-size:0.82rem;">Aminata M.</div><div class="text-xs text-dim">12 450 FCFA</div></div>
-              <span class="badge badge-gold" style="font-size:0.6rem;">🔥 12j</span>
-            </div>
-            <div class="leaderboard-item">
-              <div class="leaderboard-rank rank-silver">🥈</div>
-              <div class="avatar avatar-sm" style="background:var(--primary);">KL</div>
-              <div style="flex:1;"><div style="font-size:0.82rem;">Kader L.</div><div class="text-xs text-dim">11 200 FCFA</div></div>
-              <span class="badge badge-success" style="font-size:0.6rem;">🔥 7j</span>
-            </div>
-            <div class="leaderboard-item">
-              <div class="leaderboard-rank rank-bronze">🥉</div>
-              <div class="avatar avatar-sm" style="background:var(--purple);">FS</div>
-              <div style="flex:1;"><div style="font-size:0.82rem;">Fatou S.</div><div class="text-xs text-dim">10 800 FCFA</div></div>
-              <span class="badge badge-primary" style="font-size:0.6rem;">🔥 5j</span>
-            </div>
-          </div>
-
-          <!-- Menu items -->
-          <div class="card">
-            <div class="flex items-center gap-3 py-2"><span style="width:24px;">🔔</span><span style="font-size:0.85rem;">Notifications</span><span class="badge badge-danger" style="margin-left:auto;font-size:0.6rem;">3</span></div>
-            <div class="divider" style="margin:8px 0;"></div>
-            <div class="flex items-center gap-3 py-2"><span style="width:24px;">🌍</span><span style="font-size:0.85rem;">Langue</span><span class="text-xs text-dim" style="margin-left:auto;">Français</span></div>
-            <div class="divider" style="margin:8px 0;"></div>
-            <div class="flex items-center gap-3 py-2"><span style="width:24px;">ℹ️</span><span style="font-size:0.85rem;">À propos</span></div>
-            <div class="divider" style="margin:8px 0;"></div>
-            <div class="flex items-center gap-3 py-2" style="color:var(--danger);"><span style="width:24px;">🚪</span><span style="font-size:0.85rem;">Déconnexion</span></div>
-          </div>
-
-          <div class="tab-bar">
-            <div class="tab-item"><div class="tab-icon">🏠</div>Accueil</div>
-            <div class="tab-item"><div class="tab-icon">💳</div>Wallet</div>
-            <div class="tab-item"><div class="tab-icon">📋</div>Tâches</div>
-            <div class="tab-item"><div class="tab-icon">👥</div>Parrainage</div>
-            <div class="tab-item active"><div class="tab-icon-wrap">⚙️<div class="notif-pill">3</div></div>Plus</div>
-          </div>
-        </div>
-        <div class="home-indicator"></div>
-      </div>
+    <div class="phone-screen" id="screen">
+      <!-- Content injected by JS -->
     </div>
+
+    <div class="tab-bar">
+      <button class="tab-item active" data-tab="dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        <span>Accueil</span>
+      </button>
+      <button class="tab-item" data-tab="wallet">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><circle cx="16" cy="12" r="2"/></svg>
+        <span>Wallet</span>
+      </button>
+      <button class="tab-item" data-tab="tasks">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="9" y1="6" x2="20" y2="6"/><line x1="9" y1="12" x2="20" y2="12"/><line x1="9" y1="18" x2="20" y2="18"/><circle cx="5" cy="6" r="1" fill="currentColor"/><circle cx="5" cy="12" r="1" fill="currentColor"/><circle cx="5" cy="18" r="1" fill="currentColor"/></svg>
+        <span>Tâches</span>
+      </button>
+      <button class="tab-item" data-tab="referrals">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <span>Parrainage</span>
+      </button>
+      <button class="tab-item" data-tab="more">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1" fill="currentColor"/><circle cx="5" cy="12" r="1" fill="currentColor"/><circle cx="19" cy="12" r="1" fill="currentColor"/></svg>
+        <span>Plus</span>
+      </button>
+    </div>
+    <div class="home-indicator"></div>
   </div>
 
-  <!-- Navigation controls -->
-  <div class="controls">
-    <div class="controls-title">Écrans</div>
-    <label onclick="showScreen('screen-login')">
-      <input type="radio" name="screen" checked>
-      <span class="ctrl-dot"></span>
-      <span class="ctrl-label">🔐 Login</span>
-    </label>
-    <label onclick="showScreen('screen-register')">
-      <input type="radio" name="screen">
-      <span class="ctrl-dot"></span>
-      <span class="ctrl-label">📝 Register</span>
-    </label>
-    <label onclick="showScreen('screen-dashboard')">
-      <input type="radio" name="screen">
-      <span class="ctrl-dot"></span>
-      <span class="ctrl-label">🏠 Dashboard</span>
-    </label>
-    <label onclick="showScreen('screen-wallet')">
-      <input type="radio" name="screen">
-      <span class="ctrl-dot"></span>
-      <span class="ctrl-label">💳 Wallet</span>
-    </label>
-    <label onclick="showScreen('screen-tasks')">
-      <input type="radio" name="screen">
-      <span class="ctrl-dot"></span>
-      <span class="ctrl-label">📋 Tâches</span>
-    </label>
-    <label onclick="showScreen('screen-referrals')">
-      <input type="radio" name="screen">
-      <span class="ctrl-dot"></span>
-      <span class="ctrl-label">👥 Parrainage</span>
-    </label>
-    <label onclick="showScreen('screen-more')">
-      <input type="radio" name="screen">
-      <span class="ctrl-dot"></span>
-      <span class="ctrl-label">⚙️ Plus</span>
-    </label>
+  <div class="screen-info" id="info">
+    <h3>🏠 Dashboard</h3>
+    <p>Écran d'accueil avec animations premium :</p>
+    <ul>
+      <li>Balance animée (pulse au changement)</li>
+      <li>Cartes stats avec icônes glow</li>
+      <li>Tâches récentes en cascade animée</li>
+      <li>Pull-to-refresh stylisé</li>
+      <li>Skeleton loader shimmer</li>
+    </ul>
+    <div class="features">
+      <span class="feature-tag">Reanimated</span>
+      <span class="feature-tag">AnimatedBalance</span>
+      <span class="feature-tag">Fade + Slide</span>
+      <span class="feature-tag gold">Fintech Premium</span>
+    </div>
   </div>
 </div>
 
 <script>
-function showScreen(id) {
-  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-  document.querySelector('#screenContent').scrollTop = 0;
-  // Check radio
-  const labels = document.querySelectorAll('.controls label');
-  const screens = ['screen-login','screen-register','screen-dashboard','screen-wallet','screen-tasks','screen-referrals','screen-more'];
-  const idx = screens.indexOf(id);
-  if (idx >= 0) {
-    labels[idx].querySelector('input').checked = true;
+  const screens = {
+    dashboard: renderDashboard,
+    wallet: renderWallet,
+    tasks: renderTasks,
+    referrals: renderReferrals,
+    more: renderMore,
+  };
+
+  const info = {
+    dashboard: { title: '🏠 Dashboard', desc: 'Écran d\'accueil avec animations premium :', items: ['Balance animée (pulse au changement)', 'Cartes stats avec icônes glow', 'Tâches récentes en cascade animée', 'Pull-to-refresh stylisé', 'Skeleton loader shimmer'], tags: ['Reanimated', 'AnimatedBalance', 'Fade + Slide', 'gold|Fintech Premium'] },
+    wallet: { title: '💳 Wallet', desc: 'Portefeuille complet avec :', items: ['Balance animée haute précision', 'Stats gains/retraits du mois', 'Upgrade tiers Premium/VIP', 'Transactions récentes animées', 'Bouton retrait avec glow'], tags: ['AnimatedCounter', 'Monthly Stats', 'Tier Cards', 'purple|VIP'], },
+    tasks: { title: '📋 Tâches', desc: 'Gestion des tâches gamifiée :', items: ['Filtres par type avec icônes', 'Badges tier requis (Premium/VIP)', 'Boutons Démarrer/Terminer', 'Animation cascade par carte', 'État vide stylisé'], tags: ['TaskCard', 'Stagger Animation', 'Type Badges'] },
+    referrals: { title: '👥 Parrainage', desc: 'Système de parrainage social :', items: ['Code parrainage copiable/partageable', 'Stats L1/L2/L3 en temps réel', 'Arbre réseau avec états Actif/Inactif', 'Commissions détaillées', 'Animation progressive'], tags: ['AnimatedCard', 'Copy/Share', 'Referral Tree', 'gold|Commissions'] },
+    more: { title: '⚙️ Plus', desc: 'Profil et paramètres :', items: ['Avatar premium avec cerclage', 'Streak flamme animé', 'Badges scrollables verrouillés/débloqués', 'Notifications avec pulsation live', 'Quick actions (stats, paramètres, aide)'], tags: ['PulsingDot', 'Streak Flame', 'Horizontal Scroll', 'purple|Badges'] },
+  };
+
+  function svgIcon(name, size=20) {
+    const icons = {
+      cash: '<svg width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="#14b8a6" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>',
+      flame: '<svg width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M12 23c4 0 7-3.5 7-8 0-4.5-3-9-7-13-4 4-7 8.5-7 13 0 4.5 3 8 7 8z"/></svg>',
+      check: '<svg width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+      arrowDown: '<svg width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>',
+      swap: '<svg width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>',
+      play: '<svg width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="#14b8a6" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8" fill="#14b8a6"/></svg>',
+      receipt: '<svg width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1L4 2z"/></svg>',
+      person: '<svg width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
+      notification: '<svg width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>',
+      settings: '<svg width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
+      question: '<svg width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+      trending: '<svg width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>',
+      diamond: '<svg width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>',
+      infinite: '<svg width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2"><path d="M12 12c-2-2.67-4-4-6-4a4 4 0 0 0 0 8c2 0 4-1.33 6-4Zm0 0c2 2.67 4 4 6 4a4 4 0 0 0 0-8c-2 0-4 1.33-6 4z"/></svg>',
+      arrowUp: '<svg width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>',
+      arrowDownCircle: '<svg width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="#14b8a6" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="8 12 12 16 16 12"/><line x1="12" y1="8" x2="12" y2="16"/></svg>',
+      arrowUpCircle: '<svg width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="16 12 12 8 8 12"/><line x1="12" y1="16" x2="12" y2="8"/></svg>',
+    };
+    return icons[name] || '';
   }
-}
+
+  function renderDashboard() {
+    return `<div class="screen-content">
+      <div class="dash-header">
+        <div>
+          <div class="dash-greeting">Bonjour 👋</div>
+          <div class="dash-name">Alexandre</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:38px;height:38px;border-radius:10px;background:#162032;display:flex;align-items:center;justify-content:center;border:1px solid rgba(51,65,85,0.4);position:relative">
+            ${svgIcon('notification', 16)}
+            <div style="position:absolute;top:6px;right:6px;width:7px;height:7px;border-radius:50%;background:#ef4444;border:2px solid #162032"></div>
+          </div>
+          <div class="dash-avatar">AJ</div>
+        </div>
+      </div>
+
+      <div class="balance-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div class="balance-label">Solde disponible</div>
+          <div class="tier-badge">PREMIUM</div>
+        </div>
+        <div class="balance-amount">12 450 FCFA</div>
+        <div style="display:flex;align-items:center;gap:4px;margin-bottom:14px">
+          ${svgIcon('trending', 14)}
+          <span style="font-size:11px;color:#64748b">+128 450 FCFA gagnés</span>
+        </div>
+        <div class="balance-actions">
+          <button class="btn-primary">${svgIcon('arrowDown', 16)} Retirer</button>
+          <button class="btn-secondary">${svgIcon('swap', 16)} Détails</button>
+        </div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-icon" style="background:rgba(20,184,166,0.1)">
+            ${svgIcon('cash', 16)}
+          </div>
+          <div class="stat-value">1 250 FCFA</div>
+          <div class="stat-label">Aujourd'hui</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:rgba(245,158,11,0.1)">
+            ${svgIcon('flame', 16)}
+          </div>
+          <div class="stat-value">18</div>
+          <div class="stat-label">Filleuls actifs</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" style="background:rgba(34,197,94,0.1)">
+            ${svgIcon('check', 16)}
+          </div>
+          <div class="stat-value">2</div>
+          <div class="stat-label">En attente</div>
+        </div>
+      </div>
+
+      <div class="section-header">
+        <div class="section-title">Tâches récentes</div>
+        <div class="section-link">Voir tout →</div>
+      </div>
+      <div class="task-item">
+        <div class="task-icon">${svgIcon('play', 18)}</div>
+        <div class="task-info">
+          <div class="task-title">Regarder une pub vidéo</div>
+          <div class="task-date">15 juil. 14:30</div>
+        </div>
+        <div style="text-align:right">
+          <div class="task-reward">+50</div>
+          <div style="font-size:9px;color:#64748b">FCFA</div>
+        </div>
+      </div>
+      <div class="task-item">
+        <div class="task-icon">${svgIcon('play', 18)}</div>
+        <div class="task-info">
+          <div class="task-title">Sondage satisfaction</div>
+          <div class="task-date">14 juil. 09:15</div>
+        </div>
+        <div style="text-align:right">
+          <div class="task-reward">+200</div>
+          <div style="font-size:9px;color:#64748b">FCFA</div>
+        </div>
+      </div>
+      <div class="task-item">
+        <div class="task-icon">${svgIcon('play', 18)}</div>
+        <div class="task-info">
+          <div class="task-title">Clic sponsorisé</div>
+          <div class="task-date">13 juil. 18:00</div>
+        </div>
+        <div style="text-align:right">
+          <div class="task-reward">+25</div>
+          <div style="font-size:9px;color:#64748b">FCFA</div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  function renderWallet() {
+    return `<div class="screen-content">
+      <div class="section-header" style="margin-bottom:14px">
+        <div class="section-title" style="font-size:22px;font-weight:800">Portefeuille</div>
+        <div style="padding:4px 10px;border-radius:20px;background:#162032;border:1px solid rgba(51,65,85,0.4);font-size:10px;color:#94a3b8;font-weight:600">juillet 2026</div>
+      </div>
+
+      <div class="balance-card">
+        <div class="balance-label">Solde disponible</div>
+        <div class="balance-amount">12 450 FCFA</div>
+        <div style="display:flex;align-items:center;gap:4px;margin-bottom:14px">
+          ${svgIcon('trending', 14)}
+          <span style="font-size:11px;color:#64748b">Total gagné : 128 450 FCFA</span>
+        </div>
+
+        <div class="wallet-monthly">
+          <div>
+            <div class="ml">Gains du mois</div>
+            <div class="mv">18 300 FCFA</div>
+          </div>
+          <div>
+            <div class="ml">Retraits du mois</div>
+            <div class="mv danger">5 000 FCFA</div>
+          </div>
+        </div>
+
+        <button class="btn-primary" style="width:100%">${svgIcon('arrowDown', 18)} Effectuer un retrait</button>
+        <div style="display:flex;justify-content:space-between;margin-top:8px">
+          <span style="font-size:10px;color:#64748b">Frais : 2%</span>
+          <span style="font-size:10px;color:#64748b">Min : 1 000 FCFA</span>
+        </div>
+      </div>
+
+      <div class="section-title" style="margin-bottom:10px">Améliorer votre tier</div>
+      <div class="tier-row">
+        <div class="tier-card" style="border-color:rgba(245,158,11,0.3)">
+          <div class="tier-icon" style="background:rgba(245,158,11,0.1)">${svgIcon('diamond', 22)}</div>
+          <div style="font-size:15px;font-weight:800;color:#f59e0b;margin-bottom:4px">PREMIUM</div>
+          <div style="font-size:18px;font-weight:900;color:#f1f5f9">5 000 FCFA</div>
+          <div style="font-size:10px;color:#64748b">/ mois</div>
+        </div>
+        <div class="tier-card" style="border-color:rgba(168,85,247,0.3)">
+          <div class="tier-icon" style="background:rgba(168,85,247,0.1)">${svgIcon('infinite', 22)}</div>
+          <div style="font-size:15px;font-weight:800;color:#a855f7;margin-bottom:4px">VIP</div>
+          <div style="font-size:18px;font-weight:900;color:#f1f5f9">15 000 FCFA</div>
+          <div style="font-size:10px;color:#64748b">/ mois</div>
+        </div>
+      </div>
+
+      <div class="section-title" style="margin-bottom:10px;margin-top:4px">Transactions récentes</div>
+      <div class="tx-item">
+        <div class="tx-icon" style="background:rgba(20,184,166,0.1)">${svgIcon('arrowDownCircle', 16)}</div>
+        <div class="tx-info">
+          <div class="tx-type">Gain tâche</div>
+          <div class="tx-date">15 juil. 14:30</div>
+        </div>
+        <div class="tx-amount" style="color:#14b8a6">+50 FCFA</div>
+      </div>
+      <div class="tx-item">
+        <div class="tx-icon" style="background:rgba(239,68,68,0.1)">${svgIcon('arrowUpCircle', 16)}</div>
+        <div class="tx-info">
+          <div class="tx-type">Retrait</div>
+          <div class="tx-date">12 juil. 10:00</div>
+        </div>
+        <div class="tx-amount" style="color:#ef4444">-5 000 FCFA</div>
+      </div>
+      <div class="tx-item">
+        <div class="tx-icon" style="background:rgba(20,184,166,0.1)">${svgIcon('arrowDownCircle', 16)}</div>
+        <div class="tx-info">
+          <div class="tx-type">Commission L1</div>
+          <div class="tx-date">11 juil. 08:15</div>
+        </div>
+        <div class="tx-amount" style="color:#14b8a6">+250 FCFA</div>
+      </div>
+    </div>`;
+  }
+
+  function renderTasks() {
+    return `<div class="screen-content">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
+        <div>
+          <div style="font-size:22px;font-weight:800;color:#f1f5f9;margin-bottom:2px">Tâches</div>
+          <div style="font-size:12px;color:#94a3b8">5 tâches disponibles</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:4px;padding:6px 10px;border-radius:20px;background:#162032;border:1px solid rgba(51,65,85,0.4)">
+          ${svgIcon('cash', 14)}
+          <span style="font-size:12px;font-weight:700;color:#f59e0b">3 450 FCFA</span>
+        </div>
+      </div>
+
+      <div class="task-item" style="flex-direction:column;align-items:stretch">
+        <div style="display:flex;gap:6px;margin-bottom:8px">
+          <span style="display:flex;align-items:center;gap:4px;padding:4px 8px;border-radius:6px;background:rgba(20,184,166,0.1);font-size:10px;font-weight:600;color:#14b8a6">📺 Pub vidéo</span>
+        </div>
+        <div style="font-size:14px;font-weight:700;color:#f1f5f9;margin-bottom:4px">Regarder un cours instantané</div>
+        <div style="font-size:11px;color:#94a3b8;line-height:1.5;margin-bottom:10px">Regarde une vidéo de 30s et gagne des FCFA</div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:4px">
+            ${svgIcon('cash', 14)}
+            <span style="font-size:12px;font-weight:700;color:#f59e0b">+50 FCFA</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:4px">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+            <span style="font-size:12px;color:#94a3b8">45/100</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-primary" style="font-size:12px;padding:10px">Démarrer</button>
+          <button style="flex:1;padding:10px;border-radius:8px;background:#f59e0b;border:none;color:#fff;font-size:12px;font-weight:700;cursor:pointer">Terminer</button>
+        </div>
+      </div>
+
+      <div class="task-item" style="flex-direction:column;align-items:stretch;margin-top:10px">
+        <div style="display:flex;gap:6px;margin-bottom:8px">
+          <span style="display:flex;align-items:center;gap:4px;padding:4px 8px;border-radius:6px;background:rgba(20,184,166,0.1);font-size:10px;font-weight:600;color:#14b8a6">📋 Sondage</span>
+          <span class="tier-badge" style="font-size:9px">PREMIUM</span>
+        </div>
+        <div style="font-size:14px;font-weight:700;color:#f1f5f9;margin-bottom:4px">Sondage satisfaction utilisateurs</div>
+        <div style="font-size:11px;color:#94a3b8;line-height:1.5;margin-bottom:10px">Réponds à 5 questions et gagne</div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:4px">
+            ${svgIcon('cash', 14)}
+            <span style="font-size:12px;font-weight:700;color:#f59e0b">+200 FCFA</span>
+          </div>
+        </div>
+        <button class="btn-primary" style="font-size:12px;padding:10px;background:#14b8a6">Démarrer</button>
+      </div>
+    </div>`;
+  }
+
+  function renderReferrals() {
+    return `<div class="screen-content">
+      <div style="font-size:22px;font-weight:800;color:#f1f5f9;margin-bottom:4px">Parrainage</div>
+      <div style="font-size:12px;color:#94a3b8;margin-bottom:14px">Invite tes amis et gagne des commissions</div>
+
+      <div class="ref-code">
+        <div class="code-label">Ton code de parrainage</div>
+        <div class="code-value">XE-ALEX23</div>
+        <div style="font-size:10px;color:#64748b">Partage ce code avec tes amis</div>
+        <div class="code-actions">
+          <button class="code-btn">📋 Copier</button>
+          <button class="code-btn share">📤 Partager</button>
+        </div>
+      </div>
+
+      <div class="ref-stats">
+        <div class="ref-stat" style="border-color:rgba(20,184,166,0.2)">
+          <div style="font-size:24px;font-weight:900;color:#14b8a6">12</div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:4px">Niveau 1</div>
+        </div>
+        <div class="ref-stat" style="border-color:rgba(245,158,11,0.2)">
+          <div style="font-size:24px;font-weight:900;color:#f59e0b">5</div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:4px">Niveau 2</div>
+        </div>
+        <div class="ref-stat" style="border-color:rgba(168,85,247,0.2)">
+          <div style="font-size:24px;font-weight:900;color:#a855f7">2</div>
+          <div style="font-size:11px;color:#94a3b8;margin-top:4px">Niveau 3</div>
+        </div>
+      </div>
+
+      <div class="balance-card" style="padding:14px">
+        <div style="font-size:14px;font-weight:700;color:#f1f5f9;margin-bottom:10px">Commissions</div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+          <span style="font-size:13px;color:#94a3b8">Total</span>
+          <span style="font-size:18px;font-weight:900;color:#f1f5f9">12 450 FCFA</span>
+        </div>
+        <div style="height:1px;background:rgba(51,65,85,0.4);margin-bottom:8px"></div>
+        <div style="display:flex;gap:8px;text-align:center">
+          <div style="flex:1"><div style="font-size:10px;color:#64748b">L1 (10%)</div><div style="font-size:13px;font-weight:800;color:#f1f5f9">8 200 FCFA</div></div>
+          <div style="flex:1"><div style="font-size:10px;color:#64748b">L2 (5%)</div><div style="font-size:13px;font-weight:800;color:#f1f5f9">3 250 FCFA</div></div>
+          <div style="flex:1"><div style="font-size:10px;color:#64748b">L3 (3%)</div><div style="font-size:13px;font-weight:800;color:#f1f5f9">1 000 FCFA</div></div>
+        </div>
+      </div>
+
+      <div class="section-header">
+        <div class="section-title">Mon réseau</div>
+        <div style="font-size:12px;color:#94a3b8">19 filleuls</div>
+      </div>
+
+      <div style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+          <span style="font-size:14px;font-weight:700;color:#14b8a6">Niveau 1</span>
+          <span style="font-size:11px;color:#64748b">10/12 actifs</span>
+        </div>
+        <div class="tx-item"><div style="width:30px;height:30px;border-radius:8px;background:rgba(20,184,166,0.1);display:flex;align-items:center;justify-content:center;margin-right:8px">${svgIcon('person',14)}</div><span style="flex:1;font-size:13px;color:#f1f5f9">Kofi A.</span><span style="padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;background:rgba(20,184,166,0.1);color:#14b8a6">Actif</span></div>
+        <div class="tx-item"><div style="width:30px;height:30px;border-radius:8px;background:rgba(100,116,139,0.1);display:flex;align-items:center;justify-content:center;margin-right:8px">${svgIcon('person',14)}</div><span style="flex:1;font-size:13px;color:#f1f5f9">Ama D.</span><span style="padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;background:rgba(100,116,139,0.1);color:#64748b">Inactif</span></div>
+      </div>
+    </div>`;
+  }
+
+  function renderMore() {
+    return `<div class="screen-content">
+      <div class="profile-card">
+        <div class="profile-avatar">AJ</div>
+        <div class="profile-name">Alexandre Junior</div>
+        <div class="profile-email">a.junior@email.com</div>
+        <div style="display:flex;gap:6px;justify-content:center;margin-bottom:8px">
+          <span class="tier-badge">PREMIUM</span>
+          <span style="padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700;background:rgba(148,163,184,0.1);color:#94a3b8">USER</span>
+        </div>
+        <div style="font-size:10px;color:#64748b">Membre depuis juillet 2025</div>
+      </div>
+
+      <div class="streak-bar">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:40px;height:40px;border-radius:10px;background:rgba(245,158,11,0.1);display:flex;align-items:center;justify-content:center">🔥</div>
+          <div>
+            <div class="streak-label">Série actuelle</div>
+            <div class="streak-val">7 jours</div>
+          </div>
+        </div>
+        <div style="width:1px;height:32px;background:rgba(51,65,85,0.4)"></div>
+        <div style="text-align:center">
+          <div class="streak-label">Record</div>
+          <div class="streak-val">15 jours</div>
+        </div>
+      </div>
+
+      <div class="quick-actions">
+        <div class="qa-card">📊<div class="qa-label">Stats</div></div>
+        <div class="qa-card">⚙️<div class="qa-label">Paramètres</div></div>
+        <div class="qa-card">❓<div class="qa-label">Aide</div></div>
+      </div>
+
+      <div class="section-title" style="margin-bottom:10px">Badges</div>
+      <div class="badge-scroll">
+        <div class="badge-item"><div class="badge-icon">🏆</div><div class="badge-name">Premier Gain</div></div>
+        <div class="badge-item"><div class="badge-icon">🔥</div><div class="badge-name">Série 7j</div></div>
+        <div class="badge-item locked"><div class="badge-icon">💎</div><div class="badge-name">PREMIUM</div><div class="badge-progress">À débloquer</div></div>
+        <div class="badge-item locked"><div class="badge-icon">👑</div><div class="badge-name">VIP</div><div class="badge-progress">À débloquer</div></div>
+        <div class="badge-item"><div class="badge-icon">🎯</div><div class="badge-name">100 Tâches</div></div>
+      </div>
+
+      <div class="section-header">
+        <div class="section-title">Notifications</div>
+        <div style="padding:3px 8px;border-radius:20px;background:rgba(20,184,166,0.1)">
+          <span style="font-size:10px;font-weight:600;color:#14b8a6">2 non lues</span>
+        </div>
+      </div>
+
+      <div class="notif-item unread">
+        <div class="notif-dot"><span class="pulse"></span></div>
+        <div class="notif-content">
+          <div class="notif-title">💰 Nouveau gain</div>
+          <div class="notif-msg">Tu as gagné 50 FCFA en regardant une pub</div>
+          <div class="notif-date">15 juil. 14:30</div>
+        </div>
+      </div>
+      <div class="notif-item unread">
+        <div class="notif-dot"><span class="pulse"></span></div>
+        <div class="notif-content">
+          <div class="notif-title">🎉 7 jours de série</div>
+          <div class="notif-msg">Félicitations ! Tu as atteint 7 jours de série</div>
+          <div class="notif-date">15 juil. 00:00</div>
+        </div>
+      </div>
+      <div class="notif-item">
+        <div class="notif-dot"></div>
+        <div class="notif-content">
+          <div class="notif-title">👥 Nouveau filleul</div>
+          <div class="notif-msg">Kofi A. a rejoint XEARN avec ton code</div>
+          <div class="notif-date">14 juil. 10:00</div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  function switchScreen(name) {
+    const screen = document.getElementById('screen');
+    screen.innerHTML = screens[name]();
+
+    // Update tab buttons
+    document.querySelectorAll('.tab-item').forEach(tab => {
+      tab.classList.toggle('active', tab.dataset.tab === name);
+    });
+
+    // Update info
+    const inf = info[name];
+    const infoEl = document.getElementById('info');
+    infoEl.innerHTML = `
+      <h3>${inf.title}</h3>
+      <p>${inf.desc}</p>
+      <ul>${inf.items.map(i => `<li>${i}</li>`).join('')}</ul>
+      <div class="features">
+        ${inf.tags.map(t => {
+          const [cls, label] = t.includes('|') ? t.split('|') : ['', t];
+          return `<span class="feature-tag ${cls}">${label || t}</span>`;
+        }).join('')}
+      </div>
+    `;
+  }
+
+  // Click handlers
+  document.querySelectorAll('.tab-item').forEach(tab => {
+    tab.addEventListener('click', () => switchScreen(tab.dataset.tab));
+  });
+
+  // Initial render
+  switchScreen('dashboard');
 </script>
-
-<p style="margin-top:24px;font-size:0.75rem;color:var(--text-dim);text-align:center;">
-  📱 Clique sur un écran à droite pour naviguer dans le prototype
-</p>
-
 </body>
 </html>

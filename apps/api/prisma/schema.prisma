@@ -73,6 +73,7 @@ model User {
   userBadges           UserBadge[]
   advertisements       Advertisement[]
   taskSessions         TaskSession[]
+  adminLogs            AuditLog[]
 
   // Password reset
   passwordResetToken     String?
@@ -470,10 +471,11 @@ model WebhookEvent {
 model AuditLog {
   id          String   @id @default(cuid())
   adminId     String
+  admin       User     @relation(fields: [adminId], references: [id])
   action      String   // ex: "SUSPEND_USER", "BAN_USER", "APPROVE_WITHDRAWAL", etc.
   targetType  String   // ex: "User", "Withdrawal", "Advertisement"
   targetId    String
-  details     Json?    // Détails supplémentaires
+  details     Json?
   createdAt   DateTime @default(now())
 
   @@index([adminId])

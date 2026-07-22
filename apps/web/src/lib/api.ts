@@ -288,6 +288,25 @@ export const adminApi = {
     api<Withdrawal>(`/wallet/admin/withdrawals/${id}/approve`, { method: 'PATCH', token }),
   rejectWithdrawal: (token: string, id: string) =>
     api<Withdrawal>(`/wallet/admin/withdrawals/${id}/reject`, { method: 'PATCH', token }),
+  // Audit logs
+  getLogs: (token: string, page = 1, action?: string) => {
+    let url = `/admin/logs?page=${page}`;
+    if (action) url += `&action=${encodeURIComponent(action)}`;
+    return api<{
+      logs: Array<{
+        id: string;
+        adminId: string;
+        adminName: string;
+        action: string;
+        target: string;
+        details: string | null;
+        createdAt: string;
+      }>;
+      total: number;
+      page: number;
+      pages: number;
+    }>(url, { token });
+  },
   // Ads admin
   getAllAds: (token: string, page = 1, status?: string) => {
     let url = `/ads/admin/all?page=${page}`;
