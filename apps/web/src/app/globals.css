@@ -9,6 +9,10 @@
   * {
     @apply border-dark-700/50;
   }
+  /* WCAG: Focus indicator visible pour navigation clavier */
+  *:focus-visible {
+    @apply outline-2 outline-offset-2 outline-primary-400/60;
+  }
   html {
     scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;

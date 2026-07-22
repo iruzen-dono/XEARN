@@ -36,6 +36,13 @@ export class PrismaService
   async onModuleInit() {
     await this.$connect();
 
+    // Slow query detection — log queries taking >100ms
+    this.$on('query' as never, (e: any) => {
+      if (e.duration && e.duration >= 100) {
+        console.warn(`[SLOW QUERY] ${e.duration}ms — ${e.query?.substring(0, 200)}`);
+      }
+    });
+
     // Note: Prisma middleware ($use) was removed in Prisma 5.
     // Soft-delete pattern is now implemented via helper methods below:
     // - findActiveUser()
