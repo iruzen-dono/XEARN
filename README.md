@@ -6,13 +6,14 @@ Plateforme panafricaine de micro-revenus digitaux. Les utilisateurs gagnent de l
 
 | Couche | Technologies |
 |--------|-------------|
-| Frontend | Next.js 15, React 19, TypeScript, TailwindCSS |
-| Backend | NestJS 11, Prisma 6, PostgreSQL 16 |
-| Auth | JWT httpOnly + Google OAuth, CSRF double-submit |
-| Paiements | FedaPay (Mobile Money) |
-| Monitoring | Sentry (backend + frontend) |
-| Infra | Railway (API), Vercel (web), Neon (DB) |
-| CI/CD | GitHub Actions |
+| **Web** | Next.js 15, React 19, TypeScript, TailwindCSS, framer-motion |
+| **Mobile** | Expo SDK 52, Reanimated v3, expo-router |
+| **Backend** | NestJS 11, Prisma 6, PostgreSQL 16 |
+| **Auth** | JWT httpOnly + Google OAuth, CSRF double-submit |
+| **Paiements** | FedaPay (Mobile Money) |
+| **Monitoring** | Sentry (backend + frontend) |
+| **Infra** | Railway (API), Vercel (web), Neon (DB) |
+| **CI/CD** | GitHub Actions (lint + build + test + E2E) |
 
 ## Quick Start
 
@@ -20,7 +21,7 @@ Plateforme panafricaine de micro-revenus digitaux. Les utilisateurs gagnent de l
 git clone https://github.com/iruzen-dono/XEARN.git
 cd XEARN && npm install
 
-# Demarrer PostgreSQL
+# Démarrer PostgreSQL
 docker-compose up -d
 
 # Configurer l'environnement
@@ -33,34 +34,37 @@ npm run db:migrate && npm run db:seed
 npm run dev
 ```
 
-- Frontend : http://localhost:3000
+- Web : http://localhost:3000
 - API : http://localhost:4000
 - Swagger (dev only) : http://localhost:4000/api/docs
+- Mobile : `cd apps/mobile && npx expo start`
 
 ## Structure
 
 ```
 xearn/
-  apps/api/          NestJS backend (16 modules, 35+ endpoints)
-  apps/web/          Next.js frontend (28 pages)
-  packages/types/    Types TypeScript partages
-  docs/              Documentation
-  scripts/           Scripts utilitaires (validation, backup, health)
+  apps/
+    api/          NestJS backend (16 modules, 40+ endpoints)
+    web/          Next.js frontend (29 pages)
+    mobile/       Expo React Native (5 screens premium)
+  packages/types/ Types TypeScript partagés
+  docs/           Documentation
+  scripts/        Scripts utilitaires
   .github/workflows/ CI/CD pipelines
 ```
 
 ## Features
 
-### ✅ Fonctionnalités Production-Ready
+### ✅ Production-Ready
 
-- ✅ **Authentification** (email + Google OAuth avec vérification)
-- ✅ **Système de comptes 3 tiers** (Normal, Premium, VIP)
-- ✅ **Portefeuille** avec retraits Mobile Money (FedaPay)
-- ✅ **Parrainage 3 niveaux** avec commissions automatiques (40%, 10%, 5%)
-- ✅ **Gamification** (streaks, badges, classement)
-- ✅ **Notifications temps réel** (SSE)
-- ✅ **Dashboard admin** avec analytics et exports CSV
-- ✅ **Système de paiement sécurisé** (HMAC webhook, anti-replay)
+- ✅ **Authentification** (email + Google OAuth avec vérification email)
+- ✅ **Système de comptes 3 tiers** (Normal → Premium → VIP)
+- ✅ **Portefeuille** retraits Mobile Money (FedaPay) avec frais progressifs
+- ✅ **Parrainage 3 niveaux** commissions automatiques (40%, 10%, 5%)
+- ✅ **Gamification** — 16 badges (streak/tasks/referrals/earnings), streaks, classement
+- ✅ **Notifications temps réel** (SSE) + badge de non-lues
+- ✅ **Dashboard admin** — Statistiques, gestion utilisateurs, audit logs
+- ✅ **App Mobile** — Expo/Reanimated, responsive, 5 écrans premium
 
 ### 🚧 En Développement (Désactivés en Beta)
 

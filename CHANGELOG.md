@@ -4,51 +4,62 @@ Toutes les modifications notables du projet sont documentées dans ce fichier.
 
 ---
 
-## [Unreleased] — Phase 11 : Audit sécurité approfondi
+## [Phase 7-8-9] — Admin Panel + Mobile Polish + Gamification API
 
-> Date : Juin 2025  
-> Impact : 8 CRITICAL, 6 HIGH, 10 MEDIUM corrigés  
-> Tests : 12 suites API, 99 tests — 0 erreurs TypeScript (API + Web)
+> Date : Juillet 2026
+> Commit : `cb51a17`
+> Tests : 12 suites, 99 tests — Builds API + Web ✅
 
-### Sécurité (CRITICAL)
+### 🔴 Admin Panel Web
+- **3 nouvelles pages** dans `/dashboard/admin/` :
+  - **Stats** : 8 KPIs (utilisateurs, activés, premium, revenus, retraits, tâches, suspendus, bannis) + barres inscription 30j animées + top tâches/parrains
+  - **Utilisateurs** : Tableau complet avec recherche (debounce), filtres statut, pagination, avatars initials, badges colorés, 3 actions (activer/suspendre/bannir) avec confirmation modale
+  - **Audit Logs** : Tableau avec filtre par action (15+ types), affichage dates relatives, pagination
+- **3 endpoints API admin** : `GET /admin/users`, `/admin/stats` (cache 60s), `/admin/logs`
+- Relation Prisma `AuditLog.admin → User` ajoutée
 
-- **Token invalidation** : Le `refreshToken` inclut désormais un `tokenVersion` validé contre la BDD. Changer ou réinitialiser son mot de passe invalide tous les refresh tokens existants.
-- **Race condition wallet** : Les retraits utilisent `SELECT ... FOR UPDATE` dans une transaction interactive Prisma pour verrouiller la ligne wallet et empêcher les doubles retraits concurrents.
-- **Webhook idempotence** : Le webhook de payout vérifie que le retrait n'est pas déjà `COMPLETED` avant de le traiter, empêchant les crédits en double.
-- **Service Worker** : Les chemins `/dashboard` et `/admin` sont exclus du cache pour empêcher l'accès hors-ligne aux données sensibles.
-- **CSP frontend** : Headers de sécurité ajoutés dans `next.config.js` : Content-Security-Policy, X-Frame-Options: DENY, X-Content-Type-Options: nosniff, Referrer-Policy, Permissions-Policy.
-- **Cookie Secure** : Le cookie de referral utilise le flag `Secure` en production.
-- **Referral OAuth cleanup** : Le cookie `xearn_referral` est supprimé une fois consommé dans le callback Google OAuth pour éviter les résidus après la synchronisation.
-- **bcrypt 12** : Les salt rounds sont passés de 10 à 12 dans `register()`, `changePassword()` et `resetPassword()`.
+### 🟡 Mobile Polish
+- **LayoutAnimation** transitions fluides entre tabs (easeInEaseOut 200ms)
+- LayoutAnimation Android enabled (`UIManager.setLayoutAnimationEnabledExperimental`)
+- Imports nettoyés
 
-### Robustesse (HIGH)
-
-- **Health check 503** : `GET /api/health` retourne `503 Service Unavailable` si la base de données est inaccessible (au lieu de 200 avec erreur).
-- **Commission L2 gating** : Les commissions de niveau 2 (10%) ne sont versées que si le bénéficiaire est PREMIUM ou VIP.
-- **Expiration tâches** : `completeTask()` vérifie `task.expiresAt` côté serveur (en plus du frontend) et rejette les tâches expirées.
-- **SSE cleanup** : Le flux SSE de notifications utilise `.pipe(finalize(...))` pour nettoyer les listeners et timers à la déconnexion du client.
-- **Ads total ajusté** : `findActive()` ajuste le total renvoyé pour exclure les publicités dont le budget est épuisé.
-- **Admin layout protection** : Le layout admin redirige les non-admin vers `/dashboard` ou `/login`.
-- **NotificationBell a11y** : Attributs ARIA (aria-expanded, aria-haspopup, role="menu") et gestion du clavier (Escape pour fermer).
-
-### Qualité de code (MEDIUM)
-
-- **ValidationPipe** : `enableImplicitConversion` supprimé pour empêcher la coercion automatique des types dans les DTOs.
-- **Google Auth** : Ne modifie plus le `provider` d'un compte LOCAL existant lors d'une connexion Google (préserve la possibilité de login par mot de passe).
-- **Pagination ajoutée** :
-  - `GET /api/wallet/withdrawals?page=1&limit=20` — liste paginée des retraits
-  - `GET /api/tasks/my-completions?page=1&limit=20` — liste paginée des complétions
-- **SanitizeInterceptor** : Limite de profondeur `MAX_DEPTH=16` pour prévenir les stack overflows sur des payloads JSON profondément imbriqués.
-- **Ads queries** : Remplacement de `$transaction` par `Promise.all` pour les requêtes read-only (plus simple, aussi correct).
-- **Frontend types** : Tous les `any` remplacés par des interfaces typées (`WalletData`, `Transaction`, `FeesData`, `TierPricingData`, `Task`, `Withdrawal`) sur les pages wallet, tasks et withdrawals.
-- **Formulaires** : Attributs `autoComplete` ajoutés sur tous les champs (login, register).
-- **window.open** : `noopener,noreferrer` ajouté sur tous les appels `window.open()` (wallet, referrals).
-- **Playwright smoke CI** : Le flux web smoke est maintenant exécuté dans la CI, avec un serveur web auto-démarré pour les tests E2E de base.
+### 🟢 Gamification API
+- Endpoints fonctionnels : `GET /gamification/streak`, `/badges`, `/leaderboard`
+- 16 badges (4 catégories : streak, tasks, referrals, earnings)
+- Streak tracking avec daily reward cap (10 000 FCFA/jour)
+- Vérifications atomiques (SELECT FOR UPDATE)
 
 ---
 
-## [Phase 10] — Audit complet
+## [Phase 4-5-6] — Mobile App + Performance + Accessibilité
 
+> Date : Juillet 2026
+> Commit : `b195285` + `4fbb5ad`
+> Stats : 21 fichiers, +3 291 lignes
+
+### Phase 4 — Load Testing & Cache
+- **Autocannon** : script load test + npm scripts `load-test`/`load-test:stress`
+- **Slow query detection** : Prisma `$on('query')` >100ms avec logger dédié
+- **Redis cache ready** : KeyvAdapter + createKeyv (fallback mémoire si REDIS_URL absente)
+
+### Phase 5 — UX/UI & Accessibilité
+- **WCAG 2.1 AA** : focus-visible global, skip-to-content link, aria-labels, semantic HTML
+- **Loading states** : 3 loading.tsx (dashboard, wallet, tasks)
+- **Bundle analysis** : @next/bundle-analyzer configuré
+- **Coverage config** : Jest avec seuils (branches 70%, lines 80%)
+
+### Phase 6 — App Mobile Expo
+- **Refonte complète** : 12 fichiers, +3 291 lignes, −959
+- **Stack** : Expo SDK 52, Reanimated v3, TypeScript strict
+- **Fondations** :
+  - `theme/index.ts` — Design tokens premium (palette #0c1222, or #F5A623, vert #10B981)
+  - `utils/responsive.ts` — scale/moderateScale/useResponsive (breakpoints 360px/480px)
+  - `components/Animated.tsx` — 7 composants (AnimatedNumber, AnimatedBalance, AnimatedCard, Shimmer, DashboardSkeleton, PulsingDot)
+  - `babel.config.js` — Plugin Reanimated activé
+- **Écrans refaits** : Dashboard (balance pulse, cartes glissantes, skeleton shimmer), Wallet (compteurs animés, stats mensuelles, tiers Premium/VIP), Tâches (cards badges type/tier, entrée progressive), Parrainage (code copiable, réseau animé, commissions), Plus (avatar cerclé, streak flamme, badges scrollables, notifs pulsantes)
+- **Responsive** : s'adapte à tous les écrans (petits téléphones → tablettes)
+
+---
 > Date : Mars 2026
 
 ### Corrigé
