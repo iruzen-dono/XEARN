@@ -1,11 +1,12 @@
 import { Module, Injectable, ExecutionContext } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { resolve } from 'path';
 import { CacheModule } from '@nestjs/cache-manager';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { APP_GUARD } from '@nestjs/core';
+import { createKeyv } from '@keyv/redis';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
@@ -47,11 +48,21 @@ class ProxyAwareThrottlerGuard extends ThrottlerGuard {
 
     EventEmitterModule.forRoot(),
 
-    // Cache mémoire (in-memory — zéro dépendance externe)
-    CacheModule.register({
-      ttl: 60_000, // 60s TTL par défaut
-      max: 200, // max 200 entrées en cache
+    // Cache Redis (fallback mémoire si REDIS_URL non défini)
+    CacheModule.registerAsync({
       isGlobal: true,
+      useFactory: (config: ConfigService): Record<string, any> => {
+        const redisUrl = config.get<string>('REDIS_URL');
+        if (redisUrl) {
+          return {
+            stores: [createKeyv(redisUrl)],
+            ttl: 60_000, // 60s TTL par défaut
+          };
+        }
+        // Fallback in-memory
+        return { ttl: 60_000 };
+      },
+      inject: [ConfigService],
     }),
 
     // Rate limiting par paliers

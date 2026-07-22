@@ -1,5 +1,8 @@
 const { resolve } = require('path');
 require('dotenv').config({ path: resolve(__dirname, '../../.env') });
+const withBundleAnalyzer = require('@next/bundle-analyzer')({
+  enabled: process.env.ANALYZE === 'true',
+});
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -49,4 +52,4 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+module.exports = withBundleAnalyzer(nextConfig);
