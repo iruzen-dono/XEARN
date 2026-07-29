@@ -11,7 +11,7 @@ import {
   Text,
   View,
   ViewStyle,
-  TextStyle,
+  TextStyle as RNTextStyle,
   ActivityIndicator,
   DimensionValue,
 } from 'react-native';
@@ -25,7 +25,7 @@ import { scale, moderateScale } from '../utils/responsive';
 interface AnimatedNumberProps {
   value: number;
   duration?: number;
-  style?: TextStyle;
+  style?: RNTextStyle;
   suffix?: string;
   prefix?: string;
   decimals?: number;
@@ -39,33 +39,29 @@ export function AnimatedNumber({
   prefix = '',
   decimals = 0,
 }: AnimatedNumberProps) {
+  const [displayText, setDisplayText] = React.useState(value.toFixed(decimals));
   const animatedValue = useRef(new Animated.Value(0)).current;
+  const prevValue = useRef(0);
 
   useEffect(() => {
+    if (prevValue.current === value) return;
+    prevValue.current = value;
+
+    animatedValue.setValue(0);
+    const listenerId = animatedValue.addListener(({ value: v }) => {
+      setDisplayText(`${prefix}${Number(v).toFixed(decimals)}${suffix}`);
+    });
+
     Animated.timing(animatedValue, {
       toValue: value,
       duration,
-      useNativeDriver: true,
+      useNativeDriver: false,
     }).start();
-  }, [value, duration]);
 
-  const displayValue = animatedValue.interpolate({
-    inputRange: [0, Math.max(value, 1)],
-    outputRange: [0, Math.max(value, 1)],
-    extrapolate: 'clamp',
-  });
+    return () => animatedValue.removeListener(listenerId);
+  }, [value, duration, decimals, prefix, suffix]);
 
-  return (
-    <Animated.Text style={style}>
-      {prefix}
-      {displayValue.interpolate({
-        inputRange: [0, Math.max(value, 1)],
-        outputRange: ['0', value.toFixed(decimals)],
-        extrapolate: 'clamp',
-      })}
-      {suffix}
-    </Animated.Text>
-  );
+  return <Text style={style}>{displayText}</Text>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -79,10 +75,9 @@ export function AnimatedBalance({
 }: {
   amount: number;
   currency?: string;
-  style?: TextStyle;
+  style?: RNTextStyle;
 }) {
   const pulseAnim = useRef(new Animated.Value(1)).current;
-
   useEffect(() => {
     Animated.sequence([
       Animated.timing(pulseAnim, {
@@ -97,8 +92,6 @@ export function AnimatedBalance({
       }),
     ]).start();
   }, [amount]);
-
-  const formatted = amount.toLocaleString();
 
   return (
     <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
@@ -140,11 +133,11 @@ export function AnimatedCard({ children, delay = 0, style, gradient, onPress }: 
     ]).start();
   }, []);
 
-  const baseStyle: ViewStyle = {
+  const animatedCardStyle: ViewStyle = {
     backgroundColor: colors.bgCard,
     borderRadius: borderRadius.xl,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: gradient ? colors.borderActive : colors.border,
     padding: scale(16),
   };
 
@@ -152,18 +145,7 @@ export function AnimatedCard({ children, delay = 0, style, gradient, onPress }: 
 
   return (
     <Animated.View style={{ opacity, transform: [{ translateY }] }}>
-      <Wrapper
-        onPress={onPress}
-        style={[
-          baseStyle,
-          shadows.md,
-          gradient && {
-            background: undefined,
-            borderColor: colors.borderActive,
-          },
-          style,
-        ]}
-      >
+      <Wrapper onPress={onPress} style={[animatedCardStyle, shadows.md as ViewStyle, style]}>
         {children}
       </Wrapper>
     </Animated.View>

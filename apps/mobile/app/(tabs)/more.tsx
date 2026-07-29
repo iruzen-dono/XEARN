@@ -199,7 +199,7 @@ export default function MoreTab() {
               <AnimatedCard
                 key={badge.id}
                 delay={300 + i * 50}
-                style={[s.badgeCard, !badge.earned && s.badgeLocked]}
+                style={badge.earned ? s.badgeCard : { ...s.badgeCard, ...s.badgeLocked }}
               >
                 <Text style={s.badgeIcon}>{badge.icon}</Text>
                 <Text style={[s.badgeName, !badge.earned && { color: colors.textDim }]}>
@@ -235,7 +235,7 @@ export default function MoreTab() {
           <AnimatedCard
             key={notif.id}
             delay={350 + i * 60}
-            style={[s.notifCard, !notif.read && s.notifUnread]}
+            style={notif.read ? s.notifCard : { ...s.notifCard, ...s.notifUnread }}
           >
             <View style={s.notifRow}>
               <View style={s.notifLeft}>

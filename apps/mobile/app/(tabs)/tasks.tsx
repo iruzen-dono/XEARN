@@ -161,7 +161,7 @@ function TaskCard({
       {/* Task type + tier badges */}
       <View style={s.taskHeader}>
         <View style={s.taskTypeBadge}>
-          <Ionicons name={getTaskIcon(task.type)} size={scale(12)} color={colors.primary} />
+          <Ionicons name={getTaskIcon(task.type) as any} size={scale(12)} color={colors.primary} />
           <Text style={s.taskTypeText}>{formatTaskType(task.type)}</Text>
         </View>
         {tier !== 'NORMAL' && (

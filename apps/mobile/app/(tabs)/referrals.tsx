@@ -154,7 +154,7 @@ export default function ReferralsTab() {
             </Text>
           </View>
           <View style={s.commDivider} />
-          <View style={s.commRow}>
+          <View style={s.commSubRow}>
             <View style={s.commSubItem}>
               <Text style={s.commSubLabel}>L1 ({stats.l1Percent}%)</Text>
               <Text style={s.commSubValue}>
@@ -443,7 +443,7 @@ const s = StyleSheet.create({
     backgroundColor: colors.border,
     marginBottom: scale(10),
   },
-  commRow: {
+  commSubRow: {
     flexDirection: 'row',
     gap: scale(10),
   },

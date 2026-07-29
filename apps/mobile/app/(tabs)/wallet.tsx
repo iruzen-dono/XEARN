@@ -283,7 +283,7 @@ function UpgradeTierCard({
   return (
     <AnimatedCard
       delay={delay}
-      style={[s.tierCard, { borderColor: color }]}
+      style={{ ...s.tierCard, borderColor: color }}
       onPress={handleUpgrade}
     >
       <View style={[s.tierIconWrap, { backgroundColor: `${color}20` }]}>

@@ -102,6 +102,8 @@ export interface Wallet {
   userId: string;
   balance: string;
   totalEarned: string;
+  monthlyEarnings: string;
+  monthlyWithdrawals: string;
 }
 
 export interface Transaction {
