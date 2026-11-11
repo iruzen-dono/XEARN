@@ -17,6 +17,9 @@ on:
 jobs:
   lint-and-test:
     runs-on: ubuntu-latest
+    # Sans timeout un job bloque (service container qui ne rend pas la main)
+    # squatte la file et empeche les runs suivants de demarrer.
+    timeout-minutes: 20
 
     services:
       postgres:
