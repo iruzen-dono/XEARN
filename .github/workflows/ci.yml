@@ -56,8 +56,13 @@ jobs:
         run: npx prisma generate
         working-directory: apps/api
 
-      - name: Run Prisma migrations
-        run: npx prisma migrate deploy
+      - name: Set up test database schema
+        # The repo has no baseline migration: the first migration ALTERs the
+        # "tasks" table, which only exists in a database built from schema.prisma.
+        # `migrate deploy` therefore fails on a fresh CI database (P3018,
+        # relation "tasks" does not exist). Push the schema instead — the CI
+        # database is disposable and never needs migration history.
+        run: npx prisma db push --skip-generate --accept-data-loss
         working-directory: apps/api
 
       - name: Lint
