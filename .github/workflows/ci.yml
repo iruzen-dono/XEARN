@@ -83,6 +83,25 @@ jobs:
         run: npx playwright install --with-deps chromium
         working-directory: apps/web
 
+      - name: Build and start the API
+        # The E2E specs register users and read wallets over HTTP, so the API has
+        # to be listening on 4000 while Playwright runs. It uses the same service
+        # container and schema the jest suite above already ran against.
+        run: |
+          npm run build
+          node dist/main.js > "$RUNNER_TEMP/api.log" 2>&1 &
+          for _ in $(seq 1 60); do
+            if curl -sf http://localhost:4000/health > /dev/null; then
+              echo "API is up"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "The API did not start:"
+          cat "$RUNNER_TEMP/api.log"
+          exit 1
+        working-directory: apps/api
+
       - name: Run E2E tests
         run: npx playwright test --project=chromium --reporter=line
         working-directory: apps/web

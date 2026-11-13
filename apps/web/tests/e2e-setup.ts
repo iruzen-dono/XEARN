@@ -14,8 +14,26 @@ export interface TestUser {
 }
 
 /**
+ * Mark the account verified straight in the database, so the suite can log in.
+ * Locally the schema lives in the docker-compose Postgres, reached by container
+ * name; CI has no such container and hands the same database over as
+ * DATABASE_URL, so `docker exec` cannot be the only path.
+ */
+function markEmailVerified(email: string): void {
+  const sql = `UPDATE users SET "emailVerifiedAt"=NOW() WHERE email='${email}'`.replace(
+    /"/g,
+    '\\"',
+  );
+  const command = process.env.CI
+    ? `psql "${process.env.DATABASE_URL ?? ''}" -c "${sql}"`
+    : `docker exec -i xearn-postgres psql -U xearn -d xearn_db -c "${sql}"`;
+  execSync(command, { stdio: 'pipe' });
+}
+
+/**
  * Crée un utilisateur vérifié pour les tests E2E.
- * Flow: register → verify email in DB (psql in Docker) → login → extract accessToken cookie
+ * Flow: register → verify email in DB (psql, Docker locally or DATABASE_URL in CI)
+ * → login → extract accessToken cookie
  */
 export async function createVerifiedUser(prefix: string): Promise<TestUser> {
   const email = `${prefix}-${Date.now().toString(36)}@e2e-test.com`;
@@ -32,11 +50,8 @@ export async function createVerifiedUser(prefix: string): Promise<TestUser> {
     throw new Error(`Register failed (${regRes.status}): ${await regRes.text()}`);
   }
 
-  // 2. Verify email in Docker PostgreSQL
-  execSync(
-    `docker exec -i xearn-postgres psql -U xearn -d xearn_db -c "UPDATE users SET \\"emailVerifiedAt\\"=NOW() WHERE email='${email}'"`,
-    { stdio: 'pipe' },
-  );
+  // 2. Verify the email before the login below.
+  markEmailVerified(email);
 
   // 3. Login and extract tokens from Set-Cookie headers
   const loginRes = await fetch(`${API_BASE}/auth/login`, {
