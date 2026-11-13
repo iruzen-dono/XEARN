@@ -13,6 +13,7 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     name: 'Build & Test'
     services:
       postgres:
@@ -192,7 +193,9 @@ jobs:
 
   smoke-tests:
     if: github.event_name == 'push' && (needs.deploy-staging.result == 'success' || needs.deploy-production.result == 'success')
-    runs-on: ubuntu-latest
+    # Same pin as the PR check: Playwright 1.59 does not support ubuntu 26.04,
+    # which is what `ubuntu-latest` now resolves to.
+    runs-on: ubuntu-24.04
     name: 'Smoke Tests'
     needs: [deploy-staging, deploy-production]
 

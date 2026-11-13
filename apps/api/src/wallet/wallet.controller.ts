@@ -149,7 +149,7 @@ export class WalletController {
             t.type,
             t.status,
             t.amount,
-            `"${(t.description || '').replace(/"/g, '""')}"`,
+            `"${(t.description || '').replace(/"/g, '""').replace(/[\r\n]+/g, ' ')}"`,
             t.createdAt.toISOString(),
           ].join(','),
       )

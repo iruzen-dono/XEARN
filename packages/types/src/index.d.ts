@@ -132,9 +132,11 @@ export interface WithdrawPayload {
   accountInfo: string;
 }
 
-export interface WalletOverview {
-  wallet: Wallet;
-  recentTransactions: Transaction[];
+export interface WalletOverview extends Omit<Wallet, 'balance' | 'totalEarned'> {
+  balance: number;
+  totalEarned: number;
+  totalWithdrawn: number;
+  pendingWithdrawal: number;
 }
 
 // API Response types for frontend
