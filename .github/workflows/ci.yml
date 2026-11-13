@@ -43,7 +43,9 @@ jobs:
     env:
       DATABASE_URL: postgresql://xearn:xearn_test@localhost:5432/xearn_test
       JWT_SECRET: ci-test-secret-key-minimum-length
-      JWT_REFRESH_SECRET: ci-test-refresh-secret-min-len
+      # The API refuses secrets shorter than 32 characters at bootstrap; the old
+      # 30-character value only survived because jest never starts it.
+      JWT_REFRESH_SECRET: ci-test-refresh-secret-minimum-length
       API_PORT: 4000
       NODE_ENV: test
       NEXT_PUBLIC_API_URL: http://localhost:4000
