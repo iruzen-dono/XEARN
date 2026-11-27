@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { width:1280px; height:640px; }
+  body {
+    background:#06120E;
+    color:#EAF3EF;
+    font-family:"Segoe UI","Helvetica Neue",Arial,sans-serif;
+    padding:0 76px 44px 116px;
+    display:flex; flex-direction:column;
+    position:relative;
+    -webkit-font-smoothing:antialiased;
+  }
+  .rule { position:absolute; left:0; top:0; width:8px; height:640px; background:#2FD08B; }
+  .content { flex:1; display:flex; flex-direction:column; justify-content:center; padding-top:12px; }
+  .kicker {
+    font-family:Consolas,"Cascadia Mono",monospace;
+    font-size:18px; letter-spacing:.26em; text-transform:uppercase; color:#2FD08B;
+  }
+  h1 { font-size:68px; line-height:1.16; font-weight:700; letter-spacing:-.028em; margin-top:26px; }
+  h1 .n { color:#2FD08B; }
+  .red { display:block; font-size:44px; line-height:1.25; color:#F2C66D;
+         font-weight:600; margin-top:18px; letter-spacing:-.012em; }
+  .sub { font-size:26px; line-height:1.45; color:#93A8A0; margin-top:28px; max-width:930px; }
+  .foot { display:flex; justify-content:space-between; align-items:baseline;
+          border-top:1px solid #173028; padding-top:22px; }
+  .name { font-size:25px; font-weight:700; letter-spacing:.01em; white-space:nowrap; }
+  .name .d { font-weight:400; color:#93A8A0; }
+  .cmd { font-family:Consolas,"Cascadia Mono",monospace; font-size:20px; color:#C9DAD3; white-space:nowrap; }
+</style>
+</head>
+<body>
+  <div class="rule"></div>
+  <div class="content">
+    <div class="kicker">micro-revenus &mdash; afrique de l'ouest</div>
+    <h1>Des micro-t&acirc;ches pay&eacute;es en <span class="n">FCFA</span>.</h1>
+    <span class="red">Sans compte bancaire : Mobile Money direct.</span>
+    <div class="sub">Parrainage sur trois niveaux, gamification, tableau de bord admin.
+      NestJS&nbsp;11 &middot; Next.js&nbsp;15 &middot; Expo &mdash; 16 modules, 40+ endpoints.</div>
+  </div>
+  <div class="foot">
+    <div class="name">XEARN <span class="d">&middot; Lom&eacute;, Togo</span></div>
+    <div class="cmd">FedaPay &middot; Prisma &middot; PostgreSQL</div>
+  </div>
+</body>
+</html>
